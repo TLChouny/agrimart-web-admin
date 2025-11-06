@@ -1,0 +1,20 @@
+export const ROUTES = {
+  HOME: '/',
+  ADMIN_LOGIN: '/auth/login',
+  ADMIN_DASHBOARD: '/admin',
+  ADMIN_USERS: '/admin/users',
+  ADMIN_APPROVAL: '/admin/approval',
+  ADMIN_FARMS: '/admin/farms',
+  ADMIN_ORDERS: '/admin/orders',
+  ADMIN_PRODUCTS: '/admin/products',
+  ADMIN_SHIPPERS: '/admin/shippers',
+  FARMER_DASHBOARD: '/farmer/dashboard',
+  FARMER_FARMS: '/farmer/farms',
+  FARMER_CROPS: '/farmer/crops',
+  FARMER_AUCTIONS: '/farmer/auctions',
+  FARMER_AUCTIONS_CREATE: '/farmer/auctions/create',
+  FARMER_INCOME: '/farmer/income',
+  FARMER_CONTRACTS: '/farmer/contracts',
+  WHOLESALER_DASHBOARD: '/wholesaler/dashboard',
+} as const
+
