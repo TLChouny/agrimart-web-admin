@@ -108,6 +108,16 @@ class HttpClient {
         }
 
         if (!response.ok) {
+          if (response.status === 401) {
+            try {
+              localStorage.removeItem('authToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('currentUser')
+              if (typeof window !== 'undefined') {
+                window.location.replace('/auth/login')
+              }
+            } catch {}
+          }
           const error = this.parseErrorResponse(data, response.status)
           if (this.isRetryableError(response.status) && attempt < retries) {
             lastError = error
@@ -125,6 +135,16 @@ class HttpClient {
       } catch (error) {
         if (error && typeof error === 'object' && 'status' in error) {
           const apiError = error as ApiError
+          if (apiError.status === 401) {
+            try {
+              localStorage.removeItem('authToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('currentUser')
+              if (typeof window !== 'undefined') {
+                window.location.replace('/auth/login')
+              }
+            } catch {}
+          }
           if (this.isRetryableError(apiError.status) && attempt < retries) {
             lastError = apiError
             await this.sleep(retryDelay * Math.pow(2, attempt))

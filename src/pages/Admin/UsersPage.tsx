@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Card } from '../../components/ui/card'
 import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/simple-table'
 import { Badge } from '../../components/ui/badge'
+import { userApi } from '../../services/api/userApi'
+import type { User as ApiUser } from '../../types/api'
 
 interface User {
   id: string
@@ -11,13 +14,58 @@ interface User {
   createdAt: string
 }
 
-const mockUsers: User[] = [
-  { id: '1', fullName: 'Nguyễn Văn A', email: 'user1@example.com', role: 'farmer', status: 'active', createdAt: '2024-01-15T10:30:00Z' },
-  { id: '2', fullName: 'Trần Thị B', email: 'user2@example.com', role: 'wholesaler', status: 'active', createdAt: '2024-01-14T14:20:00Z' },
-  { id: '3', fullName: 'Lê Văn C', email: 'user3@example.com', role: 'farmer', status: 'inactive', createdAt: '2024-01-13T09:15:00Z' },
-]
-
 export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const PAGE_SIZE = 10
+  const [page, setPage] = useState(1)
+  const [blockedMap, setBlockedMap] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const res = await userApi.list()
+        if (res.isSuccess) {
+          const payload = res.data as ApiUser[] | { items: ApiUser[] }
+          const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
+          const mapRole = (u: ApiUser): User['role'] => {
+            const r = (u as unknown as { role?: unknown }).role
+            if (typeof r === 'string') {
+              if (r === 'admin' || r === 'farmer' || r === 'wholesaler') return r
+            }
+            // Try role object with name property
+            if (r && typeof r === 'object' && 'name' in (r as Record<string, unknown>)) {
+              const name = String((r as { name?: unknown }).name || '').toLowerCase()
+              if (name === 'admin' || name === 'farmer' || name === 'wholesaler') return name as User['role']
+            }
+            return 'wholesaler'
+          }
+          const mapped: User[] = apiUsers.map(u => ({
+            id: u.id,
+            fullName: `${u.firstName} ${u.lastName}`.trim(),
+            email: u.email,
+            role: mapRole(u),
+            status: 'active',
+            createdAt: u.createdAt,
+          }))
+          setUsers(mapped)
+          setBlockedMap(Object.fromEntries(mapped.map(u => [u.id, false])))
+          setPage(1)
+        } else {
+          setError(res.message || 'Không thể tải danh sách người dùng')
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Lỗi tải người dùng')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchUsers()
+  }, [])
+
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
   const getRoleBadge = (role: string) => {
@@ -37,6 +85,11 @@ export default function UsersPage() {
     }
   }
 
+  const toggleBlocked = (userId: string, value: boolean) => {
+    setBlockedMap(prev => ({ ...prev, [userId]: value }))
+    // TODO: call API to block/unblock when BE available
+  }
+
   return (
     <div className="container mx-auto p-4 sm:p-6">
       <div className="mb-6">
@@ -47,43 +100,70 @@ export default function UsersPage() {
       <Card className="card-responsive">
         <div className="mb-4">
           <h2 className="text-responsive-xl font-semibold text-gray-900 mb-2">Danh sách người dùng</h2>
-          <p className="text-responsive-sm text-gray-600">Có {mockUsers.length} người dùng trong hệ thống</p>
+          <p className="text-responsive-sm text-gray-600">{isLoading ? 'Đang tải...' : `Có ${users.length} người dùng trong hệ thống`}{error ? ` · Lỗi: ${error}` : ''}</p>
         </div>
 
         <div className="overflow-x-auto">
+          {(() => {
+            const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE))
+            const safePage = Math.min(page, totalPages)
+            const start = (safePage - 1) * PAGE_SIZE
+            const pagedUsers = users.slice(start, start + PAGE_SIZE)
+            const canPrev = safePage > 1
+            const canNext = safePage < totalPages
+            return (
+              <>
           <div className="hidden md:block">
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[60px]">ID</TableHead>
-                  <TableHead className="min-w-[100px]">Họ và tên</TableHead>
-                  <TableHead className="min-w-[120px]">Email</TableHead>
-                  <TableHead className="min-w-[80px]">Vai trò</TableHead>
-                  <TableHead className="min-w-[80px]">Trạng thái</TableHead>
-                  <TableHead className="min-w-[80px]">Ngày tạo</TableHead>
+                  <TableHead style={{width:'35%'}}>Họ và tên</TableHead>
+                  <TableHead style={{width:'25%'}}>Email</TableHead>
+                  <TableHead style={{width:'15%'}}>Vai trò</TableHead>
+                  <TableHead style={{width:'15%'}}>Trạng thái</TableHead>
+                  <TableHead style={{width:'10%'}}>Khóa</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockUsers.map((user) => (
+                {pagedUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="min-w-[60px] font-mono text-xs">{user.id}</TableCell>
-                    <TableCell className="min-w-[100px] font-medium">
-                      <div className="truncate max-w-[100px]" title={user.fullName}>{user.fullName}</div>
+                    <TableCell style={{width:'35%'}} className="font-medium">
+                      <div className="truncate" title={user.fullName}>{user.fullName}</div>
                     </TableCell>
-                    <TableCell className="min-w-[120px]">
-                      <div className="truncate max-w-[120px]" title={user.email}>{user.email}</div>
+                    <TableCell style={{width:'25%'}}>
+                      <div className="truncate" title={user.email}>{user.email}</div>
                     </TableCell>
-                    <TableCell className="min-w-[80px]">{getRoleBadge(user.role)}</TableCell>
-                    <TableCell className="min-w-[80px]">{getStatusBadge(user.status)}</TableCell>
-                    <TableCell className="min-w-[80px] text-xs">{formatDate(user.createdAt)}</TableCell>
+                    <TableCell style={{width:'15%'}}>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell style={{width:'15%'}}>{getStatusBadge(user.status)}</TableCell>
+                    <TableCell style={{width:'10%'}}>
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={!!blockedMap[user.id]}
+                          onChange={(e) => toggleBlocked(user.id, e.target.checked)}
+                        />
+                        <span className={`w-10 h-6 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                        </span>
+                        <span className="text-xs text-gray-700">{blockedMap[user.id] ? 'Blocked' : 'Active'}</span>
+                      </label>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </SimpleTable>
           </div>
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Trang {safePage}/{totalPages}</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev} className={`px-3 py-1 rounded border text-sm ${canPrev ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Trước</button>
+              <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext} className={`px-3 py-1 rounded border text-sm ${canNext ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Sau</button>
+            </div>
+          </div>
 
           <div className="md:hidden space-y-3">
-            {mockUsers.map((user) => (
+            {pagedUsers.map((user) => (
               <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                 <div className="space-y-3">
                   <div className="flex justify-between items-start">
@@ -91,9 +171,15 @@ export default function UsersPage() {
                       <h3 className="font-medium text-gray-900 truncate" title={user.fullName}>{user.fullName}</h3>
                       <p className="text-sm text-gray-500 truncate" title={user.email}>{user.email}</p>
                     </div>
-                    <div className="ml-2 flex flex-col gap-1">
+                    <div className="ml-2 flex flex-col gap-1 items-end">
                       {getRoleBadge(user.role)}
                       {getStatusBadge(user.status)}
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none mt-1">
+                        <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
+                        <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                        </span>
+                      </label>
                     </div>
                   </div>
                   <div className="text-sm text-gray-600">
@@ -104,6 +190,16 @@ export default function UsersPage() {
               </div>
             ))}
           </div>
+          <div className="flex items-center justify-between mt-3 text-sm md:hidden">
+            <span className="text-gray-600">Trang {safePage}/{totalPages}</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev} className={`px-3 py-1 rounded border text-sm ${canPrev ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Trước</button>
+              <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext} className={`px-3 py-1 rounded border text-sm ${canNext ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Sau</button>
+            </div>
+          </div>
+          </>
+            )
+          })()}
         </div>
       </Card>
     </div>

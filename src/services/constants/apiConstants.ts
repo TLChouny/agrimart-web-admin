@@ -20,7 +20,7 @@ export const ENDPOINTS = {
     delete: (id: string) => `/api/roleclaim/${id}`,
     detail: (id: string) => `/api/roleclaim/${id}`,
   },
-  users: { list: '/users' },
+  users: { list: '/api/users' },
   orders: { list: '/orders' },
   products: { list: '/products' },
   approval: {
