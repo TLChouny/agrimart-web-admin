@@ -32,7 +32,7 @@ const ApprovalPage: React.FC = () => {
     } finally { setIsLoading(false) }
   }
 
-  const handleApprove = async (accountId: string) => {
+  const handleApprove = async (_accountId: string) => {
     setIsApproving(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -43,7 +43,7 @@ const ApprovalPage: React.FC = () => {
     } finally { setIsApproving(false) }
   }
 
-  const handleReject = async (accountId: string, reason: string) => {
+  const handleReject = async (_accountId: string, _reason: string) => {
     setIsRejecting(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
