@@ -2,7 +2,7 @@ import { httpClient } from './api/httpClient'
 import { ENDPOINTS } from './constants/apiConstants'
 import type { User } from '../types'
 import type { User as ApiUser } from '../types/api'
-import { ERROR_MESSAGES } from './constants/messages'
+import { ERROR_MESSAGES, translateApiError } from './constants/messages'
 
 export interface AdminLoginRequest { email: string; password: string }
 export interface AdminLoginResponse { user: User; token: string }
@@ -33,10 +33,35 @@ export class AdminAuthService {
         }
         return { user, token: response.data.token.accessToken }
       }
-      throw new Error(response.message || 'Đăng nhập thất bại')
+      // Xử lý lỗi từ API response
+      let errorMessage: string = ERROR_MESSAGES.LOGIN_FAILED
+      if (response.errors && response.errors.length > 0) {
+        // Chuyển đổi từng thông báo lỗi trong mảng
+        const translatedErrors = response.errors.map(err => this.translateError(err))
+        errorMessage = translatedErrors.join('. ')
+      } else if (response.message) {
+        errorMessage = this.translateError(response.message)
+      }
+      throw new Error(errorMessage)
     } catch (error) {
-      if (error instanceof Error) throw error
-      throw new Error('Có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.')
+      if (error && typeof error === 'object' && 'status' in error) {
+        // Xử lý ApiError từ httpClient
+        const apiError = error as { message: string; status: number; errors?: string[] }
+        let errorMessage: string = ERROR_MESSAGES.LOGIN_FAILED
+        if (apiError.errors && apiError.errors.length > 0) {
+          // Chuyển đổi từng thông báo lỗi trong mảng
+          const translatedErrors = apiError.errors.map(err => this.translateError(err))
+          errorMessage = translatedErrors.join('. ')
+        } else if (apiError.message) {
+          errorMessage = this.translateError(apiError.message)
+        }
+        throw new Error(errorMessage)
+      }
+      if (error instanceof Error) {
+        const translatedMessage = this.translateError(error.message)
+        throw new Error(translatedMessage)
+      }
+      throw new Error(ERROR_MESSAGES.LOGIN_FAILED)
     }
   }
 
@@ -67,6 +92,10 @@ export class AdminAuthService {
     localStorage.removeItem('authToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('currentUser')
+  }
+  
+  private translateError(errorMessage: string): string {
+    return translateApiError(errorMessage)
   }
 }
 

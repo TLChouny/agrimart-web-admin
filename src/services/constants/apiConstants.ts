@@ -20,7 +20,12 @@ export const ENDPOINTS = {
     delete: (id: string) => `/api/roleclaim/${id}`,
     detail: (id: string) => `/api/roleclaim/${id}`,
   },
-  users: { list: '/api/users' },
+  users: {
+    list: '/api/identity/users',
+    detail: (id: string) => `/api/users/${id}`,
+    lock: (id: string) => `/api/users/${id}/lock`,
+    unlock: (id: string) => `/api/users/${id}/unlock`,
+  },
   orders: { list: '/orders' },
   products: { list: '/products' },
   approval: {
@@ -30,6 +35,17 @@ export const ENDPOINTS = {
     approve: '/approval/approve',
     reject: '/approval/reject',
     detail: (id: string) => `/approval/${id}`,
+  },
+  farm: {
+    list: '/api/farm-service/farm',
+    delete: (id: string) => `/api/farm-service/farm/${encodeURIComponent(id)}`,
+    custardAppleType: {
+      list: '/api/farm-service/custardappletype',
+      create: '/api/farm-service/custardappletype',
+      detail: (id: string) => `/api/farm-service/custardappletype/${encodeURIComponent(id)}`,
+      update: (id: string) => `/api/farm-service/custardappletype/${encodeURIComponent(id)}`,
+      delete: (id: string) => `/api/farm-service/custardappletype/${encodeURIComponent(id)}`,
+    },
   },
 } as const
 

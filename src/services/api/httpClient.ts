@@ -200,9 +200,95 @@ class HttpClient {
   }
 
   async delete<T>(endpoint: string, options: { invalidateCache?: string } = {}): Promise<APIResponse<T>> {
-    const response = await this.request<T>(endpoint, { method: 'DELETE' })
-    if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
-    return response
+    const url = `${this.baseURL}${endpoint}`
+    const token = localStorage.getItem('authToken')
+    const requestHeaders: Record<string, string> = {}
+    if (token) {
+      requestHeaders['Authorization'] = `Bearer ${token}`
+    }
+
+    console.log('DELETE Request:', { url, method: 'DELETE', headers: requestHeaders })
+
+    const init: RequestInit = { 
+      method: 'DELETE', 
+      headers: requestHeaders 
+    }
+
+    let lastError: ApiError | null = null
+    for (let attempt = 0; attempt <= this.defaultRetries; attempt++) {
+      try {
+        const response = await this.fetchWithTimeout(url, init, this.defaultTimeout)
+        let data: any
+        const contentType = response.headers.get('content-type')
+        try {
+          if (contentType && contentType.includes('application/json')) data = await response.json()
+          else data = { isSuccess: response.ok, statusCode: response.status, message: response.ok ? 'Success' : 'Request failed', data: undefined }
+        } catch {
+          data = { isSuccess: response.ok, statusCode: response.status, message: response.ok ? 'Success' : 'Request failed', data: undefined }
+        }
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            try {
+              localStorage.removeItem('authToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('currentUser')
+              if (typeof window !== 'undefined') {
+                window.location.replace('/auth/login')
+              }
+            } catch {}
+          }
+          const error = this.parseErrorResponse(data, response.status)
+          console.error('DELETE request failed:', { url, status: response.status, data, error })
+          if (this.isRetryableError(response.status) && attempt < this.defaultRetries) {
+            lastError = error
+            await this.sleep(this.defaultRetryDelay * Math.pow(2, attempt))
+            continue
+          }
+          throw error
+        }
+
+        if (data.isSuccess !== undefined) {
+          if (!data.isSuccess) {
+            console.error('DELETE request returned isSuccess=false:', { url, data })
+            const error = this.parseErrorResponse(data, response.status)
+            throw error
+          }
+          if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
+          return data as APIResponse<T>
+        }
+        if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
+        return { isSuccess: true, statusCode: response.status, message: 'Success', data: data as T }
+      } catch (error) {
+        if (error && typeof error === 'object' && 'status' in error) {
+          const apiError = error as ApiError
+          if (apiError.status === 401) {
+            try {
+              localStorage.removeItem('authToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('currentUser')
+              if (typeof window !== 'undefined') {
+                window.location.replace('/auth/login')
+              }
+            } catch {}
+          }
+          if (this.isRetryableError(apiError.status) && attempt < this.defaultRetries) {
+            lastError = apiError
+            await this.sleep(this.defaultRetryDelay * Math.pow(2, attempt))
+            continue
+          }
+          throw apiError
+        }
+        const networkError: ApiError = { message: error instanceof Error ? error.message : 'Network error occurred', status: 0, errors: ['Unable to connect to server'] }
+        if (attempt < this.defaultRetries) {
+          lastError = networkError
+          await this.sleep(this.defaultRetryDelay * Math.pow(2, attempt))
+          continue
+        }
+        throw networkError
+      }
+    }
+    throw lastError || { message: 'Request failed after multiple attempts', status: 0, errors: ['Maximum retry attempts exceeded'] }
   }
 
   clearCache(pattern?: string): void {
@@ -211,6 +297,7 @@ class HttpClient {
 }
 
 export const httpClient = new HttpClient(API_BASE_URL)
+export { HttpClient }
 
 export async function http<TResponse>(url: string, options: HttpRequestOptions = {}): Promise<TResponse> {
   const { method = 'GET', headers = {}, body } = options

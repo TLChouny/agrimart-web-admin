@@ -15,4 +15,8 @@ export interface CreateRoleClaimDTO { roleId?: string; claimType?: string; claim
 export interface UpdateRoleClaimDTO { roleClaimId?: string; roleId?: string; claimType?: string; claimValue?: string }
 export interface ListResponse<T> { items: T[]; totalCount: number; currentPage: number; pageSize: number; totalPages: number; hasNextPage: boolean; hasPreviousPage: boolean }
 export interface ApiError { message: string; status: number; errors?: string[] }
+export interface CustardAppleType { id: string; name: string; description?: string; createdAt?: string; updatedAt?: string | null }
+export interface CreateCustardAppleTypeDTO { name: string; description?: string }
+export interface UpdateCustardAppleTypeDTO { name?: string; description?: string }
+export interface ApiFarm { id: string; name: string; farmImage?: string; isActive: boolean; userId: string; createdAt: string; updatedAt: string }
 
