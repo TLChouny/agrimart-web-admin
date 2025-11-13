@@ -2,7 +2,7 @@ import { Bell } from "lucide-react"
 import { Button } from "../ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useAuth } from "../../contexts/AuthContext"
-import adminAvatar from "../../../dist/assets/admin.jpg"
+import adminAvatar from "../../../public/assets/admin-86irejDo.jpg"
 
 export function DashboardHeader() {
   const { user } = useAuth()
