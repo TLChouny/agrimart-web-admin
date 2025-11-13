@@ -39,12 +39,24 @@ export const ENDPOINTS = {
   farm: {
     list: '/api/farm-service/farm',
     delete: (id: string) => `/api/farm-service/farm/${encodeURIComponent(id)}`,
+    cropByFarm: (id: string) => `/api/farm-service/farm/${encodeURIComponent(id)}/crop`,
     custardAppleType: {
       list: '/api/farm-service/custardappletype',
       create: '/api/farm-service/custardappletype',
       detail: (id: string) => `/api/farm-service/custardappletype/${encodeURIComponent(id)}`,
       update: (id: string) => `/api/farm-service/custardappletype/${encodeURIComponent(id)}`,
       delete: (id: string) => `/api/farm-service/custardappletype/${encodeURIComponent(id)}`,
+    },
+    harvest: {
+      list: '/api/farm-service/harvest',
+      detail: (id: string) => `/api/farm-service/harvest/${encodeURIComponent(id)}`,
+      byCrop: (cropId: string) => `/api/farm-service/crop/${encodeURIComponent(cropId)}/harvest`,
+      currentByCrop: (cropId: string) => `/api/farm-service/crop/${encodeURIComponent(cropId)}/currentharvest`,
+      gradeDetail: {
+        list: '/api/farm-service/harvestgradedetail',
+        detail: (id: string) => `/api/farm-service/harvestgradedetail/${encodeURIComponent(id)}`,
+        byHarvest: (harvestId: string) => `/api/farm-service/harvest/${encodeURIComponent(harvestId)}/gradedetail`,
+      },
     },
   },
 } as const

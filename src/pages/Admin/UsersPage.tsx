@@ -3,69 +3,64 @@ import { Card } from '../../components/ui/card'
 import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/simple-table'
 import { Badge } from '../../components/ui/badge'
 import { userApi } from '../../services/api/userApi'
-import type { User as ApiUser } from '../../types/api'
-
-interface User {
-  id: string
-  fullName: string
-  email: string
-  role: 'admin' | 'farmer' | 'wholesaler'
-  status: 'active' | 'inactive'
-  createdAt: string
-}
+import type { User as ApiUser, UserListItem } from '../../types/api'
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserListItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const PAGE_SIZE = 10
   const [page, setPage] = useState(1)
   const [blockedMap, setBlockedMap] = useState<Record<string, boolean>>({})
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const res = await userApi.list()
-        if (res.isSuccess) {
-          const payload = res.data as ApiUser[] | { items: ApiUser[] }
-          const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
-          const mapRole = (u: ApiUser): User['role'] => {
-            const r = (u as unknown as { role?: unknown }).role
-            if (typeof r === 'string') {
-              if (r === 'admin' || r === 'farmer' || r === 'wholesaler') return r
-            }
-            // Try role object with name property
-            if (r && typeof r === 'object' && 'name' in (r as Record<string, unknown>)) {
-              const name = String((r as { name?: unknown }).name || '').toLowerCase()
-              if (name === 'admin' || name === 'farmer' || name === 'wholesaler') return name as User['role']
-            }
-            return 'wholesaler'
+  // API functions
+  const fetchUsers = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await userApi.list()
+      if (res.isSuccess) {
+        const payload = res.data as ApiUser[] | { items: ApiUser[] }
+        const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
+          const mapRole = (u: ApiUser): UserListItem['role'] => {
+          const r = (u as unknown as { role?: unknown }).role
+          if (typeof r === 'string') {
+            if (r === 'admin' || r === 'farmer' || r === 'wholesaler') return r
           }
-          const mapped: User[] = apiUsers.map(u => ({
-            id: u.id,
-            fullName: `${u.firstName} ${u.lastName}`.trim(),
-            email: u.email,
-            role: mapRole(u),
-            status: 'active',
-            createdAt: u.createdAt,
-          }))
-          setUsers(mapped)
-          setBlockedMap(Object.fromEntries(mapped.map(u => [u.id, false])))
-          setPage(1)
-        } else {
-          setError(res.message || 'Không thể tải danh sách người dùng')
+          // Try role object with name property
+          if (r && typeof r === 'object' && 'name' in (r as Record<string, unknown>)) {
+            const name = String((r as { name?: unknown }).name || '').toLowerCase()
+            if (name === 'admin' || name === 'farmer' || name === 'wholesaler') return name as UserListItem['role']
+          }
+          return 'wholesaler'
         }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Lỗi tải người dùng')
-      } finally {
-        setIsLoading(false)
+          const mapped: UserListItem[] = apiUsers.map(u => ({
+          id: u.id,
+          fullName: `${u.firstName} ${u.lastName}`.trim(),
+          email: u.email,
+          role: mapRole(u),
+          status: 'active',
+          createdAt: u.createdAt,
+        }))
+        setUsers(mapped)
+        setBlockedMap(Object.fromEntries(mapped.map(u => [u.id, false])))
+        setPage(1)
+      } else {
+        setError(res.message || 'Không thể tải danh sách người dùng')
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Lỗi tải người dùng')
+      console.error('Lỗi khi tải danh sách người dùng:', e)
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchUsers()
   }, [])
 
+  // Helper functions
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
   const getRoleBadge = (role: string) => {
@@ -85,13 +80,14 @@ export default function UsersPage() {
     }
   }
 
+  // Event handlers
   const toggleBlocked = (userId: string, value: boolean) => {
     setBlockedMap(prev => ({ ...prev, [userId]: value }))
     // TODO: call API to block/unblock when BE available
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6">
+    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý người dùng</h1>
         <p className="text-responsive-base text-gray-600">Danh sách người dùng trong hệ thống</p>

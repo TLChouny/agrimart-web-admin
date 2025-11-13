@@ -18,20 +18,27 @@ const ApprovalPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { loadAccounts() }, [])
-
+  // API functions
   const loadAccounts = async () => {
-    setIsLoading(true); setError(null)
+    setIsLoading(true)
+    setError(null)
     try {
       setPendingAccounts(mockPendingAccounts)
       setApprovedAccounts([])
       setRejectedAccounts([])
     } catch (err) {
       setError('Không thể tải danh sách tài khoản')
-      console.error('Error loading accounts:', err)
-    } finally { setIsLoading(false) }
+      console.error('Lỗi khi tải danh sách tài khoản:', err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
+  useEffect(() => {
+    loadAccounts()
+  }, [])
+
+  // Event handlers
   const handleApprove = async (_accountId: string) => {
     setIsApproving(true)
     try {
@@ -57,15 +64,19 @@ const ApprovalPage: React.FC = () => {
   const handleViewAccount = (account: PendingAccount) => setSelectedAccount(account)
   const handleRejectAccount = (account: PendingAccount) => { setSelectedAccount(account); setIsRejectModalOpen(true) }
   const handleCloseDetailModal = () => setSelectedAccount(null)
-  const handleCloseRejectModal = () => { setIsRejectModalOpen(false); setRejectReason('') }
+  const handleCloseRejectModal = () => {
+    setIsRejectModalOpen(false)
+    setRejectReason('')
+  }
 
+  // Helper functions
   const getStatusBadge = (status: string) => {
     const config = getApprovalStatusConfig(status)
     return (<Badge variant="outline" className={config.className}>{config.text}</Badge>)
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6">
+    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý xét duyệt tài khoản</h1>
         <p className="text-responsive-base text-gray-600">Duyệt và quản lý các tài khoản nông dân đang chờ xét duyệt</p>

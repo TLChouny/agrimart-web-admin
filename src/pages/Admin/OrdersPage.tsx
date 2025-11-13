@@ -4,13 +4,7 @@ import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { X } from 'lucide-react'
 import { useState } from 'react'
-
-interface PaymentInfo { depositPaid: boolean; depositAmount: number; remainingPaid: boolean; remainingAmount: number }
-interface BankInfo { bankName: string; accountName: string; accountNumber: string }
-type Party = 'farmer' | 'buyer'
-interface ConversationMessage { from: Party; content: string; time: string }
-interface Complaint { by: Party; content: string; time: string }
-interface Order { id: string; farm: string; customer: string; total: number; status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled'; createdAt: string; auctionId?: string; auctionTitle?: string; winnerName?: string; payment: PaymentInfo; farmerBank?: BankInfo; buyerBank?: BankInfo; messages?: ConversationMessage[]; complaint?: Complaint }
+import type { Order, OrderParty } from '../../types/api'
 
 const mockOrders: Order[] = [
   { id: 'ORD001', farm: 'Nông trại A', customer: 'Nguyễn Văn A', total: 150000, status: 'pending', createdAt: '2024-01-15T10:30:00Z', auctionId: 'AUC-001', auctionTitle: 'Phiên đấu giá nông sản tuần 45', winnerName: 'Nguyễn Văn A', payment: { depositPaid: true, depositAmount: 30000, remainingPaid: false, remainingAmount: 120000 }, farmerBank: { bankName: 'Vietcombank', accountName: 'Nguyen Van A', accountNumber: '0123456789' }, buyerBank: { bankName: 'Techcombank', accountName: 'Le Thi B', accountNumber: '9876543210' }, messages: [ { from: 'buyer', content: 'Tôi muốn xác nhận thời gian giao hàng dự kiến?', time: '2024-01-15T11:00:00Z' }, { from: 'farmer', content: 'Dự kiến ngày 18/01, tôi sẽ liên hệ shipper.', time: '2024-01-15T11:10:00Z' } ] },
@@ -23,13 +17,20 @@ export default function OrdersPage() {
   const [open, setOpen] = useState(false)
   const openDetails = (order: Order) => { setSelectedOrder(order); setOpen(true) }
   const closeDetails = () => { setOpen(false); setSelectedOrder(null) }
-  const copyBankInfo = (order: Order, party: Party) => { const info = party === 'farmer' ? order.farmerBank : order.buyerBank; if (!info) return; const text = `Ngân hàng: ${info.bankName}\nChủ TK: ${info.accountName}\nSố TK: ${info.accountNumber}`; if (navigator && navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).catch(() => {}) } }
+  const copyBankInfo = (order: Order, party: OrderParty) => {
+    const info = party === 'farmer' ? order.farmerBank : order.buyerBank
+    if (!info) return
+    const text = `Ngân hàng: ${info.bankName}\nChủ TK: ${info.accountName}\nSố TK: ${info.accountNumber}`
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {})
+    }
+  }
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
   const getStatusBadge = (status: string) => status === 'pending' ? (<Badge variant="outline" className="text-yellow-600 border-yellow-600">Chờ xác nhận</Badge>) : status === 'confirmed' ? (<Badge variant="outline" className="text-blue-600 border-blue-600">Đã xác nhận</Badge>) : status === 'shipping' ? (<Badge variant="outline" className="text-purple-600 border-purple-600">Đang giao</Badge>) : status === 'delivered' ? (<Badge variant="outline" className="text-green-600 border-green-600">Đã giao</Badge>) : status === 'cancelled' ? (<Badge variant="outline" className="text-red-600 border-red-600">Đã hủy</Badge>) : (<Badge variant="outline">Unknown</Badge>)
 
   return (
-    <div className="mx-auto max-w-[1400px] p-4 sm:p-6">
+    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý đơn hàng</h1>
         <p className="text-responsive-base text-gray-600">Danh sách đơn hàng của các nông trại</p>

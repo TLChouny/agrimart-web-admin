@@ -4,13 +4,7 @@ import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } f
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { X } from 'lucide-react'
-
-type AuctionStatus = 'scheduled' | 'live' | 'completed' | 'cancelled'
-interface AuctionLot { id: string; cropName: string; quantity: string; unit: string; minPrice: string }
-interface BidRecord { id: string; amount: string; time: string }
-interface Participant { id: string; name: string; phone?: string; organization?: string; bids: BidRecord[] }
-interface AuctionWinner { participantName: string; amount: string; time: string }
-interface Auction { id: string; title: string; farmName: string; startTime: string; endTime: string; status: AuctionStatus; lots: AuctionLot[]; winner?: AuctionWinner; participants?: Participant[]; verified?: boolean }
+import type { Auction, AuctionStatus } from '../../types/api'
 
 const mockAuctions: Auction[] = [
   { id: 'AUC-001', title: 'Phiên đấu giá nông sản tuần 45', farmName: 'Nông trại A', startTime: '2024-11-10T09:00:00Z', endTime: '2024-11-10T11:00:00Z', status: 'scheduled', lots: [ { id: 'LOT-1', cropName: 'Mãng cầu ta', quantity: '500', unit: 'kg', minPrice: '45,000 đ/kg' }, { id: 'LOT-2', cropName: 'Xoài cát', quantity: '300', unit: 'kg', minPrice: '38,000 đ/kg' } ], verified: false, participants: [ { id: 'P-01', name: 'Công ty A', phone: '0901 234 567', organization: 'CTY TNHH ABC', bids: [ { id: 'B-001', amount: '46,000 đ/kg', time: '2024-11-10T09:15:00Z' }, { id: 'B-004', amount: '47,500 đ/kg', time: '2024-11-10T09:40:00Z' } ] }, { id: 'P-02', name: 'Đại lý B', phone: '0902 345 678', organization: 'Đại lý B Miền Nam', bids: [ { id: 'B-002', amount: '46,500 đ/kg', time: '2024-11-10T09:25:00Z' }, { id: 'B-005', amount: '48,000 đ/kg', time: '2024-11-10T09:50:00Z' } ] }, { id: 'P-03', name: 'Cửa hàng C', phone: '0903 456 789', bids: [ { id: 'B-003', amount: '47,000 đ/kg', time: '2024-11-10T09:30:00Z' } ] } ] },
@@ -30,7 +24,7 @@ export default function AuctionsPage() {
   const closeDetails = () => { setOpen(false); setSelected(null) }
 
   return (
-    <div className="mx-auto max-w-[1400px] p-4 sm:p-6">
+    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
       <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý phiên đấu giá</h1>

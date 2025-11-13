@@ -20,3 +20,163 @@ export interface CreateCustardAppleTypeDTO { name: string; description?: string 
 export interface UpdateCustardAppleTypeDTO { name?: string; description?: string }
 export interface ApiFarm { id: string; name: string; farmImage?: string; isActive: boolean; userId: string; createdAt: string; updatedAt: string }
 
+export interface ApiCrop {
+  id: string
+  farmID: string
+  area: number
+  custardAppleType: string
+  farmingDuration: number
+  startPlantingDate: string
+  nearestHarvestDate: string
+  note?: string | null
+  treeCount: number
+}
+
+// Harvest related types
+export interface ApiHarvestGradeDetail {
+  id: string
+  grade: number
+  quantity: number
+  unit: string
+  harvestID: string
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface HarvestGradeDetailDTO {
+  id?: string
+  grade?: string
+  quantity?: number
+  unit?: string
+}
+
+export interface ApiHarvest {
+  id: string
+  harvestDate: string | null
+  startDate: string
+  totalQuantity: number
+  unit: string
+  note: string
+  salePrice: number
+  cropID: string
+  createdAt: string
+  updatedAt: string | null
+  harvestGradeDetailDTOs: HarvestGradeDetailDTO[]
+}
+
+// Order related types
+export type OrderParty = 'farmer' | 'buyer'
+export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled'
+export interface OrderPaymentInfo {
+  depositPaid: boolean
+  depositAmount: number
+  remainingPaid: boolean
+  remainingAmount: number
+}
+export interface OrderBankInfo {
+  bankName: string
+  accountName: string
+  accountNumber: string
+}
+export interface OrderConversationMessage {
+  from: OrderParty
+  content: string
+  time: string
+}
+export interface OrderComplaint {
+  by: OrderParty
+  content: string
+  time: string
+}
+export interface Order {
+  id: string
+  farm: string
+  customer: string
+  total: number
+  status: OrderStatus
+  createdAt: string
+  auctionId?: string
+  auctionTitle?: string
+  winnerName?: string
+  payment: OrderPaymentInfo
+  farmerBank?: OrderBankInfo
+  buyerBank?: OrderBankInfo
+  messages?: OrderConversationMessage[]
+  complaint?: OrderComplaint
+}
+
+// Auction related types
+export type AuctionStatus = 'scheduled' | 'live' | 'completed' | 'cancelled'
+export interface AuctionLot {
+  id: string
+  cropName: string
+  quantity: string
+  unit: string
+  minPrice: string
+}
+export interface AuctionBidRecord {
+  id: string
+  amount: string
+  time: string
+}
+export interface AuctionParticipant {
+  id: string
+  name: string
+  phone?: string
+  organization?: string
+  bids: AuctionBidRecord[]
+}
+export interface AuctionWinner {
+  participantName: string
+  amount: string
+  time: string
+}
+export interface Auction {
+  id: string
+  title: string
+  farmName: string
+  startTime: string
+  endTime: string
+  status: AuctionStatus
+  lots: AuctionLot[]
+  winner?: AuctionWinner
+  participants?: AuctionParticipant[]
+  verified?: boolean
+}
+
+// UI layer types (for display purposes)
+export interface Farm {
+  id: string
+  name: string
+  owner: string
+  location: string
+  size: string
+  type: string
+  status: 'active' | 'inactive'
+  createdAt: string
+  imageUrl?: string
+}
+
+export interface Crop {
+  id: string
+  name: string
+  type: string
+  area: string
+  plantedAt: string
+  expectedHarvestAt: string
+  status: 'growing' | 'harvested' | 'paused'
+  description?: string
+  treeCount?: number
+  farmingDuration?: number
+  farmId: string
+  farmName: string
+}
+
+export interface UserListItem {
+  id: string
+  fullName: string
+  email: string
+  role: 'admin' | 'farmer' | 'wholesaler'
+  status: 'active' | 'inactive'
+  createdAt: string
+}
