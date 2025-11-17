@@ -59,6 +59,11 @@ export const ENDPOINTS = {
       },
     },
   },
+  auction: {
+    englishAuction: {
+      list: '/api/auction-service/englishauction',
+    },
+  },
 } as const
 
 export * from './messages'

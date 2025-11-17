@@ -9,6 +9,7 @@ export interface HttpRequestOptions {
   timeout?: number
   retries?: number
   retryDelay?: number
+  params?: Record<string, any> // <-- Added
 }
 
 interface AspNetValidationError {
@@ -27,6 +28,18 @@ class HttpClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
+  }
+
+  private buildUrl(endpoint: string, params?: Record<string, any>): string {
+    const url = new URL(`${this.baseURL}${endpoint}`)
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value))
+        }
+      })
+    }
+    return url.toString()
   }
 
   private async fetchWithTimeout(
@@ -74,8 +87,9 @@ class HttpClient {
   }
 
   private async request<T>(endpoint: string, options: HttpRequestOptions = {}): Promise<APIResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`
-    const { method = 'GET', headers = {}, body, timeout = this.defaultTimeout, retries = this.defaultRetries, retryDelay = this.defaultRetryDelay } = options
+    const { method = 'GET', headers = {}, body, timeout = this.defaultTimeout, retries = this.defaultRetries, retryDelay = this.defaultRetryDelay, params } = options
+
+    const url = this.buildUrl(endpoint, params)
 
     const token = localStorage.getItem('authToken')
     const requestHeaders = {
@@ -113,9 +127,7 @@ class HttpClient {
               localStorage.removeItem('authToken')
               localStorage.removeItem('refreshToken')
               localStorage.removeItem('currentUser')
-              if (typeof window !== 'undefined') {
-                window.location.replace('/auth/login')
-              }
+              if (typeof window !== 'undefined') window.location.replace('/auth/login')
             } catch {}
           }
           const error = this.parseErrorResponse(data, response.status)
@@ -140,9 +152,7 @@ class HttpClient {
               localStorage.removeItem('authToken')
               localStorage.removeItem('refreshToken')
               localStorage.removeItem('currentUser')
-              if (typeof window !== 'undefined') {
-                window.location.replace('/auth/login')
-              }
+              if (typeof window !== 'undefined') window.location.replace('/auth/login')
             } catch {}
           }
           if (this.isRetryableError(apiError.status) && attempt < retries) {
@@ -164,21 +174,26 @@ class HttpClient {
     throw lastError || { message: 'Request failed after multiple attempts', status: 0, errors: ['Maximum retry attempts exceeded'] }
   }
 
-  async get<T>(endpoint: string, options: { cache?: boolean; cacheTTL?: number } = {}): Promise<APIResponse<T>> {
-    const { cache = true, cacheTTL } = options
+  async get<T>(endpoint: string, options: { cache?: boolean; cacheTTL?: number; params?: Record<string, any> } = {}): Promise<APIResponse<T>> {
+    const { cache = true, cacheTTL, params } = options
+
     if (cache) {
-      const cacheKey = requestCache.generateKey(endpoint, 'GET')
+      const cacheKey = requestCache.generateKey(endpoint + JSON.stringify(params || {}), 'GET')
       const cachedData = requestCache.get<T>(cacheKey)
       if (cachedData) return cachedData
+
       const pendingRequest = requestCache.getPending<T>(cacheKey)
       if (pendingRequest) return pendingRequest
-      const requestPromise = this.request<T>(endpoint, { method: 'GET' })
+
+      const requestPromise = this.request<T>(endpoint, { method: 'GET', params })
       requestCache.setPending(cacheKey, requestPromise)
       const response = await requestPromise
       requestCache.set(cacheKey, response, cacheTTL)
+
       return response
     }
-    return this.request<T>(endpoint, { method: 'GET' })
+
+    return this.request<T>(endpoint, { method: 'GET', params })
   }
 
   async post<T>(endpoint: string, data?: unknown, options: { invalidateCache?: string } = {}): Promise<APIResponse<T>> {
@@ -203,16 +218,11 @@ class HttpClient {
     const url = `${this.baseURL}${endpoint}`
     const token = localStorage.getItem('authToken')
     const requestHeaders: Record<string, string> = {}
-    if (token) {
-      requestHeaders['Authorization'] = `Bearer ${token}`
-    }
+    if (token) requestHeaders['Authorization'] = `Bearer ${token}`
 
     console.log('DELETE Request:', { url, method: 'DELETE', headers: requestHeaders })
 
-    const init: RequestInit = { 
-      method: 'DELETE', 
-      headers: requestHeaders 
-    }
+    const init: RequestInit = { method: 'DELETE', headers: requestHeaders }
 
     let lastError: ApiError | null = null
     for (let attempt = 0; attempt <= this.defaultRetries; attempt++) {
@@ -233,9 +243,7 @@ class HttpClient {
               localStorage.removeItem('authToken')
               localStorage.removeItem('refreshToken')
               localStorage.removeItem('currentUser')
-              if (typeof window !== 'undefined') {
-                window.location.replace('/auth/login')
-              }
+              if (typeof window !== 'undefined') window.location.replace('/auth/login')
             } catch {}
           }
           const error = this.parseErrorResponse(data, response.status)
@@ -267,9 +275,7 @@ class HttpClient {
               localStorage.removeItem('authToken')
               localStorage.removeItem('refreshToken')
               localStorage.removeItem('currentUser')
-              if (typeof window !== 'undefined') {
-                window.location.replace('/auth/login')
-              }
+              if (typeof window !== 'undefined') window.location.replace('/auth/login')
             } catch {}
           }
           if (this.isRetryableError(apiError.status) && attempt < this.defaultRetries) {
@@ -300,14 +306,22 @@ export const httpClient = new HttpClient(API_BASE_URL)
 export { HttpClient }
 
 export async function http<TResponse>(url: string, options: HttpRequestOptions = {}): Promise<TResponse> {
-  const { method = 'GET', headers = {}, body } = options
+  const { method = 'GET', headers = {}, body, params } = options
+
+  const finalUrl = new URL(url)
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined) finalUrl.searchParams.append(k, String(v))
+    })
+  }
+
   const init: RequestInit = { method, headers: { 'Content-Type': 'application/json', ...headers } }
   if (body !== undefined) init.body = JSON.stringify(body)
-  const res = await fetch(url, init)
+
+  const res = await fetch(finalUrl.toString(), init)
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text || `Request failed with ${res.status}`)
   }
   return (await res.json()) as TResponse
 }
-

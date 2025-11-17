@@ -106,7 +106,7 @@ export interface Order {
 }
 
 // Auction related types
-export type AuctionStatus = 'scheduled' | 'live' | 'completed' | 'cancelled'
+export type AuctionStatus = 'Draft' | 'Pending' | 'Rejected' | 'Approved' | 'OnGoing' | 'Completed' | 'NoWinner' | 'Cancelled'
 export interface AuctionLot {
   id: string
   cropName: string
@@ -142,6 +142,39 @@ export interface Auction {
   winner?: AuctionWinner
   participants?: AuctionParticipant[]
   verified?: boolean
+}
+
+export interface PaginatedEnglishAuctions {
+  items: ApiEnglishAuction[]
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
+  previousPage: boolean
+  nextPage: boolean
+}
+
+export interface ApiEnglishAuction {
+  id: string
+  publishDate: string
+  endDate: string
+  farmerId: string
+  sessionCode: string
+  startingPrice: number
+  currentPrice: number | null
+  winningPrice: number | null
+  minBidIncrement: number
+  enableBuyNow: boolean
+  buyNowPrice: number
+  enableAntiSniping: boolean
+  antiSnipingExtensionSeconds: number
+  status: 'Draft' | 'Pending' | 'Rejected' | 'Approved' | 'OnGoing' | 'Completed' | 'NoWinner' | 'Cancelled'
+  winnerId: string | null
+  note: string
+  expectedHarvestDate: string
+  expectedTotalQuantity: number
+  createdAt: string
+  updatedAt: string
 }
 
 // UI layer types (for display purposes)
