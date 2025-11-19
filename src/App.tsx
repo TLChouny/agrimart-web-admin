@@ -16,6 +16,7 @@ import OrdersPage from './pages/Admin/OrdersPage';
 import ProductsPage from './pages/Admin/ProductsPage';
 import ShippersPage from './pages/Admin/ShippersPage';
 import AuctionsPage from './pages/Admin/AuctionsPage';
+import AuctionDetailPage from './pages/Admin/AuctionDetailPage'
 import AdminSettingsPage from './pages/Admin/SettingsPage';
 import AdminHelpPage from './pages/Admin/HelpPage';
 
@@ -95,11 +96,19 @@ function App() {
             <AdminLayout><ShippersPage /></AdminLayout>
           </ProtectedRoute>
         } />
-        <Route path="/admin/auctions" element={
+        <Route path={ROUTES.ADMIN_AUCTIONS} element={
           <ProtectedRoute>
             <AdminLayout><AuctionsPage /></AdminLayout>
           </ProtectedRoute>
         } />
+        <Route
+          path={ROUTES.ADMIN_AUCTIONS_BY_ID}
+          element={
+            <ProtectedRoute>
+              <AdminLayout><AuctionDetailPage /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
         <Route path="/admin/settings" element={
           <ProtectedRoute>
             <AdminLayout><AdminSettingsPage /></AdminLayout>
@@ -113,7 +122,7 @@ function App() {
 
         {/* Admin login */}
         <Route path={ROUTES.ADMIN_LOGIN} element={
-          user && user.role === 'admin' 
+          user && user.role === 'admin'
             ? <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
             : <AdminLoginPage />
         } />

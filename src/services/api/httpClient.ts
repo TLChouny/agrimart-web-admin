@@ -202,9 +202,10 @@ class HttpClient {
     return response
   }
 
-  async put<T>(endpoint: string, data?: unknown, options: { invalidateCache?: string } = {}): Promise<APIResponse<T>> {
-    const response = await this.request<T>(endpoint, { method: 'PUT', body: data })
-    if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
+  async put<T>(endpoint: string, data?: unknown, options: { invalidateCache?: string; params?: Record<string, any> } = {}): Promise<APIResponse<T>> {
+    const { invalidateCache, params } = options
+    const response = await this.request<T>(endpoint, { method: 'PUT', body: data, params })
+    if (invalidateCache) requestCache.invalidate(invalidateCache)
     return response
   }
 

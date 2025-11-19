@@ -62,6 +62,9 @@ export const ENDPOINTS = {
   auction: {
     englishAuction: {
       list: '/api/auction-service/englishauction',
+      detail: (id: string) => `/api/auction-service/englishauction/${id}`, // get by id
+      harvestsBySession: (auctionSessionId: string) =>
+        `/api/auction-service/auctionsession/${auctionSessionId}/harvest`,
     },
   },
 } as const

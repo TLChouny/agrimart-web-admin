@@ -175,8 +175,13 @@ export interface ApiEnglishAuction {
   expectedTotalQuantity: number
   createdAt: string
   updatedAt: string
+  harvests: ApiHarvest[]
 }
 
+export interface ApiEnglishAuctionHarvest {
+  auctionSessionId: string
+  harvestId: string
+}
 // UI layer types (for display purposes)
 export interface Farm {
   id: string

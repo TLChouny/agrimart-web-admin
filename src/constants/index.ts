@@ -8,6 +8,8 @@ export const ROUTES = {
   ADMIN_CROPS: '/admin/crops',
   ADMIN_CATEGORIES: '/admin/categories',
   ADMIN_HARVESTS: '/admin/harvests',
+  ADMIN_AUCTIONS: '/admin/auctions',
+  ADMIN_AUCTIONS_BY_ID: '/admin/auctions/:id',
   ADMIN_ORDERS: '/admin/orders',
   ADMIN_PRODUCTS: '/admin/products',
   ADMIN_SHIPPERS: '/admin/shippers',
