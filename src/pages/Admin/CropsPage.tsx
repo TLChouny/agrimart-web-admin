@@ -398,7 +398,7 @@ export default function CropsPage() {
                   <TableHeader>
                   <TableRow>
                     <TableHead className="text-left min-w-[200px]">Vụ trồng</TableHead>
-                    <TableHead className="text-left min-w-[150px]">Loại</TableHead>
+                    {/* <TableHead className="text-left min-w-[150px]">Loại</TableHead> */}
                     <TableHead className="text-left min-w-[220px]">Thông tin</TableHead>
                     <TableHead className="text-left hidden lg:table-cell min-w-[110px]">Gieo trồng</TableHead>
                     <TableHead className="text-left hidden xl:table-cell min-w-[130px]">Dự kiến thu hoạch</TableHead>
@@ -415,7 +415,7 @@ export default function CropsPage() {
                           <div className="text-xs text-gray-500 mt-0.5">{crop.farmName}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[48px]">{crop.type}</TableCell>
+                      {/* <TableCell className="text-sm min-h-[48px]">{crop.type}</TableCell> */}
                       <TableCell className="text-sm min-h-[48px]">
                         <div className="space-y-0.5">
                           <div>Diện tích: <span className="font-medium">{crop.area} m²</span></div>
@@ -428,8 +428,8 @@ export default function CropsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[48px] hidden lg:table-cell">{formatDate(crop.plantedAt)}</TableCell>
-                      <TableCell className="text-sm min-h-[48px] hidden xl:table-cell">{formatDate(crop.expectedHarvestAt)}</TableCell>
+                      <TableCell className="text-sm min-h-[36px] hidden lg:table-cell">{formatDate(crop.plantedAt)}</TableCell>
+                      <TableCell className="text-sm min-h-[36px] hidden xl:table-cell">{formatDate(crop.expectedHarvestAt)}</TableCell>
                       <TableCell className="min-h-[48px]">{getStatusBadge(crop.status)}</TableCell>
                       <TableCell className="text-right min-h-[48px] min-w-[120px] whitespace-nowrap">
                         <Button
