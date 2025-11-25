@@ -1,11 +1,16 @@
 import * as React from "react"
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
+import { cn } from "../../utils/cn"
 
 const Label = React.forwardRef<React.ElementRef<"label">, React.ComponentPropsWithoutRef<"label">>(({ className, ...props }, ref) => (
-  <label ref={ref} className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)} {...props} />
+  <label
+    ref={ref}
+    className={cn(
+      "text-sm font-semibold uppercase tracking-wide text-gray-500",
+      "peer-disabled:cursor-not-allowed peer-disabled:opacity-60",
+      className
+    )}
+    {...props}
+  />
 ))
 Label.displayName = "Label"
 

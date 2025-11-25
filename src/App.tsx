@@ -17,10 +17,15 @@ import ProductsPage from './pages/Admin/ProductsPage';
 import ShippersPage from './pages/Admin/ShippersPage';
 import AuctionsPage from './pages/Admin/AuctionsPage';
 import AuctionDetailPage from './pages/Admin/AuctionDetailPage'
+import AuctionBidHistoryPage from './pages/Admin/AuctionBidHistoryPage';
+import AuctionWinnerPage from './pages/Admin/AuctionWinnerPage';
+import AuctionReportsPage from './pages/Admin/AuctionReportsPage';
 import AdminSettingsPage from './pages/Admin/SettingsPage';
 import AdminHelpPage from './pages/Admin/HelpPage';
+import ReportsPage from './pages/Admin/ReportsPage';
 
 import { ROUTES } from './constants';
+import { ToastProvider } from './contexts/ToastContext';
 
 // ---------------- ProtectedRoute component ----------------
 interface ProtectedRouteProps {
@@ -43,8 +48,9 @@ function App() {
   const { user } = useAuth();
 
   return (
-    <Router>
-      <Routes>
+    <ToastProvider>
+      <Router>
+        <Routes>
         {/* Admin routes */}
         <Route path={ROUTES.ADMIN_DASHBOARD} element={
           <ProtectedRoute>
@@ -86,6 +92,11 @@ function App() {
             <AdminLayout><OrdersPage /></AdminLayout>
           </ProtectedRoute>
         } />
+        <Route path={ROUTES.ADMIN_REPORTS} element={
+          <ProtectedRoute>
+            <AdminLayout><ReportsPage /></AdminLayout>
+          </ProtectedRoute>
+        } />
         <Route path={ROUTES.ADMIN_PRODUCTS} element={
           <ProtectedRoute>
             <AdminLayout><ProductsPage /></AdminLayout>
@@ -106,6 +117,30 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminLayout><AuctionDetailPage /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_AUCTIONS_BY_ID_BID_HISTORY}
+          element={
+            <ProtectedRoute>
+              <AdminLayout><AuctionBidHistoryPage /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_AUCTIONS_BY_ID_WINNER}
+          element={
+            <ProtectedRoute>
+              <AdminLayout><AuctionWinnerPage /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_AUCTIONS_BY_ID_REPORTS}
+          element={
+            <ProtectedRoute>
+              <AdminLayout><AuctionReportsPage /></AdminLayout>
             </ProtectedRoute>
           }
         />
@@ -131,6 +166,7 @@ function App() {
         <Route path="*" element={<Navigate to={ROUTES.ADMIN_LOGIN} replace />} />
       </Routes>
     </Router>
+    </ToastProvider>
   );
 }
 

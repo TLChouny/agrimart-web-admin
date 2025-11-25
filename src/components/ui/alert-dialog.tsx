@@ -1,4 +1,6 @@
-import * as React from 'react'
+import * as React from "react"
+import { cn } from "../../utils/cn"
+import { Button, type ButtonProps } from "./button"
 
 interface AlertDialogProps {
   open: boolean
@@ -9,75 +11,94 @@ interface AlertDialogProps {
 export function AlertDialog({ open, onOpenChange, children }: AlertDialogProps) {
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center ${
-        open ? 'block' : 'hidden'
-      }`}
       role="dialog"
       aria-modal="true"
+      className={cn(
+        "fixed inset-0 z-50 flex min-h-full items-center justify-center px-4 py-6 transition-all duration-200",
+        open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+      )}
     >
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-md transition-opacity"
         onClick={() => onOpenChange(false)}
       />
-      {children}
+      <div className="relative z-10 w-full max-w-lg">{children}</div>
     </div>
   )
 }
 
-interface AlertDialogContentProps {
-  children: React.ReactNode
-  className?: string
-}
+interface AlertDialogContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export function AlertDialogContent({ children, className }: AlertDialogContentProps) {
-  return (
+export const AlertDialogContent = React.forwardRef<HTMLDivElement, AlertDialogContentProps>(
+  ({ className, ...props }, ref) => (
     <div
-      className={`bg-white rounded-lg shadow-lg p-6 z-50 relative ${className || ''}`}
-    >
-      {children}
-    </div>
-  )
-}
-
-interface AlertDialogHeaderProps {
-  children: React.ReactNode
-  className?: string
-}
-
-export function AlertDialogHeader({ children, className }: AlertDialogHeaderProps) {
-  return <div className={`mb-4 ${className || ''}`}>{children}</div>
-}
-
-interface AlertDialogTitleProps {
-  children: React.ReactNode
-  className?: string
-}
-
-export function AlertDialogTitle({ children, className }: AlertDialogTitleProps) {
-  return <h2 className={`text-lg font-semibold ${className || ''}`}>{children}</h2>
-}
-
-interface AlertDialogDescriptionProps {
-  children: React.ReactNode
-  className?: string
-}
-
-export function AlertDialogDescription({ children, className }: AlertDialogDescriptionProps) {
-  return <p className={`text-sm text-gray-600 ${className || ''}`}>{children}</p>
-}
-
-interface AlertDialogCancelProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode
-}
-
-export function AlertDialogCancel({ children, ...props }: AlertDialogCancelProps) {
-  return (
-    <button
+      ref={ref}
+      className={cn(
+        "rounded-3xl border border-white/30 bg-white/95 p-7 shadow-[0_30px_80px_rgba(15,118,110,0.18)] backdrop-blur-2xl",
+        "animate-in fade-in-0 zoom-in-95",
+        className
+      )}
       {...props}
-      type="button"
-      className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 transition-all"
-    >
-      {children}
-    </button>
+    />
   )
-}
+)
+AlertDialogContent.displayName = "AlertDialogContent"
+
+export const AlertDialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("space-y-2 text-center sm:text-left", className)} {...props} />
+)
+
+export const AlertDialogTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h2
+    ref={ref}
+    className={cn("text-2xl font-bold tracking-tight text-slate-900", className)}
+    {...props}
+  />
+))
+AlertDialogTitle.displayName = "AlertDialogTitle"
+
+export const AlertDialogDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p ref={ref} className={cn("text-sm text-slate-500", className)} {...props} />
+))
+AlertDialogDescription.displayName = "AlertDialogDescription"
+
+export const AlertDialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end", className)} {...props} />
+)
+
+type AlertDialogButtonProps = ButtonProps
+
+export const AlertDialogCancel = React.forwardRef<HTMLButtonElement, AlertDialogButtonProps>(
+  ({ className, ...props }, ref) => (
+    <Button
+      ref={ref}
+      variant="outline"
+      className={cn("w-full sm:w-auto", className)}
+      {...props}
+    />
+  )
+)
+AlertDialogCancel.displayName = "AlertDialogCancel"
+
+export const AlertDialogAction = React.forwardRef<HTMLButtonElement, AlertDialogButtonProps>(
+  ({ className, ...props }, ref) => (
+    <Button
+      ref={ref}
+      className={cn("w-full sm:w-auto", className)}
+      {...props}
+    />
+  )
+)
+AlertDialogAction.displayName = "AlertDialogAction"

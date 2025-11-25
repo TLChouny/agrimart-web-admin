@@ -1,28 +1,33 @@
 import * as React from "react"
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { cn } from "../../utils/cn"
 
-function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  variant?: "default" | "error"
+}
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { variant?: "default" | "error" }
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, variant = "default", ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        ref={ref}
+        className={cn(
+          "peer flex h-11 w-full rounded-2xl border border-transparent bg-white/80 px-4 py-2.5 text-sm font-medium text-gray-900 shadow-[0_10px_25px_rgba(15,118,110,0.08)] transition-all duration-300 placeholder:text-gray-400",
+          "ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+          "focus-visible:ring-emerald-400/40 focus-visible:border-emerald-500/60",
+          "hover:border-emerald-200 hover:shadow-[0_14px_32px_rgba(15,118,110,0.12)]",
+          variant === "error" &&
+            "border-rose-200 bg-rose-50/60 text-rose-700 placeholder:text-rose-400 focus-visible:ring-rose-400 focus-visible:border-rose-500",
+          "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:opacity-70",
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, variant = "default", ...props }, ref) => {
-  return (
-    <input
-      type={type}
-      className={cn(
-        "flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
-        variant === "default" && "border-gray-300 focus-visible:ring-green-400 focus-visible:border-green-400 hover:border-green-300",
-        variant === "error" && "border-red-300 focus-visible:ring-red-400 focus-visible:border-red-400 hover:border-red-300",
-        className
-      )}
-      ref={ref}
-      {...props}
-    />
-  )
-})
 Input.displayName = "Input"
 
 export { Input }
-

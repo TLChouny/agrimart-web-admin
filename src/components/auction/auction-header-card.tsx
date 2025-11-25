@@ -1,7 +1,7 @@
 import { Card } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import type { ApiEnglishAuction, AuctionStatus } from '../../types/api'
-import { TrendingUp, Calendar, DollarSign, Users, Zap } from 'lucide-react'
+import { TrendingUp, Calendar, DollarSign, Users, Zap, Clock } from 'lucide-react'
 
 interface AuctionHeaderCardProps {
   auction: ApiEnglishAuction
@@ -36,76 +36,94 @@ function getStatusBadge(status: AuctionStatus) {
 export function AuctionHeaderCard({ auction, farmName }: AuctionHeaderCardProps) {
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 overflow-hidden">
-      <div className="p-6">
+      <div className="p-8">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">{auction.note}</h2>
-            <p className="text-sm text-gray-600">Mã phiên: <span className="font-mono font-medium">{auction.sessionCode}</span></p>
+            <p className="text-xs font-semibold uppercase text-blue-600 mb-2">Mã phiên</p>
+            <h2 className="text-4xl font-extrabold text-gray-900 mb-3">{auction.sessionCode}</h2>
+            {auction.note && (
+              <>
+              <div className="flex items-center gap-1">
+                <p className="text-sm text-gray-600 max-w-2xl">Ghi chú:</p>
+                <p className="text-sm text-gray-600 max-w-2xl">{auction.note}</p>
+              </div>
+              </>
+            )}
           </div>
           {getStatusBadge(auction.status)}
         </div>
 
         {/* Key Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-green-600" />
-              <p className="text-xs text-gray-600">Giá Khởi</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Giá Khởi</p>
             </div>
-            <p className="text-sm font-bold text-gray-900">{auction.startingPrice.toLocaleString()} đ/kg</p>
+            <p className="text-xl font-extrabold text-gray-900">{auction.startingPrice.toLocaleString()} đ/kg</p>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-              <p className="text-xs text-gray-600">Giá Hiện Tại</p>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Giá Hiện Tại</p>
             </div>
-            <p className="text-sm font-bold text-gray-900">{auction.currentPrice?.toLocaleString() ?? '-'}</p>
+            <p className="text-xl font-extrabold text-gray-900">
+              {auction.currentPrice?.toLocaleString() ?? '-'}
+            </p>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-4 h-4 text-orange-600" />
-              <p className="text-xs text-gray-600">Bước Giá</p>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-5 h-5 text-orange-600" />
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Bước Giá</p>
             </div>
-            <p className="text-sm font-bold text-gray-900">{auction.minBidIncrement.toLocaleString()} đ</p>
+            <p className="text-xl font-extrabold text-gray-900">{auction.minBidIncrement.toLocaleString()} đ</p>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar className="w-4 h-4 text-purple-600" />
-              <p className="text-xs text-gray-600">Kết Thúc</p>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-5 h-5 text-teal-600" />
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Bắt Đầu</p>
             </div>
-            <p className="text-xs font-bold text-gray-900">{formatDateTime(auction.endDate)}</p>
+            <p className="text-base font-bold text-gray-900">{formatDateTime(auction.publishDate)}</p>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="w-4 h-4 text-indigo-600" />
-              <p className="text-xs text-gray-600">Nông Trại</p>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-5 h-5 text-purple-600" />
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Kết Thúc</p>
             </div>
-            <p className="text-xs font-bold text-gray-900 truncate">{farmName}</p>
+            <p className="text-base font-bold text-gray-900">{formatDateTime(auction.endDate)}</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Nông Trại</p>
+            </div>
+            <p className="text-base font-bold text-gray-900 truncate">{farmName}</p>
           </div>
         </div>
 
         {/* Additional Info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <span className="text-gray-600">Buy Now: </span>
-            <span className="font-semibold">{auction.enableBuyNow ? `${auction.buyNowPrice.toLocaleString()} đ` : 'Không'}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-base">
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <span className="text-gray-600 font-medium">Buy Now: </span>
+            <span className="font-semibold text-gray-900">{auction.enableBuyNow ? `${auction.buyNowPrice.toLocaleString()} đ` : 'Không'}</span>
           </div>
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <span className="text-gray-600">Anti-sniping: </span>
-            <span className="font-semibold">{auction.enableAntiSniping ? `Có (+${auction.antiSnipingExtensionSeconds}s)` : 'Không'}</span>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <span className="text-gray-600 font-medium">Anti-sniping: </span>
+            <span className="font-semibold text-gray-900">{auction.enableAntiSniping ? `Có (+${auction.antiSnipingExtensionSeconds}s)` : 'Không'}</span>
           </div>
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <span className="text-gray-600">Dự Thu Hoạch: </span>
-            <span className="font-semibold">{formatDateTime(auction.expectedHarvestDate)}</span>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <span className="text-gray-600 font-medium">Dự Thu Hoạch: </span>
+            <span className="font-semibold text-gray-900">{formatDateTime(auction.expectedHarvestDate)}</span>
           </div>
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <span className="text-gray-600">Tổng Lượng: </span>
-            <span className="font-semibold">{auction.expectedTotalQuantity}</span>
+          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+            <span className="text-gray-600 font-medium">Tổng lượng dự kiến: </span>
+            <span className="font-semibold text-gray-900">{auction.expectedTotalQuantity} kg</span>
           </div>
         </div>
       </div>

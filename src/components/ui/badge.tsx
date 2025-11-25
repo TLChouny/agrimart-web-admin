@@ -1,28 +1,35 @@
 import * as React from "react"
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
+import { cn } from "../../utils/cn"
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "outline"
+  variant?: "default" | "outline" | "soft" | "success" | "warning" | "danger"
 }
 
-export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(({ className, variant = "default", ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        variant === "default" && "bg-emerald-600 text-white",
-        variant === "outline" && "bg-transparent text-gray-700 border border-current",
-        className
-      )}
-      {...props}
-    />
-  )
-})
+export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+  ({ className, variant = "default", ...props }, ref) => {
+    const variants: Record<NonNullable<BadgeProps["variant"]>, string> = {
+      default: "bg-emerald-600/90 text-white shadow-[0_4px_12px_rgba(16,185,129,0.35)]",
+      outline: "border border-emerald-200 bg-white text-emerald-700",
+      soft: "bg-emerald-50/90 text-emerald-700 backdrop-blur-sm",
+      success: "bg-green-100 text-green-700",
+      warning: "bg-amber-100 text-amber-700",
+      danger: "bg-rose-100 text-rose-700",
+    }
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide shadow-sm transition-all duration-200",
+          variants[variant],
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
+
 Badge.displayName = "Badge"
 
 export default Badge
-

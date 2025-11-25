@@ -2,12 +2,15 @@ import { Card } from '../../components/ui/card'
 import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/simple-table'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { X, Search, RefreshCw, Sprout, Eye } from 'lucide-react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { farmApi } from '../../services/api/farmApi'
 import type { Crop, Farm, ApiHarvest } from '../../types/api'
+import { useToastContext } from '../../contexts/ToastContext'
+import { CROP_MESSAGES, FARM_MESSAGES, HARVEST_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 
 export default function CropsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -16,16 +19,22 @@ export default function CropsPage() {
   const [isLoadingFarms, setIsLoadingFarms] = useState(false)
   const [isLoadingCrops, setIsLoadingCrops] = useState(false)
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
-  const PAGE_SIZE = 5
+  const [searchTerm, setSearchTerm] = useState('')
+  const PAGE_SIZE = 10
   const [cropPage, setCropPage] = useState(1)
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null)
   const [harvests, setHarvests] = useState<ApiHarvest[]>([])
   const [isLoadingHarvests, setIsLoadingHarvests] = useState(false)
   const [isHarvestModalOpen, setIsHarvestModalOpen] = useState(false)
+  const [farmError, setFarmError] = useState<string | null>(null)
+  const [cropError, setCropError] = useState<string | null>(null)
+  const [harvestError, setHarvestError] = useState<string | null>(null)
+  const { toast } = useToastContext()
 
   // API functions
-  const fetchFarms = async () => {
+  const fetchFarms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     setIsLoadingFarms(true)
+    setFarmError(null)
     try {
       const response = await farmApi.getFarms()
       if (response.isSuccess && response.data) {
@@ -41,20 +50,47 @@ export default function CropsPage() {
           imageUrl: apiFarm.farmImage,
         }))
         setFarms(convertedFarms)
+        if (!silent) {
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: FARM_MESSAGES.FETCH_SUCCESS,
+          })
+        }
+      } else {
+        const message = response.message || FARM_MESSAGES.FETCH_ERROR
+        setFarmError(message)
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      console.error('Lỗi khi tải danh sách nông trại:', error)
+      const message = error instanceof Error ? error.message : FARM_MESSAGES.FETCH_ERROR
+      setFarmError(message)
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsLoadingFarms(false)
     }
-  }
+  }, [toast])
 
-  const fetchCrops = async (farmId?: string) => {
+  const fetchCrops = useCallback(async (farmId?: string, { silent = false }: { silent?: boolean } = {}) => {
     setIsLoadingCrops(true)
+    setCropError(null)
     try {
       const farmsToFetch = farmId ? farms.filter(f => f.id === farmId) : farms
       if (farmsToFetch.length === 0) {
         setCrops([])
+        if (!silent) {
+          toast({
+            title: TOAST_TITLES.INFO,
+            description: CROP_MESSAGES.NO_FARM_SELECTED,
+          })
+        }
         return
       }
 
@@ -81,19 +117,35 @@ export default function CropsPage() {
           }
         } catch (error) {
           console.error(`Lỗi khi tải cây trồng của nông trại ${farm.name}:`, error)
+          toast({
+            title: TOAST_TITLES.INFO,
+            description: `${CROP_MESSAGES.PARTIAL_ERROR} (${farm.name})`,
+          })
         }
       }
       setCrops(allCrops)
+      if (!silent) {
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: CROP_MESSAGES.FETCH_SUCCESS,
+        })
+      }
     } catch (error) {
-      console.error('Lỗi khi tải danh sách cây trồng:', error)
+      const message = error instanceof Error ? error.message : CROP_MESSAGES.FETCH_ERROR
+      setCropError(message)
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsLoadingCrops(false)
     }
-  }
+  }, [farms, toast])
 
   useEffect(() => {
-    fetchFarms()
-  }, [])
+    fetchFarms({ silent: true })
+  }, [fetchFarms])
 
   // 从 URL 查询参数中读取 farmId（在 farms 加载完成后）
   useEffect(() => {
@@ -114,9 +166,9 @@ export default function CropsPage() {
 
   useEffect(() => {
     if (farms.length > 0) {
-      fetchCrops(selectedFarmId || undefined)
+      fetchCrops(selectedFarmId || undefined, { silent: true })
     }
-  }, [farms, selectedFarmId])
+  }, [farms, selectedFarmId, fetchCrops])
 
   // Helper functions
   const formatDate = (dateString: string) =>
@@ -155,16 +207,32 @@ export default function CropsPage() {
     setSelectedCrop(crop)
     setIsHarvestModalOpen(true)
     setIsLoadingHarvests(true)
+    setHarvestError(null)
     try {
       const response = await farmApi.getHarvestsByCropId(crop.id)
       if (response.isSuccess && response.data) {
         setHarvests(response.data)
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: HARVEST_MESSAGES.FETCH_SUCCESS,
+        })
       } else {
         setHarvests([])
+        toast({
+          title: TOAST_TITLES.INFO,
+          description: HARVEST_MESSAGES.FETCH_ERROR,
+        })
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : HARVEST_MESSAGES.FETCH_ERROR
       console.error('Lỗi khi tải danh sách thu hoạch:', error)
       setHarvests([])
+      setHarvestError(message)
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsLoadingHarvests(false)
     }
@@ -192,24 +260,45 @@ export default function CropsPage() {
   }
 
   // Computed values
-  const filteredCrops = selectedFarmId ? crops.filter(c => c.farmId === selectedFarmId) : crops
+  const baseFilteredCrops = selectedFarmId ? crops.filter(c => c.farmId === selectedFarmId) : crops
+  
+  const filteredCrops = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    return baseFilteredCrops.filter(crop =>
+      !keyword ||
+      crop.name.toLowerCase().includes(keyword) ||
+      crop.farmName.toLowerCase().includes(keyword) ||
+      crop.type.toLowerCase().includes(keyword) ||
+      (crop.description && crop.description.toLowerCase().includes(keyword))
+    )
+  }, [baseFilteredCrops, searchTerm])
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setCropPage(1)
+  }, [searchTerm, selectedFarmId])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCrops.length / PAGE_SIZE))
+  const safePage = Math.min(cropPage, totalPages)
+  const start = (safePage - 1) * PAGE_SIZE
+  const pageItems = filteredCrops.slice(start, start + PAGE_SIZE)
 
   return (
-    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
+    <div className="mx-auto max-w-[1800px] p-6">
       <div className="mb-6">
-        <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Vụ trồng</h1>
-        <p className="text-responsive-base text-gray-600">Danh sách vụ trồng của các nông trại</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Vụ trồng</h1>
+        <p className="text-base text-gray-600">Danh sách vụ trồng của các nông trại</p>
       </div>
 
-      <Card className="card-responsive mb-6">
-        <div className="mb-4">
-          <h2 className="text-responsive-xl font-semibold text-gray-900 mb-2">Lọc theo nông trại</h2>
+      <Card className="p-6 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-xs">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Lọc theo nông trại</h2>
             {isLoadingFarms ? (
               <p className="text-sm text-gray-500">Đang tải...</p>
             ) : (
               <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white h-10"
                 value={selectedFarmId || ''}
                 onChange={(e) => handleFarmFilterChange(e.target.value || null)}
               >
@@ -221,110 +310,192 @@ export default function CropsPage() {
                 ))}
               </select>
             )}
+            {farmError && <p className="text-xs text-red-600 mt-2">{farmError}</p>}
           </div>
+          <Button variant="outline" size="sm" onClick={() => fetchFarms()} disabled={isLoadingFarms}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingFarms ? 'animate-spin' : ''}`} />
+            {isLoadingFarms ? 'Đang tải...' : 'Làm mới'}
+          </Button>
         </div>
       </Card>
 
-      <Card className="card-responsive">
-        <div className="mb-4">
-          <h2 className="text-responsive-xl font-semibold text-gray-900 mb-2">Danh sách vụ trồng</h2>
-          <p className="text-responsive-sm text-gray-600">
-            {selectedFarmId
-              ? `Có ${filteredCrops.length} vụ trồng trong nông trại đã chọn`
-              : `Có ${filteredCrops.length} vụ trồng trong hệ thống`}
-          </p>
+      <Card className="p-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách vụ trồng</h2>
+            <p className="text-sm text-gray-600">
+              {isLoadingCrops ? 'Đang tải...' : `Hiển thị ${filteredCrops.length} / ${crops.length} vụ trồng`}
+              {cropError && <span className="text-red-600"> · {cropError}</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm theo tên, nông trại, loại..."
+                className="pl-9"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchCrops(selectedFarmId || undefined)}
+              disabled={isLoadingCrops || farms.length === 0}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingCrops ? 'animate-spin' : ''}`} />
+              {isLoadingCrops ? 'Đang tải...' : 'Làm mới'}
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           {isLoadingCrops ? (
-            <p className="text-sm text-gray-500">Đang tải danh sách vụ trồng...</p>
-          ) : filteredCrops.length > 0 ? (
-            <>
+            <div className="min-w-[1000px]">
               <SimpleTable>
                 <TableHeader>
+                <TableRow>
+                  <TableHead className="text-left min-w-[200px]">Vụ trồng</TableHead>
+                  <TableHead className="text-left min-w-[150px]">Loại</TableHead>
+                  <TableHead className="text-left min-w-[220px]">Thông tin</TableHead>
+                  <TableHead className="text-left hidden lg:table-cell min-w-[110px]">Gieo trồng</TableHead>
+                  <TableHead className="text-left hidden xl:table-cell min-w-[130px]">Dự kiến thu hoạch</TableHead>
+                  <TableHead className="text-left min-w-[120px]">Trạng thái</TableHead>
+                  <TableHead className="text-right min-w-[120px] whitespace-nowrap">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow key={i} className="hover:bg-gray-50">
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-3 bg-gray-200 rounded animate-pulse w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="h-3 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-3 bg-gray-200 rounded animate-pulse hidden md:block" />
+                        <div className="h-3 bg-gray-200 rounded animate-pulse hidden md:block w-32" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="hidden xl:table-cell"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
+                    <TableCell className="text-right"><div className="h-8 bg-gray-200 rounded animate-pulse w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </SimpleTable>
+            </div>
+          ) : filteredCrops.length > 0 ? (
+            <>
+              <div className="min-w-[1000px]">
+                <SimpleTable>
+                  <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[180px]">Nông trại</TableHead>
-                    <TableHead className="min-w-[120px]">Tên</TableHead>
-                    <TableHead className="min-w-[100px]">Loại</TableHead>
-                    <TableHead className="min-w-[80px]">Diện tích</TableHead>
-                    <TableHead className="min-w-[90px]">Số cây</TableHead>
-                    <TableHead className="min-w-[110px]">Gieo trồng</TableHead>
-                    <TableHead className="min-w-[120px]">Dự kiến thu hoạch</TableHead>
-                    <TableHead className="min-w-[120px]">TG canh tác (ngày)</TableHead>
-                    <TableHead className="min-w-[100px]">Trạng thái</TableHead>
-                    <TableHead className="min-w-[200px]">Ghi chú</TableHead>
-                    <TableHead className="min-w-[120px]">Thao tác</TableHead>
+                    <TableHead className="text-left min-w-[200px]">Vụ trồng</TableHead>
+                    <TableHead className="text-left min-w-[150px]">Loại</TableHead>
+                    <TableHead className="text-left min-w-[220px]">Thông tin</TableHead>
+                    <TableHead className="text-left hidden lg:table-cell min-w-[110px]">Gieo trồng</TableHead>
+                    <TableHead className="text-left hidden xl:table-cell min-w-[130px]">Dự kiến thu hoạch</TableHead>
+                    <TableHead className="text-left min-w-[120px]">Trạng thái</TableHead>
+                    <TableHead className="text-right min-w-[120px] whitespace-nowrap">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(() => {
-                    const items = filteredCrops
-                    const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
-                    const safePage = Math.min(cropPage, totalPages)
-                    const start = (safePage - 1) * PAGE_SIZE
-                    const pageItems = items.slice(start, start + PAGE_SIZE)
-                    return pageItems.map(crop => (
-                      <TableRow key={crop.id}>
-                        <TableCell className="font-medium">{crop.farmName}</TableCell>
-                        <TableCell className="font-medium">{crop.name}</TableCell>
-                        <TableCell className="text-xs">{crop.type}</TableCell>
-                        <TableCell className="text-xs">{crop.area}</TableCell>
-                        <TableCell className="text-xs">{crop.treeCount ?? '—'}</TableCell>
-                        <TableCell className="text-xs">{formatDate(crop.plantedAt)}</TableCell>
-                        <TableCell className="text-xs">{formatDate(crop.expectedHarvestAt)}</TableCell>
-                        <TableCell className="text-xs">{crop.farmingDuration ?? '—'}</TableCell>
-                        <TableCell className="text-xs">{getStatusBadge(crop.status)}</TableCell>
-                        <TableCell className="text-xs text-gray-600">{crop.description || '—'}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewHarvests(crop)}
-                            className="text-xs"
-                          >
-                            Xem chi tiết
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  })()}
+                  {pageItems.map(crop => (
+                    <TableRow key={crop.id} className="hover:bg-gray-50">
+                      <TableCell className="min-h-[48px]">
+                        <div>
+                          <div className="font-medium text-gray-900">{crop.name}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{crop.farmName}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm min-h-[48px]">{crop.type}</TableCell>
+                      <TableCell className="text-sm min-h-[48px]">
+                        <div className="space-y-0.5">
+                          <div>Diện tích: <span className="font-medium">{crop.area} m²</span></div>
+                          <div className="hidden md:block">Số cây: <span className="font-medium">{crop.treeCount ?? '—'}</span></div>
+                          <div className="hidden md:block text-xs text-gray-500">Thời gian canh tác: {crop.farmingDuration ? `${crop.farmingDuration} ngày` : '—'}</div>
+                          {crop.description && (
+                            <div className="text-xs text-gray-500 truncate max-w-[200px]" title={crop.description}>
+                              Mô tả: {crop.description}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm min-h-[48px] hidden lg:table-cell">{formatDate(crop.plantedAt)}</TableCell>
+                      <TableCell className="text-sm min-h-[48px] hidden xl:table-cell">{formatDate(crop.expectedHarvestAt)}</TableCell>
+                      <TableCell className="min-h-[48px]">{getStatusBadge(crop.status)}</TableCell>
+                      <TableCell className="text-right min-h-[48px] min-w-[120px] whitespace-nowrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewHarvests(crop)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          <span className="hidden sm:inline">Chi tiết</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </SimpleTable>
-              {(() => {
-                const items = filteredCrops
-                if (items.length <= PAGE_SIZE) return null
-                const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
-                const canPrev = cropPage > 1
-                const canNext = cropPage < totalPages
-                return (
-                  <div className="flex items-center justify-between mt-3 text-sm">
-                    <span className="text-gray-600">
-                      Trang {cropPage}/{totalPages}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCropPage(p => Math.max(1, p - 1))}
-                        disabled={!canPrev}
-                      >
-                        Trước
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCropPage(p => Math.min(totalPages, p + 1))}
-                        disabled={!canNext}
-                      >
-                        Sau
-                      </Button>
-                    </div>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-end mt-4 text-sm">
+                  <span className="text-gray-600 mr-4">Trang {cropPage}/{totalPages}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCropPage(p => Math.max(1, p - 1))}
+                      disabled={cropPage <= 1}
+                    >
+                      Trước
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCropPage(p => Math.min(totalPages, p + 1))}
+                      disabled={cropPage >= totalPages}
+                    >
+                      Sau
+                    </Button>
                   </div>
-                )
-              })()}
+                </div>
+              )}
             </>
           ) : (
-            <p className="text-sm text-gray-500">Chưa có dữ liệu vụ trồng.</p>
+            <div className="text-center py-12">
+              <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {searchTerm || selectedFarmId ? 'Không tìm thấy vụ trồng' : 'Chưa có vụ trồng nào'}
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {searchTerm || selectedFarmId
+                  ? 'Thử tìm kiếm với từ khóa khác hoặc chọn nông trại khác'
+                  : 'Hiện tại chưa có vụ trồng nào trong hệ thống'}
+              </p>
+              {(searchTerm || selectedFarmId) && (
+                <div className="flex gap-2 justify-center">
+                  {searchTerm && (
+                    <Button variant="outline" size="sm" onClick={() => setSearchTerm('')}>
+                      Xóa tìm kiếm
+                    </Button>
+                  )}
+                  {selectedFarmId && (
+                    <Button variant="outline" size="sm" onClick={() => handleFarmFilterChange(null)}>
+                      Xóa bộ lọc
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </Card>
@@ -349,6 +520,7 @@ export default function CropsPage() {
           </DialogHeader>
 
           <div className="mt-4">
+            {harvestError && <p className="text-sm text-red-600 text-center mb-3">{harvestError}</p>}
             {isLoadingHarvests ? (
               <p className="text-sm text-gray-500 text-center py-4">Đang tải danh sách thu hoạch...</p>
             ) : harvests.length > 0 ? (

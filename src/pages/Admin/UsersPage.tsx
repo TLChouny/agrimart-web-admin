@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '../../components/ui/card'
 import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/simple-table'
 import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { userApi } from '../../services/api/userApi'
 import type { User as ApiUser, UserListItem } from '../../types/api'
+import { useToastContext } from '../../contexts/ToastContext'
+import { TOAST_TITLES, USER_MESSAGES } from '../../services/constants/messages'
+import { Search, Users as UsersIcon } from 'lucide-react'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserListItem[]>([])
@@ -12,9 +17,11 @@ export default function UsersPage() {
   const PAGE_SIZE = 10
   const [page, setPage] = useState(1)
   const [blockedMap, setBlockedMap] = useState<Record<string, boolean>>({})
+  const { toast } = useToastContext()
+  const [searchTerm, setSearchTerm] = useState('')
 
   // API functions
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     setIsLoading(true)
     setError(null)
     try {
@@ -22,19 +29,18 @@ export default function UsersPage() {
       if (res.isSuccess) {
         const payload = res.data as ApiUser[] | { items: ApiUser[] }
         const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
-          const mapRole = (u: ApiUser): UserListItem['role'] => {
+        const mapRole = (u: ApiUser): UserListItem['role'] => {
           const r = (u as unknown as { role?: unknown }).role
           if (typeof r === 'string') {
             if (r === 'admin' || r === 'farmer' || r === 'wholesaler') return r
           }
-          // Try role object with name property
           if (r && typeof r === 'object' && 'name' in (r as Record<string, unknown>)) {
             const name = String((r as { name?: unknown }).name || '').toLowerCase()
             if (name === 'admin' || name === 'farmer' || name === 'wholesaler') return name as UserListItem['role']
           }
           return 'wholesaler'
         }
-          const mapped: UserListItem[] = apiUsers.map(u => ({
+        const mapped: UserListItem[] = apiUsers.map(u => ({
           id: u.id,
           fullName: `${u.firstName} ${u.lastName}`.trim(),
           email: u.email,
@@ -45,23 +51,54 @@ export default function UsersPage() {
         setUsers(mapped)
         setBlockedMap(Object.fromEntries(mapped.map(u => [u.id, false])))
         setPage(1)
+        if (!silent) {
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: USER_MESSAGES.FETCH_SUCCESS,
+          })
+        }
       } else {
-        setError(res.message || 'Không thể tải danh sách người dùng')
+        const message = res.message || USER_MESSAGES.FETCH_ERROR
+        setError(message)
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tải người dùng')
-      console.error('Lỗi khi tải danh sách người dùng:', e)
+      const message = e instanceof Error ? e.message : USER_MESSAGES.FETCH_ERROR
+      setError(message)
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    fetchUsers({ silent: true })
+  }, [fetchUsers])
 
   // Helper functions
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+
+  const filteredUsers = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) return users
+    return users.filter(user =>
+      user.fullName.toLowerCase().includes(keyword) ||
+      user.email.toLowerCase().includes(keyword) ||
+      user.id.toLowerCase().includes(keyword)
+    )
+  }, [users, searchTerm])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm])
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -83,119 +120,173 @@ export default function UsersPage() {
   // Event handlers
   const toggleBlocked = (userId: string, value: boolean) => {
     setBlockedMap(prev => ({ ...prev, [userId]: value }))
-    // TODO: call API to block/unblock when BE available
+    toast({
+      title: TOAST_TITLES.INFO,
+      description: USER_MESSAGES.BLOCK_PLACEHOLDER,
+    })
   }
 
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const start = (safePage - 1) * PAGE_SIZE
+  const pagedUsers = filteredUsers.slice(start, start + PAGE_SIZE)
+  const canPrev = safePage > 1
+  const canNext = safePage < totalPages
+
   return (
-    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý người dùng</h1>
-        <p className="text-responsive-base text-gray-600">Danh sách người dùng trong hệ thống</p>
+    <div className="mx-auto max-w-[1800px] p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm uppercase tracking-[0.4em] text-emerald-600 mb-2">Quản trị hệ thống</p>
+          <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý người dùng</h1>
+          <p className="text-responsive-base text-gray-600">Theo dõi trạng thái tài khoản và phân quyền.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo tên, email hoặc ID"
+              className="pl-9"
+            />
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => fetchUsers()} disabled={isLoading}>
+            {isLoading ? 'Đang tải...' : 'Làm mới'}
+          </Button>
+        </div>
       </div>
 
       <Card className="card-responsive">
-        <div className="mb-4">
-          <h2 className="text-responsive-xl font-semibold text-gray-900 mb-2">Danh sách người dùng</h2>
-          <p className="text-responsive-sm text-gray-600">{isLoading ? 'Đang tải...' : `Có ${users.length} người dùng trong hệ thống`}{error ? ` · Lỗi: ${error}` : ''}</p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-responsive-xl font-semibold text-gray-900 mb-1">Danh sách người dùng</h2>
+            <p className="text-responsive-sm text-gray-600">
+              {isLoading ? 'Đang tải...' : `Tổng ${filteredUsers.length} người dùng`}
+              {error ? ` · Lỗi: ${error}` : ''}
+            </p>
+          </div>
+          <div className="text-sm text-gray-500">Trang {safePage} / {totalPages}</div>
         </div>
 
         <div className="overflow-x-auto">
-          {(() => {
-            const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE))
-            const safePage = Math.min(page, totalPages)
-            const start = (safePage - 1) * PAGE_SIZE
-            const pagedUsers = users.slice(start, start + PAGE_SIZE)
-            const canPrev = safePage > 1
-            const canNext = safePage < totalPages
-            return (
-              <>
-          <div className="hidden md:block">
+          {isLoading ? (
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead style={{width:'35%'}}>Họ và tên</TableHead>
-                  <TableHead style={{width:'25%'}}>Email</TableHead>
-                  <TableHead style={{width:'15%'}}>Vai trò</TableHead>
-                  <TableHead style={{width:'15%'}}>Trạng thái</TableHead>
-                  <TableHead style={{width:'10%'}}>Khóa</TableHead>
+                  <TableHead className="w-[35%]">Họ và tên</TableHead>
+                  <TableHead className="w-[25%]">Email</TableHead>
+                  <TableHead className="w-[15%]">Vai trò</TableHead>
+                  <TableHead className="w-[15%]">Trạng thái</TableHead>
+                  <TableHead className="w-[10%] text-right">Khóa</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pagedUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell style={{width:'35%'}} className="font-medium">
-                      <div className="truncate" title={user.fullName}>{user.fullName}</div>
-                    </TableCell>
-                    <TableCell style={{width:'25%'}}>
-                      <div className="truncate" title={user.email}>{user.email}</div>
-                    </TableCell>
-                    <TableCell style={{width:'15%'}}>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell style={{width:'15%'}}>{getStatusBadge(user.status)}</TableCell>
-                    <TableCell style={{width:'10%'}}>
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          className="peer sr-only"
-                          checked={!!blockedMap[user.id]}
-                          onChange={(e) => toggleBlocked(user.id, e.target.checked)}
-                        />
-                        <span className={`w-10 h-6 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
-                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
-                        </span>
-                        <span className="text-xs text-gray-700">{blockedMap[user.id] ? 'Blocked' : 'Active'}</span>
-                      </label>
-                    </TableCell>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    {[35, 25, 15, 15, 10].map((width, idx) => (
+                      <TableCell key={idx} style={{ width: `${width}%` }}>
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>
             </SimpleTable>
-          </div>
-          <div className="flex items-center justify-between mt-3 text-sm">
-            <span className="text-gray-600">Trang {safePage}/{totalPages}</span>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev} className={`px-3 py-1 rounded border text-sm ${canPrev ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Trước</button>
-              <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext} className={`px-3 py-1 rounded border text-sm ${canNext ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Sau</button>
-            </div>
-          </div>
+          ) : pagedUsers.length > 0 ? (
+            <>
+              <div className="hidden md:block">
+                <SimpleTable>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[35%] text-left">Họ và tên</TableHead>
+                      <TableHead className="w-[25%] text-left">Email</TableHead>
+                      <TableHead className="w-[15%] text-left">Vai trò</TableHead>
+                      <TableHead className="w-[15%] text-left">Trạng thái</TableHead>
+                      <TableHead className="w-[10%] text-right">Khóa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedUsers.map((user) => (
+                      <TableRow key={user.id} className="min-h-[56px]">
+                        <TableCell className="font-medium text-gray-900">
+                          <div className="truncate" title={user.fullName}>{user.fullName}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="truncate text-gray-700" title={user.email}>{user.email}</div>
+                          <p className="text-xs text-gray-500">Tạo: {formatDate(user.createdAt)}</p>
+                        </TableCell>
+                        <TableCell>{getRoleBadge(user.role)}</TableCell>
+                        <TableCell>{getStatusBadge(user.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <label className="inline-flex items-center gap-2 cursor-pointer select-none justify-end">
+                            <input
+                              type="checkbox"
+                              className="peer sr-only"
+                              checked={!!blockedMap[user.id]}
+                              onChange={(e) => toggleBlocked(user.id, e.target.checked)}
+                            />
+                            <span className={`w-10 h-6 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                            </span>
+                            <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Blocked' : 'Active'}</span>
+                          </label>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </SimpleTable>
+              </div>
 
-          <div className="md:hidden space-y-3">
-            {pagedUsers.map((user) => (
-              <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 truncate" title={user.fullName}>{user.fullName}</h3>
-                      <p className="text-sm text-gray-500 truncate" title={user.email}>{user.email}</p>
+              <div className="md:hidden space-y-3">
+                {pagedUsers.map((user) => (
+                  <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-500 uppercase tracking-[0.3em]">Người dùng</p>
+                        <h3 className="font-semibold text-gray-900 truncate" title={user.fullName}>{user.fullName}</h3>
+                        <p className="text-sm text-gray-500 truncate" title={user.email}>{user.email}</p>
+                      </div>
+                      <UsersIcon className="h-5 w-5 text-gray-400" />
                     </div>
-                    <div className="ml-2 flex flex-col gap-1 items-end">
+                    <div className="mt-3 flex items-center justify-between">
                       {getRoleBadge(user.role)}
                       {getStatusBadge(user.status)}
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none mt-1">
-                        <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
-                        <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
-                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
-                        </span>
-                      </label>
                     </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-gray-500">ID: {user.id}</p>
+                      <p className="text-xs text-gray-500">Ngày tạo: {formatDate(user.createdAt)}</p>
+                    </div>
+                    <label className="mt-3 inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
+                      <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                      </span>
+                      <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
+                    </label>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    <p className="text-xs text-gray-500"><span className="font-medium">ID:</span> {user.id}</p>
-                    <p className="text-xs text-gray-500 mt-1"><span className="font-medium">Ngày tạo:</span> {formatDate(user.createdAt)}</p>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between mt-3 text-sm md:hidden">
-            <span className="text-gray-600">Trang {safePage}/{totalPages}</span>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev} className={`px-3 py-1 rounded border text-sm ${canPrev ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Trước</button>
-              <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext} className={`px-3 py-1 rounded border text-sm ${canNext ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}>Sau</button>
+
+              <div className="mt-4 flex items-center justify-end gap-2 text-sm">
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>
+                  Trước
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>
+                  Sau
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <div className="rounded-full bg-emerald-50 p-4">
+                <UsersIcon className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Chưa có người dùng nào phù hợp</h3>
+              <p className="text-sm text-gray-500 max-w-md">Thử thay đổi từ khóa tìm kiếm hoặc tải lại danh sách người dùng.</p>
+              <Button onClick={() => { setSearchTerm(''); fetchUsers(); }}>Tải lại danh sách</Button>
             </div>
-          </div>
-          </>
-            )
-          })()}
+          )}
         </div>
       </Card>
     </div>

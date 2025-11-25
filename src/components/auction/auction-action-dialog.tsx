@@ -100,6 +100,11 @@ export function AuctionActionDialog({
           <AlertDialogCancel
             disabled={loading || isLoading}
             className="px-4 py-2 font-medium"
+            onClick={() => {
+              if (!loading && !isLoading) {
+                onOpenChange(false)
+              }
+            }}
           >
             Hủy
           </AlertDialogCancel>

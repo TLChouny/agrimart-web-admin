@@ -4,8 +4,11 @@ import { DeliveryInfo } from "../../components/admin/delivery-info"
 import { ShippingInfo } from "../../components/admin/shipping-info"
 import { Button } from "../../components/ui/button"
 import { Download } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 export default function AdminDashboardPage() {
+  const navigate = useNavigate()
+
   return (
     <>
       <div className="flex items-center justify-between mb-6">
@@ -14,6 +17,9 @@ export default function AdminDashboardPage() {
           <p className="text-gray-600">Quản lý nông trại, đơn hàng và người dùng một cách hiệu quả.</p>
         </div>
         <div className="flex gap-3">
+          <Button onClick={() => navigate('/admin/reports')}>
+            Quản lý báo cáo
+          </Button>
           <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
             Xuất báo cáo

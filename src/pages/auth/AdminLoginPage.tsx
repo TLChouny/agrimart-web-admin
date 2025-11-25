@@ -4,15 +4,14 @@ import { Card, CardContent } from "../../components/ui/card"
 import { FormContainer } from "../../components/forms/FormContainer"
 import { FormField } from "../../components/forms/FormField"
 import { adminAuthService } from "../../services/adminAuthService"
-import { useToast } from "../../hooks/use-toast"
 import { SUCCESS_MESSAGES, ERROR_MESSAGES, FORM_MESSAGES, getWelcomeMessage } from "../../services/constants/messages"
 import type { User } from "../../types"
-import { ToastContainer } from '../../components/ui/ToastContainer'
 import { useAuth } from '../../contexts/AuthContext'
 import { Eye, EyeOff } from 'lucide-react'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Button } from '../../components/ui/button'
+import { useToastContext } from "../../contexts/ToastContext"
 
 interface AdminLoginPageProps {
   onLoginSuccess?: (user: User) => void
@@ -26,7 +25,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
-  const { toast, dismiss, toasts } = useToast()
+  const { toast } = useToastContext()
   const { setAuth } = useAuth()
 
   const validateEmail = (emailValue: string): boolean => {
@@ -154,87 +153,84 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
   }
 
   return (
-    <>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-red-50 to-white p-3 sm:p-4">
-        <div className="w-full max-w-sm sm:max-w-md">
-          <div className="text-center mb-6 sm:mb-8">
-            <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
-              <div className="h-6 w-6 sm:h-8 sm:w-8 bg-green-600 rounded flex items-center justify-center">
-                <span className="text-white font-bold text-sm sm:text-base">A</span>
-              </div>
-              <span className="text-xl sm:text-2xl font-bold text-green-800">AgriMart Admin</span>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-red-50 to-white p-3 sm:p-4">
+      <div className="w-full max-w-sm sm:max-w-md">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
+            <div className="h-6 w-6 sm:h-8 sm:w-8 bg-green-600 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-sm sm:text-base">A</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Đăng nhập</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-2 px-2">Nhập thông tin để truy cập trang Admin</p>
+            <span className="text-xl sm:text-2xl font-bold text-green-800">AgriMart Admin</span>
           </div>
-
-          <Card className="border-green-200">
-            <CardContent className="p-4 sm:p-6">
-              <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-lg">
-                  <strong>Chú ý:</strong> Trang này chỉ dành cho quản trị viên. 
-                  Tài khoản admin được tạo bởi hệ thống, không thể đăng ký tự do.
-              </div>
-
-              <FormContainer onSubmit={handleSubmit} submitText="Đăng nhập" isLoading={isLoading}>
-                <FormField
-                  label={FORM_MESSAGES.EMAIL_LABEL}
-                  id="email"
-                  type="email"
-                  placeholder={FORM_MESSAGES.EMAIL_PLACEHOLDER}
-                  value={email}
-                  onChange={handleEmailChange}
-                  required
-                  error={emailError}
-                  description={FORM_MESSAGES.EMAIL_DESCRIPTION}
-                />
-                <div className="space-y-2 h-full">
-                  <Label htmlFor="password" className="flex items-center gap-1 text-sm sm:text-base h-6">
-                    {FORM_MESSAGES.PASSWORD_LABEL}
-                    <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder={FORM_MESSAGES.PASSWORD_PLACEHOLDER}
-                      value={password}
-                      onChange={(e) => handlePasswordChange(e.target.value)}
-                      required
-                      variant={passwordError ? "error" : "default"}
-                      className={`text-sm sm:text-base pr-10 ${passwordError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-gray-500" />
-                      )}
-                    </Button>
-                  </div>
-                  {FORM_MESSAGES.PASSWORD_DESCRIPTION && (
-                    <p className="text-xs sm:text-sm text-gray-500">{FORM_MESSAGES.PASSWORD_DESCRIPTION}</p>
-                  )}
-                  {passwordError && (
-                    <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                      <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
-                      {passwordError}
-                    </p>
-                  )}
-                </div>
-              </FormContainer>
-            </CardContent>
-          </Card>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Đăng nhập</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2 px-2">Nhập thông tin để truy cập trang Admin</p>
         </div>
+
+        <Card className="border-green-200">
+          <CardContent className="p-4 sm:p-6">
+            <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-lg">
+              <strong>Chú ý:</strong> Trang này chỉ dành cho quản trị viên.
+              Tài khoản admin được tạo bởi hệ thống, không thể đăng ký tự do.
+            </div>
+
+            <FormContainer onSubmit={handleSubmit} submitText="Đăng nhập" isLoading={isLoading}>
+              <FormField
+                label={FORM_MESSAGES.EMAIL_LABEL}
+                id="email"
+                type="email"
+                placeholder={FORM_MESSAGES.EMAIL_PLACEHOLDER}
+                value={email}
+                onChange={handleEmailChange}
+                required
+                error={emailError}
+                description={FORM_MESSAGES.EMAIL_DESCRIPTION}
+              />
+              <div className="space-y-2 h-full">
+                <Label htmlFor="password" className="flex items-center gap-1 text-sm sm:text-base h-6">
+                  {FORM_MESSAGES.PASSWORD_LABEL}
+                  <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder={FORM_MESSAGES.PASSWORD_PLACEHOLDER}
+                    value={password}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
+                    required
+                    variant={passwordError ? "error" : "default"}
+                    className={`text-sm sm:text-base pr-10 ${passwordError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-500" />
+                    )}
+                  </Button>
+                </div>
+                {FORM_MESSAGES.PASSWORD_DESCRIPTION && (
+                  <p className="text-xs sm:text-sm text-gray-500">{FORM_MESSAGES.PASSWORD_DESCRIPTION}</p>
+                )}
+                {passwordError && (
+                  <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+            </FormContainer>
+          </CardContent>
+        </Card>
       </div>
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
-    </>
+    </div>
   )
 }
 

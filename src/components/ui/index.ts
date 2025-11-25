@@ -1,7 +1,13 @@
-export * from './button'
-export * from './input'
-export * from './label'
-export * from './card'
-export * from './avatar'
-export { ToastContainer } from './ToastContainer'
+export * from "./button"
+export * from "./input"
+export * from "./textarea"
+export * from "./label"
+export * from "./badge"
+export * from "./card"
+export * from "./tabs"
+export * from "./dialog"
+export * from "./alert-dialog"
+export * from "./simple-table"
+export * from "./avatar"
+export { ToastContainer } from "./ToastContainer"
 

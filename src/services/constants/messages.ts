@@ -30,6 +30,8 @@ export const ERROR_MESSAGES = {
   AUTH_FAILED: 'Email hoặc mật khẩu không đúng',
   AUTH_FAILED_TITLE: 'Xác thực thất bại',
   CONNECTION_ERROR_TITLE: 'Lỗi kết nối',
+  LOGOUT_FAILED: 'Đăng xuất không thành công, vui lòng thử lại.',
+  LOGOUT_FAILED_TITLE: 'Đăng xuất thất bại',
   // Email validation errors
   EMAIL_REQUIRED: 'Email không được để trống',
   EMAIL_MUST_CONTAIN_AT: 'Email phải chứa ký tự @',
@@ -114,4 +116,74 @@ export const USER_ROLES = {
   FARMER: 'farmer',
   WHOLESALER: 'wholesaler',
 } as const
+
+export const TOAST_TITLES = {
+  SUCCESS: 'Thành công',
+  ERROR: 'Có lỗi xảy ra',
+  INFO: 'Thông báo',
+} as const
+
+export const REPORT_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách báo cáo thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách báo cáo. Vui lòng thử lại.',
+  UPDATE_SUCCESS: 'Cập nhật trạng thái báo cáo thành công.',
+  UPDATE_ERROR: 'Không thể cập nhật trạng thái báo cáo. Vui lòng thử lại.',
+  STATUS_PENDING: 'Đang chờ duyệt',
+  STATUS_IN_REVIEW: 'Đang xem phiên',
+  STATUS_RESOLVED: 'Đã xử lý',
+  STATUS_ACTION_TAKEN: 'Đã thực thi',
+  STATUS_REJECTED: 'Từ chối',
+} as const
+
+export const REPORT_STATUS_LABELS = {
+  Pending: REPORT_MESSAGES.STATUS_PENDING,
+  InReview: REPORT_MESSAGES.STATUS_IN_REVIEW,
+  Resolved: REPORT_MESSAGES.STATUS_RESOLVED,
+  ActionTaken: REPORT_MESSAGES.STATUS_ACTION_TAKEN,
+  Rejected: REPORT_MESSAGES.STATUS_REJECTED,
+} as const
+
+export const USER_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách người dùng thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách người dùng. Vui lòng thử lại.',
+  BLOCK_PLACEHOLDER: 'Tạm thời chỉ đổi trạng thái hiển thị, chức năng khóa tài khoản sẽ sớm hoàn tất.',
+} as const
+
+export const FARM_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách nông trại thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách nông trại. Vui lòng thử lại.',
+  CROP_COUNT_ERROR: 'Không thể tải số lượng lô trồng cho một số nông trại.',
+} as const
+
+export const CROP_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách vụ trồng thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách vụ trồng. Vui lòng thử lại.',
+  FARM_FETCH_ERROR: 'Không thể tải danh sách nông trại để lọc.',
+  NO_FARM_SELECTED: 'Chưa có nông trại để tải dữ liệu vụ trồng.',
+  PARTIAL_ERROR: 'Không thể tải dữ liệu vụ trồng cho một số nông trại.',
+} as const
+
+export const HARVEST_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách thu hoạch thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách thu hoạch. Vui lòng thử lại.',
+} as const
+
+export const AUCTION_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách phiên đấu giá thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách phiên đấu giá. Vui lòng thử lại.',
+  STATUS_UPDATE_SUCCESS: 'Cập nhật trạng thái phiên đấu giá thành công.',
+  STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái phiên đấu giá.',
+} as const
+
+export const CATEGORY_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách loại mãng cầu thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách loại mãng cầu. Vui lòng thử lại.',
+  CREATE_SUCCESS: 'Thêm loại mãng cầu mới thành công.',
+  CREATE_ERROR: 'Không thể tạo loại mãng cầu. Vui lòng thử lại.',
+  UPDATE_SUCCESS: 'Cập nhật loại mãng cầu thành công.',
+  UPDATE_ERROR: 'Không thể cập nhật loại mãng cầu. Vui lòng thử lại.',
+  DELETE_SUCCESS: 'Xóa loại mãng cầu thành công.',
+  DELETE_ERROR: 'Không thể xóa loại mãng cầu. Vui lòng thử lại.',
+} as const
+
 

@@ -2,10 +2,14 @@ import { Card } from '../../components/ui/card'
 import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/simple-table'
 import { Button } from '../../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { PenSquare, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
+import { PenSquare, Trash2, Tags, Search } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { farmApi } from '../../services/api/farmApi'
 import type { CustardAppleType } from '../../types/api'
+import { useToastContext } from '../../contexts/ToastContext'
+import { CATEGORY_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 
 export default function CategoriesPage() {
   const [typePage, setTypePage] = useState(1)
@@ -20,26 +24,63 @@ export default function CategoriesPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<CustardAppleType | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToastContext()
   const PAGE_SIZE = 5
 
   // API functions
-  const fetchCustardAppleTypes = async () => {
+  const fetchCustardAppleTypes = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     setIsLoadingTypes(true)
+    setError(null)
     try {
       const response = await farmApi.getCustardAppleTypes()
       if (response.isSuccess && response.data) {
         setCustardTypes(response.data)
+        if (!silent) {
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: CATEGORY_MESSAGES.FETCH_SUCCESS,
+          })
+        }
+      } else {
+        const message = response.message || CATEGORY_MESSAGES.FETCH_ERROR
+        setError(message)
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      console.error('Lỗi khi tải danh sách loại mãng cầu:', error)
+      const message = error instanceof Error ? error.message : CATEGORY_MESSAGES.FETCH_ERROR
+      setError(message)
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsLoadingTypes(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
-    fetchCustardAppleTypes()
-  }, [])
+    fetchCustardAppleTypes({ silent: true })
+  }, [fetchCustardAppleTypes])
+
+  const filteredTypes = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) return custardTypes
+    return custardTypes.filter(type =>
+      type.name.toLowerCase().includes(keyword) ||
+      (type.description || '').toLowerCase().includes(keyword)
+    )
+  }, [custardTypes, searchTerm])
+
+  useEffect(() => {
+    setTypePage(1)
+  }, [searchTerm])
 
   // Form handlers
   const resetCreateForm = () => setCreateForm({ name: '', description: '' })
@@ -65,11 +106,25 @@ export default function CategoriesPage() {
         const totalPages = Math.max(1, Math.ceil((custardTypes.length + 1) / PAGE_SIZE))
         setTypePage(totalPages)
         handleCancelCreate()
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: CATEGORY_MESSAGES.CREATE_SUCCESS,
+        })
       } else {
-        console.error('Lỗi khi tạo loại mãng cầu:', response.message)
+        const message = response.message || CATEGORY_MESSAGES.CREATE_ERROR
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      console.error('Lỗi khi tạo loại mãng cầu:', error)
+      const message = error instanceof Error ? error.message : CATEGORY_MESSAGES.CREATE_ERROR
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsCreating(false)
     }
@@ -97,11 +152,25 @@ export default function CategoriesPage() {
       if (response.isSuccess) {
         await fetchCustardAppleTypes()
         closeEditModal()
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: CATEGORY_MESSAGES.UPDATE_SUCCESS,
+        })
       } else {
-        console.error('Lỗi khi cập nhật loại mãng cầu:', response.message)
+        const message = response.message || CATEGORY_MESSAGES.UPDATE_ERROR
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      console.error('Lỗi khi cập nhật loại mãng cầu:', error)
+      const message = error instanceof Error ? error.message : CATEGORY_MESSAGES.UPDATE_ERROR
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsUpdating(false)
     }
@@ -112,9 +181,7 @@ export default function CategoriesPage() {
     if (!deleteTarget || isDeleting) return
     setIsDeleting(true)
     try {
-      console.log('Đang xóa loại mãng cầu với ID:', deleteTarget.id)
       const response = await farmApi.deleteCustardAppleType(deleteTarget.id)
-      console.log('Phản hồi từ API:', response)
       if (response.isSuccess) {
         await fetchCustardAppleTypes()
         const updatedLength = custardTypes.length - 1
@@ -124,13 +191,25 @@ export default function CategoriesPage() {
         }
         if (editingTypeId === deleteTarget.id) closeEditModal()
         setDeleteTarget(null)
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: CATEGORY_MESSAGES.DELETE_SUCCESS,
+        })
       } else {
-        console.error('Lỗi khi xóa loại mãng cầu:', response.message, response.errors)
-        alert(`Lỗi khi xóa: ${response.message}${response.errors ? '\n' + response.errors.join('\n') : ''}`)
+        const message = response.message || CATEGORY_MESSAGES.DELETE_ERROR
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      console.error('Lỗi khi xóa loại mãng cầu:', error)
-      alert(`Lỗi khi xóa loại mãng cầu: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`)
+      const message = error instanceof Error ? error.message : CATEGORY_MESSAGES.DELETE_ERROR
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -138,28 +217,53 @@ export default function CategoriesPage() {
   const handleCancelDeleteType = () => setDeleteTarget(null)
 
   return (
-    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Phân loại</h1>
-        <p className="text-responsive-base text-gray-600">Quản lý loại mãng cầu trong hệ thống</p>
+    <div className="mx-auto max-w-[1800px] p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Danh mục</p>
+          <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý loại mãng cầu</h1>
+          <p className="text-responsive-base text-gray-600">Tạo và cập nhật danh mục phục vụ các quy trình nông trại.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo tên hoặc mô tả"
+              className="pl-9"
+            />
+          </div>
+          {!isTypeFormVisible && (
+            <Button onClick={startCreateType}>
+              Thêm loại mãng cầu
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="card-responsive">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-responsive-xl font-semibold text-gray-900">Quản lý loại mãng cầu</h2>
-            <p className="text-responsive-sm text-gray-600">Có {custardTypes.length} loại mãng cầu trong hệ thống.</p>
+            <h2 className="text-responsive-xl font-semibold text-gray-900">Danh sách loại mãng cầu</h2>
+            <p className="text-responsive-sm text-gray-600">
+              {isLoadingTypes ? 'Đang tải...' : `Có ${filteredTypes.length} loại`}
+              {error ? ` · Lỗi: ${error}` : ''}
+            </p>
           </div>
-          {!isTypeFormVisible && <Button onClick={startCreateType}>Thêm loại mãng cầu</Button>}
+          {isTypeFormVisible && (
+            <Button variant="outline" onClick={handleCancelCreate} disabled={isCreating}>
+              Hủy thêm mới
+            </Button>
+          )}
         </div>
 
         {isTypeFormVisible && (
-          <div className="mt-4 space-y-4 border rounded-lg p-4 bg-gray-50">
+          <div className="mt-4 space-y-4 border rounded-2xl p-4 bg-gray-50">
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-700">Tên loại</label>
-                <input
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                <Input
                   value={createForm.name}
                   onChange={(event) => handleCreateInputChange('name', event.target.value)}
                   placeholder="Ví dụ: Mãng cầu Bà Đen"
@@ -167,8 +271,7 @@ export default function CategoriesPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-700">Mô tả</label>
-                <textarea
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                <Textarea
                   rows={2}
                   value={createForm.description}
                   onChange={(event) => handleCreateInputChange('description', event.target.value)}
@@ -187,10 +290,29 @@ export default function CategoriesPage() {
           </div>
         )}
 
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-6 overflow-x-auto">
           {isLoadingTypes ? (
-            <p className="text-sm text-gray-500">Đang tải danh sách loại mãng cầu...</p>
-          ) : custardTypes.length > 0 ? (
+            <SimpleTable>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[160px]">Tên</TableHead>
+                  <TableHead className="min-w-[240px]">Mô tả</TableHead>
+                  <TableHead className="text-right min-w-[140px]">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 3 }).map((_, rowIdx) => (
+                  <TableRow key={rowIdx}>
+                    {[160, 240, 140].map((_, colIdx) => (
+                      <TableCell key={colIdx} className="py-5">
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </SimpleTable>
+          ) : filteredTypes.length > 0 ? (
             <>
               <SimpleTable>
                 <TableHeader>
@@ -202,15 +324,14 @@ export default function CategoriesPage() {
                 </TableHeader>
                 <TableBody>
                   {(() => {
-                    const items = custardTypes
-                    const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+                    const totalPages = Math.max(1, Math.ceil(filteredTypes.length / PAGE_SIZE))
                     const safePage = Math.min(typePage, totalPages)
                     const start = (safePage - 1) * PAGE_SIZE
-                    const pageItems = items.slice(start, start + PAGE_SIZE)
+                    const pageItems = filteredTypes.slice(start, start + PAGE_SIZE)
                     return pageItems.map(type => (
                       <TableRow key={type.id}>
                         <TableCell className="font-medium">{type.name}</TableCell>
-                        <TableCell className="text-xs text-gray-600">{type.description || '—'}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{type.description || '—'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1.5">
                             <Button
@@ -239,9 +360,8 @@ export default function CategoriesPage() {
                 </TableBody>
               </SimpleTable>
               {(() => {
-                const items = custardTypes
-                if (items.length <= PAGE_SIZE) return null
-                const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+                if (filteredTypes.length <= PAGE_SIZE) return null
+                const totalPages = Math.max(1, Math.ceil(filteredTypes.length / PAGE_SIZE))
                 const canPrev = typePage > 1
                 const canNext = typePage < totalPages
                 return (
@@ -270,7 +390,14 @@ export default function CategoriesPage() {
               })()}
             </>
           ) : (
-            <p className="text-sm text-gray-500">Chưa có loại mãng cầu nào. Thêm mới để bắt đầu quản lý.</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+              <div className="rounded-full bg-emerald-50 p-4">
+                <Tags className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Chưa có loại mãng cầu nào</h3>
+              <p className="text-sm text-gray-500 max-w-md">Thêm loại mới để bắt đầu phân loại sản phẩm cho hệ thống.</p>
+              <Button onClick={startCreateType}>Thêm loại đầu tiên</Button>
+            </div>
           )}
         </div>
       </Card>

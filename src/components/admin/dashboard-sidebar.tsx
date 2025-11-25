@@ -1,10 +1,12 @@
 function cn(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" ") }
 import type { LucideIcon } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, ShoppingCart, Truck, Settings, HelpCircle, LogOut, Scissors } from "lucide-react"
+import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, ShoppingCart, Truck, Settings, HelpCircle, LogOut, Scissors, FileWarning } from "lucide-react"
 import { adminAuthService } from "../../services/adminAuthService"
 import { useAuth } from "../../contexts/AuthContext"
 import { ROUTES } from "../../constants"
+import { useToastContext } from "../../contexts/ToastContext"
+import { SUCCESS_MESSAGES, ERROR_MESSAGES, TOAST_TITLES } from "../../services/constants/messages"
 
 type MenuItem = { icon: LucideIcon; label: string; path: string; badge?: string }
 
@@ -18,6 +20,7 @@ const menuItems: MenuItem[] = [
   { icon: Scissors, label: "Vụ trồng", path: "/admin/harvests" },
   { icon: Truck, label: "Phiên đấu giá", path: "/admin/auctions" },
   { icon: ShoppingCart, label: "Đơn hàng", path: "/admin/orders" },
+  { icon: FileWarning, label: "Báo cáo", path: "/admin/reports" },
 ]
 
 const generalItems = [
@@ -28,6 +31,7 @@ const generalItems = [
 export function DashboardSidebar() {
   const navigate = useNavigate()
   const { signOut } = useAuth()
+  const { toast } = useToastContext()
 
   const handleLogout = async () => {
     try {
@@ -35,8 +39,18 @@ export function DashboardSidebar() {
       localStorage.removeItem('authToken')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('currentUser')
-      signOut()
+      toast({
+        title: TOAST_TITLES.SUCCESS,
+        description: SUCCESS_MESSAGES.LOGOUT_SUCCESS,
+      })
+    } catch (error) {
+      toast({
+        title: ERROR_MESSAGES.LOGOUT_FAILED_TITLE,
+        description: ERROR_MESSAGES.LOGOUT_FAILED,
+        variant: 'destructive',
+      })
     } finally {
+      signOut()
       navigate(ROUTES.ADMIN_LOGIN)
     }
   }

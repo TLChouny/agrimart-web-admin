@@ -67,6 +67,11 @@ export const ENDPOINTS = {
         `/api/auction-service/auctionsession/${auctionSessionId}/harvest`,
     },
   },
+  report: {
+    list: '/api/auction-service/report',
+    detail: (id: string) => `/api/auction-service/report/${encodeURIComponent(id)}`,
+    byAuction: (auctionId: string) => `/api/auction-service/report/auction/${auctionId}`,
+  },
 } as const
 
 export * from './messages'

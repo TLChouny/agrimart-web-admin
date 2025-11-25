@@ -218,3 +218,38 @@ export interface UserListItem {
   status: 'active' | 'inactive'
   createdAt: string
 }
+
+export type ReportType = 'Fraud' | 'FalseInformation' | 'TechnicalIssue' | 'PolicyViolated' | 'Other'
+export type ReportStatus = 'Pending' | 'InReview' | 'Resolved' | 'ActionTaken' | 'Rejected'
+
+export interface ReportItem {
+  id: string
+  auctionId: string
+  reporterId: string
+  note: string
+  reportType: ReportType
+  reportStatus: ReportStatus
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface PaginatedReports {
+  items: ReportItem[]
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
+  previousPage: boolean
+  nextPage: boolean
+}
+
+export interface ReportListParams {
+  status?: ReportStatus
+  type?: ReportType
+  pageNumber?: number
+  pageSize?: number
+}
+
+export interface UpdateReportStatusRequest {
+  reportStatus: ReportStatus
+}

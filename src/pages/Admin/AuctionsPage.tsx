@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card } from '../../components/ui/card'
 import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/simple-table'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { AuctionActionDialog } from '../../components/auction/auction-action-dialog'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
 import type { ApiEnglishAuction, AuctionStatus, APIResponse, PaginatedEnglishAuctions } from '../../types/api'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants'
+import { useToastContext } from '../../contexts/ToastContext'
+import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
+import { Search, Filter, ChevronDown, PauseCircle } from 'lucide-react'
 
 interface ExtendedAuction extends ApiEnglishAuction {
   farmName: string
@@ -20,7 +24,7 @@ interface ExtendedAuction extends ApiEnglishAuction {
 interface DialogState {
   isOpen: boolean
   auctionId: string | null
-  actionType: 'approve' | 'reject' | 'pending' | null
+  actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel' | null
 }
 
 function formatDateTime(iso: string) {
@@ -64,26 +68,85 @@ export default function AuctionsPage() {
   const [pageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const { toast } = useToastContext()
 
   const [dialogState, setDialogState] = useState<DialogState>({
     isOpen: false,
     auctionId: null,
     actionType: null,
   })
+  const [statusCounts, setStatusCounts] = useState<Record<'all' | AuctionStatus, number>>({
+    all: 0,
+    Draft: 0,
+    Pending: 0,
+    Rejected: 0,
+    Approved: 0,
+    OnGoing: 0,
+    Completed: 0,
+    NoWinner: 0,
+    Cancelled: 0,
+  })
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
+  const fetchAuctions = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    setIsLoading(true)
+    try {
+      let allMappedAuctions: ExtendedAuction[] = []
+      let totalCountValue = 0
+      let totalPagesValue = 0
+
+      const farmRes = await farmApi.getFarms()
+      if (!farmRes.isSuccess || !farmRes.data) {
+        throw new Error('Không thể tải danh sách nông trại')
+      }
+      const farmsData = farmRes.data
+
+      if (statusFilter === 'all') {
+        // Khi xem "Tất cả", fetch tất cả các status (trừ Draft) và merge lại
+        const statusesToFetch: AuctionStatus[] = ['Pending', 'Approved', 'Rejected', 'OnGoing', 'Completed', 'NoWinner', 'Cancelled']
+        const allResults = await Promise.all(
+          statusesToFetch.map(status =>
+            auctionApi.getEnglishAuctions(status, 1, 1000) as Promise<APIResponse<PaginatedEnglishAuctions>>
+          )
+        )
+
+        allMappedAuctions = []
+        allResults.forEach((res) => {
+          if (res.isSuccess && res.data) {
+            const mapped = res.data.items.map((a) => {
+              const farm = farmsData.find((f) => f.userId === a.farmerId)
+              return {
+                ...a,
+                farmName: farm ? farm.name : 'Unknown',
+                farmId: farm ? farm.id : undefined,
+                uiStatus: a.status as AuctionStatus,
+                verified: false,
+              }
+            })
+            allMappedAuctions.push(...mapped)
+            totalCountValue += res.data.totalCount
+          }
+        })
+
+        // Phân trang ở client-side
+        const startIndex = (pageNumber - 1) * pageSize
+        const endIndex = startIndex + pageSize
+        const paginatedAuctions = allMappedAuctions.slice(startIndex, endIndex)
+        totalPagesValue = Math.ceil(allMappedAuctions.length / pageSize)
+
+        setAuctions(paginatedAuctions)
+        setTotalPages(totalPagesValue)
+        setTotalCount(totalCountValue)
+      } else {
+        // Khi filter theo status cụ thể, dùng pagination từ API
         const auctionRes = (await auctionApi.getEnglishAuctions(
-          statusFilter !== 'all' ? statusFilter : undefined,
+          statusFilter,
           pageNumber,
           pageSize,
         )) as APIResponse<PaginatedEnglishAuctions>
-        const farmRes = await farmApi.getFarms()
 
-        if (auctionRes.isSuccess && farmRes.isSuccess && auctionRes.data && farmRes.data) {
-          const farmsData = farmRes.data
-
+        if (auctionRes.isSuccess && auctionRes.data) {
           const mappedAuctions: ExtendedAuction[] = auctionRes.data.items.map((a) => {
             const farm = farmsData.find((f) => f.userId === a.farmerId)
             return {
@@ -98,16 +161,62 @@ export default function AuctionsPage() {
           setAuctions(mappedAuctions)
           setTotalPages(auctionRes.data.totalPages)
           setTotalCount(auctionRes.data.totalCount)
+        } else {
+          const message = auctionRes.message || AUCTION_MESSAGES.FETCH_ERROR
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: message,
+            variant: 'destructive',
+          })
+          return
         }
-      } catch (err) {
-        console.error('Error fetching auctions:', err)
       }
+
+      if (!silent) {
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: AUCTION_MESSAGES.FETCH_SUCCESS,
+        })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : AUCTION_MESSAGES.FETCH_ERROR
+      console.error('Error fetching auctions:', err)
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
     }
+  }, [pageNumber, pageSize, statusFilter, toast])
 
-    fetchData()
-  }, [pageNumber, pageSize, statusFilter])
+  useEffect(() => {
+    fetchAuctions({ silent: true })
+  }, [fetchAuctions])
 
-  const handleActionClick = (auctionId: string, actionType: 'approve' | 'reject' | 'pending') => {
+  const fetchStatusCounts = useCallback(async () => {
+    const statusKeys: Array<'all' | AuctionStatus> = ['all', 'Pending', 'Approved', 'Rejected', 'OnGoing', 'Completed', 'Draft', 'NoWinner', 'Cancelled']
+    try {
+      const entries = await Promise.all(
+        statusKeys.map(async (key) => {
+          const res = await auctionApi.getEnglishAuctions(key === 'all' ? undefined : key, 1, 1) as APIResponse<PaginatedEnglishAuctions>
+          const data = res.data as PaginatedEnglishAuctions | undefined
+          const count = res.isSuccess && data ? data.totalCount : data?.items?.length ?? 0
+          return [key, count] as const
+        })
+      )
+      setStatusCounts(Object.fromEntries(entries) as Record<'all' | AuctionStatus, number>)
+    } catch (error) {
+      console.error('Không thể tải số lượng phiên theo trạng thái:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStatusCounts()
+  }, [fetchStatusCounts])
+
+  const handleActionClick = (auctionId: string, actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel') => {
     setDialogState({
       isOpen: true,
       auctionId,
@@ -118,10 +227,12 @@ export default function AuctionsPage() {
   const handleConfirmAction = async () => {
     if (!dialogState.auctionId || !dialogState.actionType) return
 
-    const statusMap: Record<'approve' | 'reject' | 'pending', AuctionStatus> = {
+    const statusMap: Record<'approve' | 'reject' | 'pending' | 'stop' | 'cancel', AuctionStatus> = {
       approve: 'Approved',
       reject: 'Rejected',
       pending: 'Pending',
+      stop: 'Completed',
+      cancel: 'Cancelled',
     }
 
     const newStatus = statusMap[dialogState.actionType]
@@ -137,12 +248,29 @@ export default function AuctionsPage() {
               : item
           )
         )
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: AUCTION_MESSAGES.STATUS_UPDATE_SUCCESS,
+        })
+        fetchStatusCounts()
       } else {
-        alert('Cập nhật thất bại: ' + res.message)
+        const message = res.message || AUCTION_MESSAGES.STATUS_UPDATE_ERROR
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+        fetchStatusCounts()
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : AUCTION_MESSAGES.STATUS_UPDATE_ERROR
       console.error(err)
-      alert('Có lỗi xảy ra khi xử lý phiên đấu giá')
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
+      fetchStatusCounts()
     } finally {
       setDialogState(prev => ({ ...prev, isOpen: false }))
     }
@@ -170,6 +298,18 @@ export default function AuctionsPage() {
         actionLabel: 'Xác nhận',
         variant: 'pending' as const,
       },
+      stop: {
+        title: 'Xác nhận dừng phiên đấu giá',
+        description: 'Bạn có chắc chắn muốn dừng phiên đấu giá này? Phiên sẽ kết thúc ngay lập tức.',
+        actionLabel: 'Dừng',
+        variant: 'reject' as const,
+      },
+      cancel: {
+        title: 'Xác nhận hủy phiên đấu giá',
+        description: 'Bạn có chắc chắn muốn hủy phiên đấu giá này? Hành động này không thể hoàn tác.',
+        actionLabel: 'Hủy',
+        variant: 'reject' as const,
+      },
     }
 
     return actionConfig[dialogState.actionType]
@@ -177,97 +317,210 @@ export default function AuctionsPage() {
 
   const dialogConfig = getDialogContent()
 
+  const tabs: { key: 'all' | AuctionStatus; label: string }[] = [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'Pending', label: 'Đợi xét duyệt' },
+    { key: 'Approved', label: 'Đã duyệt' },
+    { key: 'Rejected', label: 'Từ chối' },
+    { key: 'OnGoing', label: 'Đang diễn ra' },
+  ]
+
+  const additionalStatuses: { key: AuctionStatus; label: string }[] = [
+    { key: 'Completed', label: 'Hoàn thành' },
+    { key: 'NoWinner', label: 'Không người chiến thắng' },
+    { key: 'Cancelled', label: 'Hủy' },
+    // { key: 'Draft', label: 'Bản nháp' },
+  ]
+
+  const filteredAuctions = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    return auctions
+      .filter(a =>
+        !keyword ||
+        a.sessionCode.toLowerCase().includes(keyword) ||
+        a.farmName.toLowerCase().includes(keyword) ||
+        a.note.toLowerCase().includes(keyword)
+      )
+  }, [auctions, searchTerm])
+
+  const visibleTotalCount = useMemo(() => {
+    if (statusFilter === 'all') {
+      const all = statusCounts['all'] ?? 0
+      const draft = statusCounts['Draft'] ?? 0
+      return Math.max(0, all - draft)
+    }
+    return statusCounts[statusFilter] ?? 0
+  }, [statusCounts, statusFilter])
+
   return (
-    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
-      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý phiên đấu giá</h1>
-          <p className="text-responsive-base text-gray-600">Danh sách phiên đấu giá trong hệ thống</p>
+    <div className="mx-auto max-w-[1800px] p-6">
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Đấu giá</p>
+            <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý phiên đấu giá</h1>
+            <p className="text-responsive-base text-gray-600">Theo dõi danh sách phiên, phê duyệt hoặc từ chối.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm theo mã phiên hoặc nông trại"
+                className="pl-9"
+              />
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => fetchAuctions()} disabled={isLoading}>
+              {isLoading ? 'Đang tải...' : 'Làm mới'}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3 ml-auto">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Trạng thái</label>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map(tab => {
+            const count = tab.key === 'all'
+              // ? Math.max(0, (statusCounts['all'] ?? 0) - (statusCounts['Draft'] ?? 0))
+              ? statusCounts['all'] ?? 0
+              : statusCounts[tab.key] ?? 0
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => { setStatusFilter(tab.key); setPageNumber(1) }}
+                className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                  statusFilter === tab.key
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+                }`}
+              >
+                {tab.label} <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">{count}</span>
+              </button>
+            )
+          })}
+          <div className="relative">
+            <Filter className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+              additionalStatuses.find(s => s.key === statusFilter) ? 'text-emerald-600' : 'text-gray-400'
+            }`} />
             <select
-              className="h-9 rounded border border-gray-300 text-sm px-2"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | AuctionStatus)}
+              value={additionalStatuses.find(s => s.key === statusFilter) ? statusFilter : ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setStatusFilter(e.target.value as AuctionStatus)
+                  setPageNumber(1)
+                } else {
+                  setStatusFilter('all')
+                  setPageNumber(1)
+                }
+              }}
+              className={`appearance-none rounded-2xl border px-10 py-2 pr-8 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 ${
+                additionalStatuses.find(s => s.key === statusFilter)
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+              }`}
             >
-              <option value="all">Tất cả</option>
-              <option value="Draft">Bản nháp</option>
-              <option value="Pending">Đợi xét duyệt</option>
-              <option value="Rejected">Bị từ chối</option>
-              <option value="Approved">Chấp nhận</option>
-              <option value="OnGoing">Đang diễn ra</option>
-              <option value="Completed">Hoàn thành</option>
-              <option value="NoWinner">Không người chiến thắng</option>
-              <option value="Cancelled">Hủy</option>
+              <option value="">Lọc thêm...</option>
+              {additionalStatuses.map(status => {
+                const count = statusCounts[status.key] ?? 0
+                return (
+                  <option key={status.key} value={status.key}>
+                    {status.label} ({count})
+                  </option>
+                )
+              })}
             </select>
+            <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+              additionalStatuses.find(s => s.key === statusFilter) ? 'text-emerald-600' : 'text-gray-400'
+            }`} />
           </div>
         </div>
       </div>
 
       <Card className="card-responsive">
-        <div className="mb-4">
-          <h2 className="text-responsive-xl font-semibold text-gray-900 mb-2">Danh sách phiên đấu giá</h2>
-          <p className="text-responsive-sm text-gray-600">Có {totalCount} phiên đấu giá trong hệ thống</p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-responsive-xl font-semibold text-gray-900">Danh sách phiên đấu giá</h2>
+            <p className="text-responsive-sm text-gray-600">
+              {isLoading ? 'Đang tải...' : `Hiển thị ${filteredAuctions.length} / ${visibleTotalCount || totalCount} phiên`}
+            </p>
+          </div>
+          <div className="text-sm text-gray-500">Trang {pageNumber}/{totalPages || 1}</div>
         </div>
-        <div className="overflow-x-hidden">
+        <div className="overflow-x-auto">
           <SimpleTable>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">Mã phiên</TableHead>
-                <TableHead className="whitespace-nowrap">Tiêu đề</TableHead>
-                <TableHead className="hidden md:table-cell">Nông trại</TableHead>
-                <TableHead className="hidden md:table-cell">Bắt đầu</TableHead>
-                <TableHead className="hidden md:table-cell">Kết thúc</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Thao tác</TableHead>
-                <TableHead> </TableHead>
+                <TableHead className="w-[100px] whitespace-nowrap text-left">Mã phiên</TableHead>
+                <TableHead className="w-[240px] whitespace-nowrap text-left">Tiêu đề</TableHead>
+                <TableHead className="hidden md:table-cell w-[160px] whitespace-nowrap text-left">Nông trại</TableHead>
+                <TableHead className="hidden md:table-cell w-[140px] whitespace-nowrap text-left">Bắt đầu</TableHead>
+                <TableHead className="hidden md:table-cell w-[140px] whitespace-nowrap text-left">Kết thúc</TableHead>
+                <TableHead className="w-[120px] text-left">Trạng thái</TableHead>
+                <TableHead className="w-[280px] text-left">Thao tác</TableHead>
+                <TableHead className="w-[100px] text-left"> </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {auctions.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">{a.sessionCode}</TableCell>
-                  <TableCell className="font-medium text-xs md:text-sm max-w-[480px] truncate whitespace-nowrap">
-                    {a.note}
-                  </TableCell>
-                  <TableCell className="text-xs max-w-[280px] truncate whitespace-nowrap">{a.farmName}</TableCell>
-                  <TableCell className="text-xs hidden md:table-cell">{formatDateTime(a.publishDate)}</TableCell>
-                  <TableCell className="text-xs hidden md:table-cell">{formatDateTime(a.endDate)}</TableCell>
-                  <TableCell>{getStatusBadge(a.uiStatus)}</TableCell>
+              {filteredAuctions.map((a) => (
+                <TableRow key={a.id} className="hover:bg-gray-50">
+                  <TableCell className="font-mono text-xs whitespace-nowrap text-left">{a.sessionCode}</TableCell>
+                  <TableCell className="font-medium text-xs md:text-sm max-w-[240px] truncate text-left">{a.note}</TableCell>
+                  <TableCell className="text-xs max-w-[160px] truncate hidden md:table-cell text-left">{a.farmName}</TableCell>
+                  <TableCell className="text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.publishDate)}</TableCell>
+                  <TableCell className="text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.endDate)}</TableCell>
+                  <TableCell className="text-left">{getStatusBadge(a.uiStatus)}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1.5 justify-center flex-wrap">
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white border-0 text-xs"
-                        onClick={() => handleActionClick(a.id, 'approve')}
-                      >
-                        ✓ Duyệt
-                      </Button>
+                    {a.uiStatus === 'Pending' && (
+                      <div className="flex gap-1.5 justify-start flex-wrap">
+                        <Button
+                          size="sm"
+                          onClick={() => handleActionClick(a.id, 'approve')}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          ✓ Duyệt
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleActionClick(a.id, 'reject')}
+                          className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
+                        >
+                          ✕ Không duyệt
+                        </Button>
+                      </div>
+                    )}
 
-                      <Button
-                        size="sm"
-                        className="bg-red-600 hover:bg-red-700 text-white border-0 text-xs"
-                        onClick={() => handleActionClick(a.id, 'reject')}
-                      >
-                        ✕ Không duyệt
-                      </Button>
+                    {a.uiStatus === 'OnGoing' && (
+                      <div className="flex gap-1.5 justify-start flex-wrap">
+                        <Button
+                          size="sm"
+                          className="bg-amber-500 hover:bg-amber-600 text-white"
+                          onClick={() => handleActionClick(a.id, 'stop')}
+                        >
+                          <PauseCircle className="w-4 h-4 mr-1.5" />
+                          Dừng
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                          onClick={() => handleActionClick(a.id, 'cancel')}
+                        >
+                          ✕ Hủy
+                        </Button>
+                      </div>
+                    )}
 
-                      <Button
-                        size="sm"
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white border-0 text-xs"
-                        onClick={() => handleActionClick(a.id, 'pending')}
-                      >
-                        ⧖ Đợi xét
-                      </Button>
-                    </div>
+                    {a.uiStatus !== 'Pending' && a.uiStatus !== 'OnGoing' && (
+                      <span className="text-sm text-gray-400">—</span>
+                    )}
                   </TableCell>
 
-                  <TableCell className="text-right">
+                  <TableCell className="text-left">
                     <Button
                       size="sm"
                       variant="outline"
+                      className="text-xs px-2 py-1"
                       onClick={() => navigate(ROUTES.ADMIN_AUCTIONS_BY_ID.replace(':id', a.id))}
                     >
                       Chi tiết
@@ -279,7 +532,7 @@ export default function AuctionsPage() {
           </SimpleTable>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-3 text-sm">
+            <div className="flex items-center justify-between mt-3 text-sm px-4">
               <span className="text-gray-600">
                 Trang {pageNumber}/{totalPages}
               </span>
