@@ -234,25 +234,25 @@ export default function ReportsPage() {
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left min-w-[120px]">Loại báo cáo</TableHead>
-                  <TableHead className="text-left min-w-[200px]">Nội dung</TableHead>
-                  <TableHead className="text-left min-w-[150px]">Mã phiên đấu giá</TableHead>
-                  <TableHead className="text-left min-w-[150px]">Người báo cáo</TableHead>
-                  <TableHead className="text-left min-w-[120px]">Trạng thái</TableHead>
-                  <TableHead className="text-left min-w-[150px]">Ngày tạo</TableHead>
-                  <TableHead className="text-right min-w-[200px]">Thao tác</TableHead>
+                  <TableHead className="text-left w-[12%] min-w-[130px]">Loại báo cáo</TableHead>
+                  <TableHead className="text-left w-[20%] min-w-[200px]">Nội dung</TableHead>
+                  <TableHead className="text-left w-[15%] min-w-[150px]">Mã phiên đấu giá</TableHead>
+                  <TableHead className="text-left w-[15%] min-w-[150px]">Người báo cáo</TableHead>
+                  <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
+                  <TableHead className="text-left w-[13%] min-w-[150px]">Ngày tạo</TableHead>
+                  <TableHead className="text-right w-[15%] min-w-[180px]">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i} className="hover:bg-gray-50">
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="text-right"><div className="h-8 bg-gray-200 rounded animate-pulse w-24 ml-auto" /></TableCell>
+                    <TableCell className="w-[12%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[20%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[15%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[15%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[10%]"><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
+                    <TableCell className="w-[13%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="text-right w-[15%]"><div className="h-8 bg-gray-200 rounded animate-pulse w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -262,39 +262,39 @@ export default function ReportsPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-left min-w-[120px]">Loại báo cáo</TableHead>
-                    <TableHead className="text-left min-w-[200px]">Nội dung</TableHead>
-                    <TableHead className="text-left min-w-[150px]">Mã phiên đấu giá</TableHead>
-                    <TableHead className="text-left min-w-[150px]">Người báo cáo</TableHead>
-                    <TableHead className="text-left min-w-[120px]">Trạng thái</TableHead>
-                    <TableHead className="text-left min-w-[150px]">Ngày tạo</TableHead>
-                    <TableHead className="text-right min-w-[200px]">Thao tác</TableHead>
+                    <TableHead className="text-left w-[12%] min-w-[130px]">Loại báo cáo</TableHead>
+                    <TableHead className="text-left w-[20%] min-w-[200px]">Nội dung</TableHead>
+                    <TableHead className="text-left w-[15%] min-w-[150px]">Mã phiên đấu giá</TableHead>
+                    <TableHead className="text-left w-[15%] min-w-[150px]">Người báo cáo</TableHead>
+                    <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
+                    <TableHead className="text-left w-[13%] min-w-[150px]">Ngày tạo</TableHead>
+                    <TableHead className="text-right w-[15%] min-w-[180px]">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map(report => (
                     <TableRow key={report.id} className="hover:bg-gray-50">
-                      <TableCell className="min-h-[48px]">
+                      <TableCell className="min-h-[48px] w-[12%]">
                         <div className="font-medium text-gray-900">{REPORT_TYPE_LABELS[report.reportType]}</div>
                       </TableCell>
-                      <TableCell className="min-h-[48px]">
+                      <TableCell className="min-h-[48px] w-[20%]">
                         <div className="text-sm text-gray-700 line-clamp-2" title={report.note}>
                           {report.note}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[48px]">
+                      <TableCell className="text-sm min-h-[48px] w-[15%]">
                         <div className="truncate max-w-[200px]" title={report.auctionId}>
                           {report.auctionId}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[48px]">
+                      <TableCell className="text-sm min-h-[48px] w-[15%]">
                         <div className="truncate max-w-[200px]" title={report.reporterId}>
                           {report.reporterId}
                         </div>
                       </TableCell>
-                      <TableCell className="min-h-[48px]">{getStatusBadge(report.reportStatus)}</TableCell>
-                      <TableCell className="text-sm min-h-[48px]">{formatDate(report.createdAt)}</TableCell>
-                      <TableCell className="text-right min-h-[48px]">
+                      <TableCell className="min-h-[48px] w-[10%]">{getStatusBadge(report.reportStatus)}</TableCell>
+                      <TableCell className="text-sm min-h-[48px] w-[13%]">{formatDate(report.createdAt)}</TableCell>
+                      <TableCell className="text-right min-h-[48px] w-[15%]">
                         {report.reportStatus === "Pending" ? (
                           <div className="flex items-center justify-end gap-2">
                             <Button

@@ -1,7 +1,7 @@
 // auctionApi.ts
 import { HttpClient } from './httpClient'
 import { ENDPOINTS } from '../constants/apiConstants'
-import type { ApiEnglishAuctionHarvest, APIResponse, AuctionStatus } from '../../types/api'
+import type { ApiEnglishAuctionHarvest, APIResponse, AuctionStatus, ApiAuctionLog, AuctionLogType } from '../../types/api'
 import type { ApiEnglishAuction } from '../../types/api'
 
 const GATEWAY_BASE_URL = import.meta.env.VITE_GATEWAY_URL ?? 'https://gateway.a-379.store'
@@ -54,6 +54,24 @@ export const auctionApi = {
       null, // body trống
       { params: { status } } // query param
     )
-  }
+  },
+
+  async getAuctionLogsByAuctionId(
+    auctionId: string
+  ): Promise<APIResponse<ApiAuctionLog[]>> {
+    return auctionHttpClient.get<ApiAuctionLog[]>(
+      ENDPOINTS.auction.auctionLog.byAuction(auctionId),
+      { cache: false }
+    )
+  },
+
+  async getAuctionLogsByType(
+    logType: AuctionLogType
+  ): Promise<APIResponse<ApiAuctionLog[]>> {
+    return auctionHttpClient.get<ApiAuctionLog[]>(
+      ENDPOINTS.auction.auctionLog.byType(logType),
+      { cache: false }
+    )
+  },
   
 }

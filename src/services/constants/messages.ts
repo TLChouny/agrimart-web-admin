@@ -186,4 +186,28 @@ export const CATEGORY_MESSAGES = {
   DELETE_ERROR: 'Không thể xóa loại mãng cầu. Vui lòng thử lại.',
 } as const
 
+export const POST_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách bài đăng thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách bài đăng. Vui lòng thử lại.',
+  CREATE_SUCCESS: 'Tạo bài đăng mới thành công.',
+  CREATE_ERROR: 'Không thể tạo bài đăng. Vui lòng thử lại.',
+  UPDATE_SUCCESS: 'Cập nhật bài đăng thành công.',
+  UPDATE_ERROR: 'Không thể cập nhật bài đăng. Vui lòng thử lại.',
+  DELETE_SUCCESS: 'Xóa bài đăng thành công.',
+  DELETE_ERROR: 'Không thể xóa bài đăng. Vui lòng thử lại.',
+  STATUS_UPDATE_SUCCESS: 'Cập nhật trạng thái bài đăng thành công.',
+  STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái bài đăng.',
+} as const
+
+export const BUY_REQUEST_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách yêu cầu mua hàng thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách yêu cầu mua hàng. Vui lòng thử lại.',
+  STATUS_UPDATE_SUCCESS: 'Cập nhật trạng thái yêu cầu mua hàng thành công.',
+  STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái yêu cầu mua hàng.',
+  APPROVE_SUCCESS: 'Duyệt yêu cầu mua hàng thành công.',
+  APPROVE_ERROR: 'Không thể duyệt yêu cầu mua hàng. Vui lòng thử lại.',
+  REJECT_SUCCESS: 'Từ chối yêu cầu mua hàng thành công.',
+  REJECT_ERROR: 'Không thể từ chối yêu cầu mua hàng. Vui lòng thử lại.',
+} as const
+
 

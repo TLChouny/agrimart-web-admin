@@ -93,7 +93,7 @@ export function AuctionLotsSection({
 
               <div className="p-6 space-y-6">
                 {/* Farm & Crop Info Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,58%)_minmax(0,42%)]">
                   {/* Farm Card */}
                   <div className="relative rounded-lg border border-emerald-200 bg-emerald-50/30 p-5">
                     <div className="flex items-center gap-2 mb-4">
@@ -144,7 +144,7 @@ export function AuctionLotsSection({
                       <h4 className="text-sm font-bold uppercase tracking-wide text-amber-700">Thông tin cây trồng</h4>
                     </div>
                     {crop ? (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
                         <div className="space-y-1">
                           <p className="text-xs text-gray-500">Loại mãng cầu</p>
                           <p className="text-sm font-semibold text-gray-900">{crop.custardAppleType || '--'}</p>

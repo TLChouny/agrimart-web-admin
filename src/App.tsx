@@ -9,6 +9,7 @@ import AdminDashboardPage from './pages/Admin/DashboardPage';
 import UsersPage from './pages/Admin/UsersPage';
 import ApprovalPage from './pages/Admin/ApprovalPage';
 import FarmsPage from './pages/Admin/FarmsPage';
+import ProfileFarmPage from './pages/Admin/ProfileFarmPage';
 import CropsPage from './pages/Admin/CropsPage';
 import CategoriesPage from './pages/Admin/CategoriesPage';
 import HarvestsPage from './pages/Admin/HarvestsPage';
@@ -23,6 +24,7 @@ import AuctionReportsPage from './pages/Admin/AuctionReportsPage';
 import AdminSettingsPage from './pages/Admin/SettingsPage';
 import AdminHelpPage from './pages/Admin/HelpPage';
 import ReportsPage from './pages/Admin/ReportsPage';
+import BuyRequestsPage from './pages/Admin/BuyRequestsPage';
 
 import { ROUTES } from './constants';
 import { ToastProvider } from './contexts/ToastContext';
@@ -72,6 +74,11 @@ function App() {
             <AdminLayout><FarmsPage /></AdminLayout>
           </ProtectedRoute>
         } />
+        <Route path={ROUTES.ADMIN_FARM_PROFILE} element={
+          <ProtectedRoute>
+            <AdminLayout><ProfileFarmPage /></AdminLayout>
+          </ProtectedRoute>
+        } />
         <Route path={ROUTES.ADMIN_CROPS} element={
           <ProtectedRoute>
             <AdminLayout><CropsPage /></AdminLayout>
@@ -95,6 +102,11 @@ function App() {
         <Route path={ROUTES.ADMIN_REPORTS} element={
           <ProtectedRoute>
             <AdminLayout><ReportsPage /></AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path={ROUTES.ADMIN_BUY_REQUESTS} element={
+          <ProtectedRoute>
+            <AdminLayout><BuyRequestsPage /></AdminLayout>
           </ProtectedRoute>
         } />
         <Route path={ROUTES.ADMIN_PRODUCTS} element={

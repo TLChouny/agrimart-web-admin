@@ -66,11 +66,25 @@ export const ENDPOINTS = {
       harvestsBySession: (auctionSessionId: string) =>
         `/api/auction-service/auctionsession/${auctionSessionId}/harvest`,
     },
+    auctionLog: {
+      byAuction: (auctionId: string) => `/api/auction-service/auctionlog/auction/${auctionId}`,
+      byType: (logType: string) => `/api/auction-service/auctionlog/type/${logType}`,
+    },
   },
   report: {
     list: '/api/auction-service/report',
     detail: (id: string) => `/api/auction-service/report/${encodeURIComponent(id)}`,
     byAuction: (auctionId: string) => `/api/auction-service/report/auction/${auctionId}`,
+  },
+  post: {
+    list: '/api/post-service/post',
+    detail: (id: string) => `/api/post-service/post/${encodeURIComponent(id)}`,
+    updateStatus: (id: string) => `/api/post-service/post/${encodeURIComponent(id)}/status`,
+  },
+  buyRequest: {
+    list: '/api/auction-service/buyrequest',
+    detail: (id: string) => `/api/auction-service/buyrequest/${encodeURIComponent(id)}`,
+    updateStatus: (id: string) => `/api/auction-service/buyrequest/${encodeURIComponent(id)}/status`,
   },
 } as const
 

@@ -161,27 +161,27 @@ export default function FarmsPage() {
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left">Tên nông trại</TableHead>
-                  <TableHead className="text-left">Chủ sở hữu</TableHead>
-                  <TableHead className="text-left">Địa điểm</TableHead>
-                  <TableHead className="text-left">Diện tích</TableHead>
-                  <TableHead className="text-left">Trạng thái</TableHead>
-                  <TableHead className="text-left">Ngày tạo</TableHead>
-                  <TableHead className="text-right">Lô đất</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead className="text-left w-[18%]">Tên nông trại</TableHead>
+                  <TableHead className="text-left w-[15%]">Chủ sở hữu</TableHead>
+                  <TableHead className="text-left w-[22%]">Địa điểm</TableHead>
+                  <TableHead className="text-left w-[8%]">Diện tích</TableHead>
+                  <TableHead className="text-left w-[9%]">Trạng thái</TableHead>
+                  <TableHead className="text-left w-[10%]">Ngày tạo</TableHead>
+                  <TableHead className="text-right w-[8%]">Lô đất</TableHead>
+                  <TableHead className="text-right w-[10%]">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i} className="hover:bg-gray-50">
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="text-right"><div className="h-4 bg-gray-200 rounded animate-pulse w-12 ml-auto" /></TableCell>
-                    <TableCell className="text-right"><div className="h-8 bg-gray-200 rounded animate-pulse w-24 ml-auto" /></TableCell>
+                    <TableCell className="w-[18%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[15%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[22%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[8%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[9%]"><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
+                    <TableCell className="w-[10%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="text-right w-[8%]"><div className="h-4 bg-gray-200 rounded animate-pulse w-12 ml-auto" /></TableCell>
+                    <TableCell className="text-right w-[10%]"><div className="h-8 bg-gray-200 rounded animate-pulse w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -192,27 +192,35 @@ export default function FarmsPage() {
                 <SimpleTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-left">Tên nông trại</TableHead>
-                      <TableHead className="text-left">Chủ sở hữu</TableHead>
-                      <TableHead className="text-left">Địa điểm</TableHead>
-                      <TableHead className="text-left">Diện tích</TableHead>
-                      <TableHead className="text-left">Trạng thái</TableHead>
-                      <TableHead className="text-left">Ngày tạo</TableHead>
-                      <TableHead className="text-right">Lô đất</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
+                      <TableHead className="text-left w-[18%]">Tên nông trại</TableHead>
+                      <TableHead className="text-left w-[15%]">Chủ sở hữu</TableHead>
+                      <TableHead className="text-left w-[22%]">Địa điểm</TableHead>
+                      {/* <TableHead className="text-left w-[8%]">Diện tích</TableHead> */}
+                      <TableHead className="text-left w-[9%]">Trạng thái</TableHead>
+                      <TableHead className="text-left w-[10%]">Ngày tạo</TableHead>
+                      <TableHead className="text-right w-[8%]">Lô đất</TableHead>
+                      <TableHead className="text-right w-[8%]">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pageItems.map((farm) => (
                       <TableRow key={farm.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium min-h-[48px]"><div className="truncate max-w-[240px]" title={farm.name}>{farm.name}</div></TableCell>
-                        <TableCell className="min-h-[48px]"><div className="truncate max-w-[200px]" title={farm.owner}>{farm.owner}</div></TableCell>
-                        <TableCell className="min-h-[48px]"><div className="truncate max-w-[280px]" title={farm.location}>{farm.location}</div></TableCell>
-                        <TableCell className="text-sm min-h-[48px]">{farm.size}</TableCell>
-                        <TableCell className="min-h-[48px]">{getStatusBadge(farm.status)}</TableCell>
-                        <TableCell className="text-sm min-h-[48px]">{formatDate(farm.createdAt)}</TableCell>
-                        <TableCell className="text-sm text-right min-h-[48px]">{cropCounts[farm.id] ?? '—'} lô</TableCell>
-                        <TableCell className="text-right min-h-[48px]">
+                        <TableCell className="font-medium min-h-[48px] w-[18%]">
+                          <button
+                            onClick={() => navigate(ROUTES.ADMIN_FARM_PROFILE.replace(':farmId', farm.id))}
+                            className="text-left truncate max-w-[240px] text-blue-600 hover:text-blue-700 hover:underline"
+                            title={farm.name}
+                          >
+                            {farm.name}
+                          </button>
+                        </TableCell>
+                        <TableCell className="min-h-[48px] w-[15%]"><div className="truncate max-w-[200px]" title={farm.owner}>{farm.owner}</div></TableCell>
+                        <TableCell className="min-h-[48px] w-[22%]"><div className="truncate max-w-[280px]" title={farm.location}>{farm.location}</div></TableCell>
+                        {/* <TableCell className="text-sm min-h-[48px] w-[8%]">{farm.size}</TableCell> */}
+                        <TableCell className="min-h-[48px] w-[9%]">{getStatusBadge(farm.status)}</TableCell>
+                        <TableCell className="text-sm min-h-[48px] w-[10%]">{formatDate(farm.createdAt)}</TableCell>
+                        <TableCell className="text-sm text-right min-h-[48px] w-[8%]">{cropCounts[farm.id] ?? '—'} lô</TableCell>
+                        <TableCell className="text-right min-h-[48px] w-[10%]">
                           <Button size="sm" variant="outline" onClick={() => handleViewCrops(farm.id)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Xem vụ trồng
@@ -244,7 +252,13 @@ export default function FarmsPage() {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           {farm.imageUrl && (<img src={farm.imageUrl} alt={farm.name} className="w-full h-36 object-cover rounded mb-2" />)}
-                          <h3 className="font-medium text-gray-900 truncate" title={farm.name}>{farm.name}</h3>
+                          <button
+                            onClick={() => navigate(ROUTES.ADMIN_FARM_PROFILE.replace(':farmId', farm.id))}
+                            className="font-medium text-gray-900 truncate text-left text-blue-600 hover:text-blue-700 hover:underline"
+                            title={farm.name}
+                          >
+                            {farm.name}
+                          </button>
                           <p className="text-sm text-gray-500 truncate" title={farm.owner}>Chủ sở hữu: {farm.owner}</p>
                         </div>
                         <div className="ml-2">{getStatusBadge(farm.status)}</div>

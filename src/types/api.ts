@@ -106,7 +106,7 @@ export interface Order {
 }
 
 // Auction related types
-export type AuctionStatus = 'Draft' | 'Pending' | 'Rejected' | 'Approved' | 'OnGoing' | 'Completed' | 'NoWinner' | 'Cancelled'
+export type AuctionStatus = 'Draft' | 'Pending' | 'Rejected' | 'Approved' | 'OnGoing' | 'Completed' | 'NoWinner' | 'Cancelled' |'Pause'
 export interface AuctionLot {
   id: string
   cropName: string
@@ -182,6 +182,20 @@ export interface ApiEnglishAuctionHarvest {
   auctionSessionId: string
   harvestId: string
 }
+
+// Auction Log related types
+export type AuctionLogType = 'Create' | 'StatusChange' | 'Publish' | 'Update' | 'Delete'
+export interface ApiAuctionLog {
+  id: string
+  auctionPostId: string
+  userId: string
+  type: AuctionLogType
+  dateTimeUpdate: string
+  oldEntity: string | null
+  newEntity: string | null
+  createdAt: string
+  updatedAt: string | null
+}
 // UI layer types (for display purposes)
 export interface Farm {
   id: string
@@ -252,4 +266,82 @@ export interface ReportListParams {
 
 export interface UpdateReportStatusRequest {
   reportStatus: ReportStatus
+}
+
+// Post related types
+export type PostStatus = 'Draft' | 'Published' | 'Archived' | 'Deleted'
+export interface ApiPost {
+  id: string
+  title: string
+  content: string
+  authorId: string
+  authorName?: string
+  status: PostStatus
+  category?: string
+  tags?: string[]
+  viewCount?: number
+  likeCount?: number
+  featuredImage?: string
+  publishedAt?: string | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface PaginatedPosts {
+  items: ApiPost[]
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
+  previousPage: boolean
+  nextPage: boolean
+}
+
+export interface CreatePostDTO {
+  title: string
+  content: string
+  category?: string
+  tags?: string[]
+  featuredImage?: string
+  status?: PostStatus
+}
+
+export interface UpdatePostDTO {
+  title?: string
+  content?: string
+  category?: string
+  tags?: string[]
+  featuredImage?: string
+  status?: PostStatus
+}
+
+// BuyRequest related types
+export type BuyRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Fulfilled' | 'Cancelled'
+export interface ApiBuyRequest {
+  id: string
+  wholesalerId: string
+  title: string
+  productTypeId: string
+  requiredQuantity: number
+  desiredPrice: number
+  requiredDate: string
+  location: string
+  notes: string
+  status: BuyRequestStatus
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface PaginatedBuyRequests {
+  items: ApiBuyRequest[]
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
+  previousPage: boolean
+  nextPage: boolean
+}
+
+export interface UpdateBuyRequestStatusDTO {
+  status: BuyRequestStatus
 }

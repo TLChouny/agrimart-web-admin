@@ -450,32 +450,32 @@ export default function AuctionsPage() {
           <SimpleTable>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px] whitespace-nowrap text-left">Mã phiên</TableHead>
-                <TableHead className="w-[240px] whitespace-nowrap text-left">Tiêu đề</TableHead>
-                <TableHead className="hidden md:table-cell w-[160px] whitespace-nowrap text-left">Nông trại</TableHead>
-                <TableHead className="hidden md:table-cell w-[140px] whitespace-nowrap text-left">Bắt đầu</TableHead>
-                <TableHead className="hidden md:table-cell w-[140px] whitespace-nowrap text-left">Kết thúc</TableHead>
-                <TableHead className="w-[120px] text-left">Trạng thái</TableHead>
-                <TableHead className="w-[280px] text-left">Thao tác</TableHead>
-                <TableHead className="w-[100px] text-left"> </TableHead>
+                <TableHead className="w-[10%] whitespace-nowrap text-left">Mã phiên</TableHead>
+                {/* <TableHead className="w-[18%] whitespace-nowrap text-left">Ghi chú</TableHead> */}
+                <TableHead className="hidden md:table-cell w-[15%] whitespace-nowrap text-left">Nông trại</TableHead>
+                <TableHead className="hidden md:table-cell w-[12%] whitespace-nowrap text-left">Bắt đầu</TableHead>
+                <TableHead className="hidden md:table-cell w-[12%] whitespace-nowrap text-left">Kết thúc</TableHead>
+                <TableHead className="w-[10%] text-left">Trạng thái</TableHead>
+                <TableHead className="w-[18%] text-left">Thao tác</TableHead>
+                <TableHead className="w-[5%] text-left"> </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAuctions.map((a) => (
                 <TableRow key={a.id} className="hover:bg-gray-50">
-                  <TableCell className="font-mono text-xs whitespace-nowrap text-left">{a.sessionCode}</TableCell>
-                  <TableCell className="font-medium text-xs md:text-sm max-w-[240px] truncate text-left">{a.note}</TableCell>
-                  <TableCell className="text-xs max-w-[160px] truncate hidden md:table-cell text-left">{a.farmName}</TableCell>
-                  <TableCell className="text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.publishDate)}</TableCell>
-                  <TableCell className="text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.endDate)}</TableCell>
-                  <TableCell className="text-left">{getStatusBadge(a.uiStatus)}</TableCell>
-                  <TableCell>
+                  <TableCell className="w-[10%] font-mono text-xs whitespace-nowrap text-left">{a.sessionCode}</TableCell>
+                  {/* <TableCell className="w-[18%] font-medium text-xs md:text-sm truncate text-left">{a.note}</TableCell> */}
+                  <TableCell className="w-[15%] text-xs truncate hidden md:table-cell text-left">{a.farmName}</TableCell>
+                  <TableCell className="w-[12%] text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.publishDate)}</TableCell>
+                  <TableCell className="w-[12%] text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.endDate)}</TableCell>
+                  <TableCell className="w-[10%] text-left">{getStatusBadge(a.uiStatus)}</TableCell>
+                  <TableCell className="w-[18%]">
                     {a.uiStatus === 'Pending' && (
-                      <div className="flex gap-1.5 justify-start flex-wrap">
+                      <div className="flex gap-1.5 flex max-w-[180px]">
                         <Button
                           size="sm"
                           onClick={() => handleActionClick(a.id, 'approve')}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 min-w-[90px] text-xs"
                         >
                           ✓ Duyệt
                         </Button>
@@ -483,7 +483,7 @@ export default function AuctionsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleActionClick(a.id, 'reject')}
-                          className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
+                          className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600 flex-1 min-w-[90px] text-xs"
                         >
                           ✕ Không duyệt
                         </Button>
@@ -516,7 +516,7 @@ export default function AuctionsPage() {
                     )}
                   </TableCell>
 
-                  <TableCell className="text-left">
+                  <TableCell className="w-[5%] text-left">
                     <Button
                       size="sm"
                       variant="outline"

@@ -45,29 +45,29 @@ export default function OrdersPage() {
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mã</TableHead>
-                  <TableHead>Nông trại</TableHead>
-                  <TableHead>Khách hàng</TableHead>
-                  <TableHead>Tổng</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ngày</TableHead>
-                  <TableHead>Cọc</TableHead>
-                  <TableHead>Còn lại</TableHead>
-                  <TableHead> </TableHead>
+                  <TableHead className="w-[8%]">Mã</TableHead>
+                  <TableHead className="w-[14%]">Nông trại</TableHead>
+                  <TableHead className="w-[14%]">Khách hàng</TableHead>
+                  <TableHead className="w-[10%]">Tổng</TableHead>
+                  <TableHead className="w-[10%]">Trạng thái</TableHead>
+                  <TableHead className="w-[10%]">Ngày</TableHead>
+                  <TableHead className="w-[12%]">Cọc</TableHead>
+                  <TableHead className="w-[12%]">Còn lại</TableHead>
+                  <TableHead className="w-[10%] text-right"> </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {mockOrders.map((order) => (
                   <TableRow key={order.id}>
-                    <TableCell className="font-mono text-xs">{order.id}</TableCell>
-                    <TableCell><div className="truncate max-w-[160px]" title={order.farm}>{order.farm}</div></TableCell>
-                    <TableCell><div className="truncate max-w-[160px]" title={order.customer}>{order.customer}</div></TableCell>
-                    <TableCell className="font-medium text-xs">{formatCurrency(order.total)}</TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell className="text-xs">{formatDate(order.createdAt)}</TableCell>
-                    <TableCell><label className="inline-flex items-center gap-2 cursor-default select-none whitespace-nowrap text-xs"><span className={`w-2.5 h-2.5 rounded-full ${order.payment.depositPaid ? 'bg-emerald-600' : 'bg-gray-300'}`} /><span className="text-gray-700">{order.payment.depositPaid ? 'Đã cọc' : 'Chưa cọc'}</span><span className="hidden lg:inline text-gray-500">· {formatCurrency(order.payment.depositAmount)}</span></label></TableCell>
-                    <TableCell><label className="inline-flex items-center gap-2 cursor-default select-none whitespace-nowrap text-xs"><span className={`w-2.5 h-2.5 rounded-full ${order.payment.remainingPaid ? 'bg-emerald-600' : 'bg-gray-300'}`} /><span className="text-gray-700">{order.payment.remainingPaid ? 'Đã TT' : 'Chưa TT'}</span><span className="hidden lg:inline text-gray-500">· {formatCurrency(order.payment.remainingAmount)}</span></label></TableCell>
-                    <TableCell className="text-right whitespace-nowrap"><Button size="sm" variant="outline" onClick={() => openDetails(order)} className="h-7 px-2 text-xs">Xem chi tiết</Button></TableCell>
+                    <TableCell className="font-mono text-xs w-[8%]">{order.id}</TableCell>
+                    <TableCell className="w-[14%]"><div className="truncate max-w-[160px]" title={order.farm}>{order.farm}</div></TableCell>
+                    <TableCell className="w-[14%]"><div className="truncate max-w-[160px]" title={order.customer}>{order.customer}</div></TableCell>
+                    <TableCell className="font-medium text-xs w-[10%]">{formatCurrency(order.total)}</TableCell>
+                    <TableCell className="w-[10%]">{getStatusBadge(order.status)}</TableCell>
+                    <TableCell className="text-xs w-[10%]">{formatDate(order.createdAt)}</TableCell>
+                    <TableCell className="w-[12%]"><label className="inline-flex items-center gap-2 cursor-default select-none whitespace-nowrap text-xs"><span className={`w-2.5 h-2.5 rounded-full ${order.payment.depositPaid ? 'bg-emerald-600' : 'bg-gray-300'}`} /><span className="text-gray-700">{order.payment.depositPaid ? 'Đã cọc' : 'Chưa cọc'}</span><span className="hidden lg:inline text-gray-500">· {formatCurrency(order.payment.depositAmount)}</span></label></TableCell>
+                    <TableCell className="w-[12%]"><label className="inline-flex items-center gap-2 cursor-default select-none whitespace-nowrap text-xs"><span className={`w-2.5 h-2.5 rounded-full ${order.payment.remainingPaid ? 'bg-emerald-600' : 'bg-gray-300'}`} /><span className="text-gray-700">{order.payment.remainingPaid ? 'Đã TT' : 'Chưa TT'}</span><span className="hidden lg:inline text-gray-500">· {formatCurrency(order.payment.remainingAmount)}</span></label></TableCell>
+                    <TableCell className="text-right whitespace-nowrap w-[10%]"><Button size="sm" variant="outline" onClick={() => openDetails(order)} className="h-7 px-2 text-xs">Xem chi tiết</Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -109,20 +109,20 @@ export default function HarvestsPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[120px]">Ngày bắt đầu</TableHead>
-                    <TableHead className="min-w-[120px]">Ngày thu hoạch</TableHead>
-                    <TableHead className="min-w-[100px]">Số lượng</TableHead>
-                    <TableHead className="min-w-[80px]">Đơn vị</TableHead>
-                    <TableHead className="min-w-[120px]">Giá bán</TableHead>
-                    <TableHead className="min-w-[200px]">Ghi chú</TableHead>
-                    <TableHead className="min-w-[120px]">Thao tác</TableHead>
+                    <TableHead className="w-[17%] min-w-[140px]">Ngày bắt đầu</TableHead>
+                    <TableHead className="w-[17%] min-w-[140px]">Ngày thu hoạch</TableHead>
+                    <TableHead className="w-[12%] min-w-[100px]">Số lượng</TableHead>
+                    <TableHead className="w-[10%] min-w-[80px]">Đơn vị</TableHead>
+                    <TableHead className="w-[14%] min-w-[120px]">Giá bán</TableHead>
+                    <TableHead className="w-[20%] min-w-[200px]">Ghi chú</TableHead>
+                    <TableHead className="w-[10%] min-w-[120px] text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pageItems.map(harvest => (
                     <TableRow key={harvest.id}>
-                      <TableCell className="text-xs">{formatDateTime(harvest.startDate)}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs w-[17%]">{formatDateTime(harvest.startDate)}</TableCell>
+                      <TableCell className="text-xs w-[17%]">
                         {harvest.harvestDate ? (
                           formatDateTime(harvest.harvestDate)
                         ) : (
@@ -131,13 +131,13 @@ export default function HarvestsPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs">{harvest.totalQuantity}</TableCell>
-                      <TableCell className="text-xs">{harvest.unit}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs w-[12%]">{harvest.totalQuantity}</TableCell>
+                      <TableCell className="text-xs w-[10%]">{harvest.unit}</TableCell>
+                      <TableCell className="text-xs w-[14%]">
                         {harvest.salePrice > 0 ? formatCurrency(harvest.salePrice) : '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-gray-600">{harvest.note || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs text-gray-600 w-[20%]">{harvest.note || '—'}</TableCell>
+                      <TableCell className="text-right w-[10%]">
                         <Button
                           variant="outline"
                           size="sm"
@@ -214,23 +214,23 @@ export default function HarvestsPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[100px]">Cấp độ</TableHead>
-                    <TableHead className="min-w-[120px]">Số lượng</TableHead>
-                    <TableHead className="min-w-[80px]">Đơn vị</TableHead>
-                    <TableHead className="min-w-[200px]">Ngày tạo</TableHead>
+                    <TableHead className="w-[20%] min-w-[100px]">Cấp độ</TableHead>
+                    <TableHead className="w-[20%] min-w-[120px]">Số lượng</TableHead>
+                    <TableHead className="w-[15%] min-w-[80px]">Đơn vị</TableHead>
+                    <TableHead className="w-[45%] min-w-[200px]">Ngày tạo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {gradeDetails.map(gradeDetail => (
                     <TableRow key={gradeDetail.id}>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs w-[20%]">
                         <Badge variant="outline" className="text-blue-600 border-blue-600">
                           Cấp {gradeDetail.grade}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs">{gradeDetail.quantity}</TableCell>
-                      <TableCell className="text-xs">{gradeDetail.unit}</TableCell>
-                      <TableCell className="text-xs">{formatDateTime(gradeDetail.createdAt)}</TableCell>
+                      <TableCell className="text-xs w-[20%]">{gradeDetail.quantity}</TableCell>
+                      <TableCell className="text-xs w-[15%]">{gradeDetail.unit}</TableCell>
+                      <TableCell className="text-xs w-[45%]">{formatDateTime(gradeDetail.createdAt)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

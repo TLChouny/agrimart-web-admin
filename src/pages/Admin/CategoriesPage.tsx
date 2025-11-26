@@ -220,7 +220,7 @@ export default function CategoriesPage() {
     <div className="mx-auto max-w-[1800px] p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Danh mục</p>
+          {/* <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Danh mục</p> */}
           <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý loại mãng cầu</h1>
           <p className="text-responsive-base text-gray-600">Tạo và cập nhật danh mục phục vụ các quy trình nông trại.</p>
         </div>
@@ -295,19 +295,23 @@ export default function CategoriesPage() {
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[160px]">Tên</TableHead>
-                  <TableHead className="min-w-[240px]">Mô tả</TableHead>
-                  <TableHead className="text-right min-w-[140px]">Thao tác</TableHead>
+                  <TableHead className="w-[30%] min-w-[160px] text-left">Tên</TableHead>
+                  <TableHead className="w-[50%] min-w-[240px] text-left">Mô tả</TableHead>
+                  <TableHead className="text-right w-[20%] min-w-[140px]">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 3 }).map((_, rowIdx) => (
                   <TableRow key={rowIdx}>
-                    {[160, 240, 140].map((_, colIdx) => (
-                      <TableCell key={colIdx} className="py-5">
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
-                      </TableCell>
-                    ))}
+                    <TableCell className="py-5 w-[30%]">
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+                    </TableCell>
+                    <TableCell className="py-5 w-[50%]">
+                      <div className="h-4 w-5/6 animate-pulse rounded bg-gray-200" />
+                    </TableCell>
+                    <TableCell className="py-5 text-right w-[20%]">
+                      <div className="ml-auto h-4 w-24 animate-pulse rounded bg-gray-200" />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -317,9 +321,9 @@ export default function CategoriesPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[160px]">Tên</TableHead>
-                    <TableHead className="min-w-[240px]">Mô tả</TableHead>
-                    <TableHead className="text-right min-w-[140px]">Thao tác</TableHead>
+                    <TableHead className="w-[30%] min-w-[160px] text-left">Tên</TableHead>
+                    <TableHead className="w-[50%] min-w-[240px] text-left">Mô tả</TableHead>
+                    <TableHead className="text-right w-[20%] min-w-[140px]">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -330,9 +334,9 @@ export default function CategoriesPage() {
                     const pageItems = filteredTypes.slice(start, start + PAGE_SIZE)
                     return pageItems.map(type => (
                       <TableRow key={type.id}>
-                        <TableCell className="font-medium">{type.name}</TableCell>
-                        <TableCell className="text-sm text-gray-600">{type.description || '—'}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="font-medium w-[30%]">{type.name}</TableCell>
+                        <TableCell className="text-sm text-gray-600 w-[50%]">{type.description || '—'}</TableCell>
+                        <TableCell className="text-right w-[20%]">
                           <div className="flex justify-end gap-1.5">
                             <Button
                               size="icon"

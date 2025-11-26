@@ -356,36 +356,34 @@ export default function CropsPage() {
               <SimpleTable>
                 <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left min-w-[200px]">Vụ trồng</TableHead>
-                  <TableHead className="text-left min-w-[150px]">Loại</TableHead>
-                  <TableHead className="text-left min-w-[220px]">Thông tin</TableHead>
-                  <TableHead className="text-left hidden lg:table-cell min-w-[110px]">Gieo trồng</TableHead>
-                  <TableHead className="text-left hidden xl:table-cell min-w-[130px]">Dự kiến thu hoạch</TableHead>
-                  <TableHead className="text-left min-w-[120px]">Trạng thái</TableHead>
-                  <TableHead className="text-right min-w-[120px] whitespace-nowrap">Thao tác</TableHead>
+                  <TableHead className="text-left w-[22%] min-w-[200px]">Vụ trồng</TableHead>
+                  <TableHead className="text-left w-[26%] min-w-[220px]">Thông tin</TableHead>
+                  <TableHead className="text-left hidden lg:table-cell w-[14%] min-w-[110px]">Gieo trồng</TableHead>
+                  <TableHead className="text-left hidden xl:table-cell w-[14%] min-w-[130px]">Dự kiến thu hoạch</TableHead>
+                  <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
+                  <TableHead className="text-right w-[14%] min-w-[120px] whitespace-nowrap">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i} className="hover:bg-gray-50">
-                    <TableCell>
+                    <TableCell className="w-[22%]">
                       <div className="space-y-1">
                         <div className="h-4 bg-gray-200 rounded animate-pulse" />
                         <div className="h-3 bg-gray-200 rounded animate-pulse w-24" />
                       </div>
                     </TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell>
+                    <TableCell className="w-[26%]">
                       <div className="space-y-1">
                         <div className="h-3 bg-gray-200 rounded animate-pulse" />
                         <div className="h-3 bg-gray-200 rounded animate-pulse hidden md:block" />
                         <div className="h-3 bg-gray-200 rounded animate-pulse hidden md:block w-32" />
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="hidden xl:table-cell"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
-                    <TableCell className="text-right"><div className="h-8 bg-gray-200 rounded animate-pulse w-20 ml-auto" /></TableCell>
+                    <TableCell className="hidden lg:table-cell w-[14%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="hidden xl:table-cell w-[14%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className="w-[10%]"><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
+                    <TableCell className="text-right w-[14%]"><div className="h-8 bg-gray-200 rounded animate-pulse w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -393,30 +391,30 @@ export default function CropsPage() {
             </div>
           ) : filteredCrops.length > 0 ? (
             <>
-              <div className="min-w-[1000px]">
+              <div className="min-w-[900px]">
                 <SimpleTable>
                   <TableHeader>
                   <TableRow>
-                    <TableHead className="text-left min-w-[200px]">Vụ trồng</TableHead>
+                    <TableHead className="text-left w-[22%] min-w-[200px]">Vụ trồng</TableHead>
                     {/* <TableHead className="text-left min-w-[150px]">Loại</TableHead> */}
-                    <TableHead className="text-left min-w-[220px]">Thông tin</TableHead>
-                    <TableHead className="text-left hidden lg:table-cell min-w-[110px]">Gieo trồng</TableHead>
-                    <TableHead className="text-left hidden xl:table-cell min-w-[130px]">Dự kiến thu hoạch</TableHead>
-                    <TableHead className="text-left min-w-[120px]">Trạng thái</TableHead>
-                    <TableHead className="text-right min-w-[120px] whitespace-nowrap">Thao tác</TableHead>
+                    <TableHead className="text-left w-[26%] min-w-[220px]">Thông tin</TableHead>
+                    <TableHead className="text-left hidden lg:table-cell w-[14%] min-w-[110px]">Gieo trồng</TableHead>
+                    <TableHead className="text-left hidden xl:table-cell w-[14%] min-w-[130px]">Dự kiến thu hoạch</TableHead>
+                    <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
+                    <TableHead className="text-right w-[14%] min-w-[120px] whitespace-nowrap">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pageItems.map(crop => (
                     <TableRow key={crop.id} className="hover:bg-gray-50">
-                      <TableCell className="min-h-[48px]">
+                      <TableCell className="min-h-[48px] w-[22%]">
                         <div>
                           <div className="font-medium text-gray-900">{crop.name}</div>
                           <div className="text-xs text-gray-500 mt-0.5">{crop.farmName}</div>
                         </div>
                       </TableCell>
                       {/* <TableCell className="text-sm min-h-[48px]">{crop.type}</TableCell> */}
-                      <TableCell className="text-sm min-h-[48px]">
+                      <TableCell className="text-sm min-h-[48px] w-[26%]">
                         <div className="space-y-0.5">
                           <div>Diện tích: <span className="font-medium">{crop.area} m²</span></div>
                           <div className="hidden md:block">Số cây: <span className="font-medium">{crop.treeCount ?? '—'}</span></div>
@@ -428,10 +426,10 @@ export default function CropsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[36px] hidden lg:table-cell">{formatDate(crop.plantedAt)}</TableCell>
-                      <TableCell className="text-sm min-h-[36px] hidden xl:table-cell">{formatDate(crop.expectedHarvestAt)}</TableCell>
-                      <TableCell className="min-h-[48px]">{getStatusBadge(crop.status)}</TableCell>
-                      <TableCell className="text-right min-h-[48px] min-w-[120px] whitespace-nowrap">
+                      <TableCell className="text-sm min-h-[36px] hidden lg:table-cell w-[14%]">{formatDate(crop.plantedAt)}</TableCell>
+                      <TableCell className="text-sm min-h-[36px] hidden xl:table-cell w-[14%]">{formatDate(crop.expectedHarvestAt)}</TableCell>
+                      <TableCell className="min-h-[48px] w-[10%]">{getStatusBadge(crop.status)}</TableCell>
+                      <TableCell className="text-right min-h-[48px] min-w-[120px] whitespace-nowrap w-[14%]">
                         <Button
                           variant="outline"
                           size="sm"
@@ -527,19 +525,19 @@ export default function CropsPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[120px]">Ngày bắt đầu</TableHead>
-                    <TableHead className="min-w-[120px]">Ngày thu hoạch</TableHead>
-                    <TableHead className="min-w-[100px]">Số lượng</TableHead>
-                    <TableHead className="min-w-[80px]">Đơn vị</TableHead>
-                    <TableHead className="min-w-[120px]">Giá bán</TableHead>
-                    <TableHead className="min-w-[200px]">Ghi chú</TableHead>
+                    <TableHead className="w-[18%] min-w-[120px]">Ngày bắt đầu</TableHead>
+                    <TableHead className="w-[18%] min-w-[120px]">Ngày thu hoạch</TableHead>
+                    <TableHead className="w-[14%] min-w-[100px]">Số lượng</TableHead>
+                    <TableHead className="w-[10%] min-w-[80px]">Đơn vị</TableHead>
+                    <TableHead className="w-[16%] min-w-[120px]">Giá bán</TableHead>
+                    <TableHead className="w-[24%] min-w-[200px]">Ghi chú</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {harvests.map(harvest => (
                     <TableRow key={harvest.id}>
-                      <TableCell className="text-xs">{formatDateTime(harvest.startDate)}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs w-[18%]">{formatDateTime(harvest.startDate)}</TableCell>
+                      <TableCell className="text-xs w-[18%]">
                         {harvest.harvestDate ? (
                           formatDateTime(harvest.harvestDate)
                         ) : (
@@ -548,12 +546,12 @@ export default function CropsPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs">{harvest.totalQuantity}</TableCell>
-                      <TableCell className="text-xs">{harvest.unit}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs w-[14%]">{harvest.totalQuantity}</TableCell>
+                      <TableCell className="text-xs w-[10%]">{harvest.unit}</TableCell>
+                      <TableCell className="text-xs w-[16%]">
                         {harvest.salePrice > 0 ? formatCurrency(harvest.salePrice) : '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-gray-600">{harvest.note || '—'}</TableCell>
+                      <TableCell className="text-xs text-gray-600 w-[24%]">{harvest.note || '—'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
