@@ -8,7 +8,7 @@ import { Textarea } from '../../components/ui/textarea'
 import { AuctionActionDialog } from '../../components/auction/auction-action-dialog'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
-import type { ApiEnglishAuction, AuctionStatus, APIResponse, PaginatedEnglishAuctions } from '../../types/api'
+import type { ApiEnglishAuction, AuctionStatus, APIResponse, PaginatedEnglishAuctions, ApiAuctionExtend } from '../../types/api'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -75,7 +75,10 @@ export default function AuctionsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const { toast } = useToastContext()
   const [pauseReason, setPauseReason] = useState('')
+  const [pauseReasonCategory, setPauseReasonCategory] = useState<'fraud' | 'wrongInfo' | 'technical' | 'policy' | 'other' | null>(null)
+  const [pauseReasonSpecific, setPauseReasonSpecific] = useState<string>('')
   const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
+  const [auctionExtendsMap, setAuctionExtendsMap] = useState<Record<string, ApiAuctionExtend[]>>({})
 
   const [dialogState, setDialogState] = useState<DialogState>({
     isOpen: false,
@@ -242,12 +245,54 @@ export default function AuctionsPage() {
     fetchStatusCounts()
   }, [fetchStatusCounts])
 
+  // Fetch auction extends for all auctions
+  const fetchAuctionExtendsForAuctions = useCallback(async (auctionIds: string[]) => {
+    try {
+      const extendsPromises = auctionIds.map(async (auctionId) => {
+        try {
+          const res = await auctionApi.getAuctionExtendsByAuctionId(auctionId)
+          if (res.isSuccess && res.data) {
+            return [auctionId, res.data] as const
+          }
+          return [auctionId, []] as const
+        } catch (err) {
+          console.error(`Error fetching extends for auction ${auctionId}:`, err)
+          return [auctionId, []] as const
+        }
+      })
+      const results = await Promise.all(extendsPromises)
+      const newMap = Object.fromEntries(results)
+      setAuctionExtendsMap(prev => ({ ...prev, ...newMap }))
+    } catch (err) {
+      console.error('Error fetching auction extends:', err)
+    }
+  }, [])
+
+  // Fetch extends when auctions change
+  useEffect(() => {
+    if (auctions.length > 0) {
+      const auctionIds = auctions.map(a => a.id)
+      const missingIds = auctionIds.filter(id => !auctionExtendsMap[id])
+      if (missingIds.length > 0) {
+        fetchAuctionExtendsForAuctions(missingIds)
+      }
+    }
+  }, [auctions, auctionExtendsMap, fetchAuctionExtendsForAuctions])
+
+  // Calculate total extend minutes for an auction
+  const getTotalExtendMinutes = useCallback((auctionId: string): number => {
+    const extendsForAuction = auctionExtendsMap[auctionId] || []
+    return extendsForAuction.reduce((total, extend) => total + extend.extendDurationInMinutes, 0)
+  }, [auctionExtendsMap])
+
   const handleActionClick = (
     auctionId: string,
     actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel' | 'pause' | 'resume'
   ) => {
     if (actionType === 'pause') {
       setPauseReason('')
+      setPauseReasonCategory(null)
+      setPauseReasonSpecific('')
     }
     if (actionType === 'resume') {
       setResumeExtendMinute('0')
@@ -263,6 +308,22 @@ export default function AuctionsPage() {
     if (!dialogState.auctionId || !dialogState.actionType) return
 
     if (dialogState.actionType === 'pause') {
+      if (!pauseReasonCategory) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: 'Vui lòng chọn loại báo cáo.',
+          variant: 'destructive',
+        })
+        throw new Error('PAUSE_REASON_CATEGORY_REQUIRED')
+      }
+      if (pauseReasonCategory !== 'other' && !pauseReasonSpecific) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: 'Vui lòng chọn lý do tạm dừng.',
+          variant: 'destructive',
+        })
+        throw new Error('PAUSE_REASON_SPECIFIC_REQUIRED')
+      }
       const reason = pauseReason.trim()
       if (!reason) {
         toast({
@@ -323,6 +384,20 @@ export default function AuctionsPage() {
               item.id === dialogState.auctionId ? { ...item, status: 'OnGoing', uiStatus: 'OnGoing' } : item
             )
           )
+          // Refresh auction extends after resume
+          if (dialogState.auctionId) {
+            try {
+              const extendsRes = await auctionApi.getAuctionExtendsByAuctionId(dialogState.auctionId)
+              if (extendsRes.isSuccess && extendsRes.data) {
+                setAuctionExtendsMap(prev => ({
+                  ...prev,
+                  [dialogState.auctionId!]: extendsRes.data || [],
+                }))
+              }
+            } catch (err) {
+              console.error('Error refreshing auction extends:', err)
+            }
+          }
           toast({
             title: TOAST_TITLES.SUCCESS,
             description: AUCTION_MESSAGES.RESUME_SUCCESS,
@@ -462,24 +537,165 @@ export default function AuctionsPage() {
       actionType: null,
     })
     setPauseReason('')
+    setPauseReasonCategory(null)
+    setPauseReasonSpecific('')
     setResumeExtendMinute('0')
+  }
+
+  const pauseReasonOptions = {
+    fraud: {
+      title: 'Gian lận',
+      reasons: [
+        'Sử dụng tài khoản giả mạo',
+        'Lợi dụng lỗi hệ thống để trục lợi',
+        'Gửi nội dung lặp hoặc spam',
+        'Mạo danh người khác',
+        'Thao túng đánh giá / bình chọn',
+        'Các hành vi gian lận khác',
+      ],
+    },
+    wrongInfo: {
+      title: 'Thông tin sai lệch',
+      reasons: [
+        'Cung cấp thông tin không chính xác',
+        'Thông tin cũ, lỗi thời',
+        'Sai địa chỉ, số điện thoại, email',
+        'Tin giả / tin không kiểm chứng',
+        'Các trường hợp thông tin gây hiểu lầm khác',
+      ],
+    },
+    technical: {
+      title: 'Vấn đề kỹ thuật',
+      reasons: [
+        'Lỗi hiển thị / giao diện',
+        'Lỗi chức năng (không click được, không gửi được)',
+        'Trang tải chậm / crash',
+        'Lỗi khi upload file / ảnh',
+        'Lỗi liên quan đến đăng nhập / đăng ký',
+        'Các lỗi kỹ thuật khác',
+      ],
+    },
+    policy: {
+      title: 'Vi phạm chính sách',
+      reasons: [
+        'Nội dung phản cảm / nhạy cảm',
+        'Quấy rối, đe dọa người khác',
+        'Spam / quảng cáo không đúng quy định',
+        'Vi phạm bản quyền / thương hiệu',
+        'Các hành vi trái pháp luật hoặc chính sách khác',
+      ],
+    },
   }
 
   const dialogFields = (() => {
     if (dialogState.actionType === 'pause') {
+      const selectedCategory = pauseReasonCategory
+      const selectedReasons = selectedCategory && selectedCategory !== 'other' ? pauseReasonOptions[selectedCategory].reasons : []
+
       return (
-        <div className="space-y-2 text-left">
-          <label className="text-sm font-medium text-gray-700" htmlFor="pause-reason">
-            Lý do tạm dừng<span className="text-red-500">*</span>
-          </label>
-          <Textarea
-            id="pause-reason"
-            rows={3}
-            value={pauseReason}
-            onChange={(e) => setPauseReason(e.target.value)}
-            placeholder="Nhập lý do tạm dừng phiên đấu giá..."
-          />
-          <p className="text-xs text-gray-500">Đây sẽ được ghi nhận trong lịch sử hoạt động của phiên.</p>
+        <div className="space-y-4 text-left">
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Loại báo cáo<span className="text-red-500">*</span>
+            </p>
+            <div className="space-y-2 mb-4">
+              {Object.entries(pauseReasonOptions).map(([key, option], index) => (
+                <div key={key} className="border border-gray-200 rounded-lg p-3">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="pause-reason-category"
+                      value={key}
+                      checked={pauseReasonCategory === key}
+                      onChange={() => {
+                        setPauseReasonCategory(key as typeof pauseReasonCategory)
+                        setPauseReasonSpecific('')
+                        setPauseReason('')
+                      }}
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {index + 1}. {option.title}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              ))}
+              
+              {/* 5. Khác */}
+              <div className="border border-gray-200 rounded-lg p-3">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    name="pause-reason-category"
+                    value="other"
+                    checked={pauseReasonCategory === 'other'}
+                    onChange={() => {
+                      setPauseReasonCategory('other')
+                      setPauseReasonSpecific('')
+                      setPauseReason('')
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">5. Khác</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Hiển thị các lý do cụ thể khi đã chọn category */}
+            {selectedCategory && selectedCategory !== 'other' && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">
+                  Lý do tạm dừng<span className="text-red-500">*</span>
+                </p>
+                <div className="space-y-2">
+                  {selectedReasons.map((reason, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-3">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          className="mt-1"
+                          name="pause-reason-specific"
+                          value={reason}
+                          checked={pauseReasonSpecific === reason}
+                          onChange={() => {
+                            setPauseReasonSpecific(reason)
+                            const categoryTitle = pauseReasonOptions[selectedCategory].title
+                            setPauseReason(`${categoryTitle}: ${reason}`)
+                          }}
+                        />
+                        <div>
+                          <p className="text-sm text-gray-800">{reason}</p>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Hiển thị textarea khi chọn "Khác" */}
+            {selectedCategory === 'other' && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Lý do tạm dừng<span className="text-red-500">*</span>
+                </p>
+                <Textarea
+                  id="pause-reason"
+                  rows={3}
+                  value={pauseReason}
+                  onChange={(e) => setPauseReason(e.target.value)}
+                  placeholder="Nhập lý do tạm dừng phiên đấu giá..."
+                />
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500">
+            Lý do tạm dừng sẽ được ghi nhận trong lịch sử hoạt động của phiên.
+          </p>
         </div>
       )
     }
@@ -544,8 +760,8 @@ export default function AuctionsPage() {
       <div className="mb-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Đấu giá</p>
-            <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý phiên đấu giá</h1>
+            {/* <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Đấu giá</p> */}
+            <h1 className="text-2xl font-bold text-gray-900">Quản lý phiên đấu giá</h1>
             <p className="text-responsive-base text-gray-600">Theo dõi danh sách phiên, phê duyệt hoặc từ chối.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -626,7 +842,7 @@ export default function AuctionsPage() {
       <Card className="card-responsive">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-responsive-xl font-semibold text-gray-900">Danh sách phiên đấu giá</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Danh sách phiên đấu giá</h2>
             <p className="text-responsive-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredAuctions.length} / ${visibleTotalCount || totalCount} phiên`}
             </p>
@@ -654,7 +870,16 @@ export default function AuctionsPage() {
                   {/* <TableCell className="w-[18%] font-medium text-xs md:text-sm truncate text-left">{a.note}</TableCell> */}
                   <TableCell className="w-[15%] text-xs truncate hidden md:table-cell text-left">{a.farmName}</TableCell>
                   <TableCell className="w-[12%] text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.publishDate)}</TableCell>
-                  <TableCell className="w-[12%] text-xs hidden md:table-cell whitespace-nowrap text-left">{formatDateTime(a.endDate)}</TableCell>
+                  <TableCell className="w-[12%] text-xs hidden md:table-cell text-left">
+                    <div className="flex flex-col">
+                      <span className="whitespace-nowrap">{formatDateTime(a.endDate)}</span>
+                      {getTotalExtendMinutes(a.id) > 0 && (
+                        <span className="text-green-600 text-xs mt-0.5">
+                          (+{getTotalExtendMinutes(a.id)} phút)
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="w-[10%] text-left">{getStatusBadge(a.uiStatus)}</TableCell>
                   <TableCell className="w-[18%]">
                     {a.uiStatus === 'Pending' && (
@@ -690,7 +915,7 @@ export default function AuctionsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-red-600 border-red-600 hover:bg-red-50"
+                className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
                           onClick={() => handleActionClick(a.id, 'cancel')}
                         >
                           ✕ Hủy

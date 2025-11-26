@@ -3,14 +3,22 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { AuctionHeaderCard } from '../../components/auction/auction-header-card'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { Card } from '../../components/ui/card'
-import { Badge } from '../../components/ui/badge'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
-import type { ApiEnglishAuction, ApiAuctionLog } from '../../types/api'
+import { userApi } from '../../services/api/userApi'
+import type { ApiEnglishAuction, ApiAuctionBid, User as ApiUser, ListResponse } from '../../types/api'
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
-import { ArrowLeft, FileText, Clock, Play, Ban, Edit } from 'lucide-react'
+import { ArrowLeft, FileText } from 'lucide-react'
+import {
+  SimpleTable,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '../../components/ui/simple-table'
 
 export default function AuctionBidHistoryPage() {
   const { id } = useParams<{ id: string }>()
@@ -20,8 +28,9 @@ export default function AuctionBidHistoryPage() {
   const [auction, setAuction] = useState<ApiEnglishAuction | null>(null)
   const [farmName, setFarmName] = useState<string>('Unknown')
   const [loading, setLoading] = useState<boolean>(true)
-  const [auctionLogs, setAuctionLogs] = useState<ApiAuctionLog[]>([])
-  const [logsLoading, setLogsLoading] = useState<boolean>(false)
+  const [bids, setBids] = useState<ApiAuctionBid[]>([])
+  const [bidsLoading, setBidsLoading] = useState<boolean>(false)
+  const [userNameMap, setUserNameMap] = useState<Record<string, string>>({})
   const { toast } = useToastContext()
 
   useEffect(() => {
@@ -45,8 +54,8 @@ export default function AuctionBidHistoryPage() {
           }
         }
 
-        // Lấy auction logs
-        await fetchAuctionLogs(id)
+        // Lấy danh sách bids của auction
+        await fetchAuctionBids(id)
       } finally {
         setLoading(false)
       }
@@ -55,81 +64,59 @@ export default function AuctionBidHistoryPage() {
     fetchData()
   }, [id])
 
-  const fetchAuctionLogs = async (auctionId: string) => {
+  const fetchAuctionBids = async (auctionId: string) => {
     try {
-      setLogsLoading(true)
-      const logsRes = await auctionApi.getAuctionLogsByAuctionId(auctionId)
-      if (logsRes.isSuccess && logsRes.data) {
-        // Sắp xếp theo thời gian mới nhất trước
-        const sortedLogs = [...logsRes.data].sort((a, b) => 
-          new Date(b.dateTimeUpdate).getTime() - new Date(a.dateTimeUpdate).getTime()
-        )
-        setAuctionLogs(sortedLogs)
+      setBidsLoading(true)
+      const res = await auctionApi.getBidsByAuctionId(auctionId)
+      if (res.isSuccess && res.data) {
+        setBids(res.data)
+        await loadUsersForBids(res.data)
       } else {
         toast({
           title: TOAST_TITLES.ERROR,
-          description: logsRes.message || 'Không thể tải lịch sử đấu giá',
+          description: res.message || 'Không thể tải lịch sử đặt giá',
           variant: 'destructive',
         })
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải lịch sử đấu giá'
+      const message = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải lịch sử đặt giá'
       toast({
         title: TOAST_TITLES.ERROR,
         description: message,
         variant: 'destructive',
       })
     } finally {
-      setLogsLoading(false)
+      setBidsLoading(false)
     }
   }
 
-  const getLogTypeIcon = (type: string) => {
-    switch (type) {
-      case 'Create':
-        return <FileText className="w-4 h-4" />
-      case 'StatusChange':
-        return <Edit className="w-4 h-4" />
-      case 'Publish':
-        return <Play className="w-4 h-4" />
-      case 'Update':
-        return <Edit className="w-4 h-4" />
-      case 'Delete':
-        return <Ban className="w-4 h-4" />
-      default:
-        return <Clock className="w-4 h-4" />
-    }
-  }
+  const loadUsersForBids = async (bidsData: ApiAuctionBid[]) => {
+    // Nếu không có bid nào thì không cần gọi API user
+    if (!bidsData.length) return
 
-  const getLogTypeBadge = (type: string) => {
-    switch (type) {
-      case 'Create':
-        return <Badge variant="outline" className="text-blue-600 border-blue-600">Tạo mới</Badge>
-      case 'StatusChange':
-        return <Badge variant="outline" className="text-purple-600 border-purple-600">Thay đổi trạng thái</Badge>
-      case 'Publish':
-        return <Badge variant="outline" className="text-green-600 border-green-600">Xuất bản</Badge>
-      case 'Update':
-        return <Badge variant="outline" className="text-amber-600 border-amber-600">Cập nhật</Badge>
-      case 'Delete':
-        return <Badge variant="outline" className="text-red-600 border-red-600">Xóa</Badge>
-      default:
-        return <Badge variant="outline" className="text-gray-600 border-gray-600">{type}</Badge>
-    }
-  }
+    try {
+      const res = await userApi.list()
+      if (!res.isSuccess || !res.data) return
 
-  const formatDateTime = (iso: string) => {
-    return new Date(iso).toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
+      const raw = res.data as ListResponse<ApiUser> | ApiUser[]
+      const usersArray: ApiUser[] = Array.isArray(raw) ? raw : raw.items ?? []
+
+      if (!usersArray.length) return
+
+      const map: Record<string, string> = {}
+      usersArray.forEach((u) => {
+        const fullName = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()
+        map[u.id] = fullName || u.email
+      })
+
+      setUserNameMap(map)
+    } catch {
+      // Silent fail: nếu lỗi thì vẫn hiển thị userId như cũ
+    }
   }
 
   const getActiveTab = () => {
+    if (location.pathname.includes('/activity-history')) return 'activity-history'
     if (location.pathname.includes('/bid-history')) return 'bid-history'
     if (location.pathname.includes('/winner')) return 'winner'
     if (location.pathname.includes('/reports')) return 'reports'
@@ -140,6 +127,8 @@ export default function AuctionBidHistoryPage() {
     if (!id) return
     if (value === 'overview') {
       navigate(`/admin/auctions/${id}`)
+    } else if (value === 'activity-history') {
+      navigate(`/admin/auctions/${id}/activity-history`)
     } else if (value === 'bid-history') {
       navigate(`/admin/auctions/${id}/bid-history`)
     } else if (value === 'winner') {
@@ -186,6 +175,7 @@ export default function AuctionBidHistoryPage() {
         <Tabs value={getActiveTab()} onValueChange={handleTabChange} className="w-full">
           <TabsList>
             <TabsTrigger value="overview">Tổng Quan</TabsTrigger>
+            <TabsTrigger value="activity-history">Lịch Sử Hoạt Động</TabsTrigger>
             <TabsTrigger value="bid-history">Lịch Sử Đấu Giá</TabsTrigger>
             <TabsTrigger value="winner">Người Thắng Đấu Giá</TabsTrigger>
             <TabsTrigger value="reports">Báo Cáo</TabsTrigger>
@@ -198,104 +188,71 @@ export default function AuctionBidHistoryPage() {
         {/* Auction Header Card */}
         <AuctionHeaderCard auction={auction} farmName={farmName} />
 
-        {/* Auction Logs Section */}
+        {/* Auction Bids Section */}
         <Card className="overflow-hidden">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-blue-600" />
-                  Lịch Sử Hoạt Động
+                  Lịch Sử Đặt Giá
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {logsLoading ? 'Đang tải...' : `Tổng ${auctionLogs.length} hoạt động`}
+                  {bidsLoading ? 'Đang tải...' : `Tổng ${bids.length} lượt đặt giá`}
                 </p>
               </div>
             </div>
 
-            {logsLoading ? (
+            {bidsLoading ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">Đang tải lịch sử...</p>
+                <p className="text-gray-500">Đang tải danh sách đặt giá...</p>
               </div>
-            ) : auctionLogs.length === 0 ? (
+            ) : bids.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">Chưa có hoạt động nào</p>
+                <p className="text-gray-500">Chưa có lượt đặt giá nào cho phiên đấu giá này</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {auctionLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-                  >
-                    <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      {getLogTypeIcon(log.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        {getLogTypeBadge(log.type)}
-                        <span className="text-xs text-gray-500">
-                          {formatDateTime(log.dateTimeUpdate)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-700 space-y-1">
-                        {log.type === 'StatusChange' && log.oldEntity && log.newEntity && (
-                          <div className="bg-white p-3 rounded border border-gray-200">
-                            <p className="text-xs font-semibold text-gray-600 mb-1">Thay đổi trạng thái:</p>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">Trước:</span>
-                              <Badge variant="outline" className="text-xs">
-                                {(() => {
-                                  try {
-                                    const oldData = JSON.parse(log.oldEntity)
-                                    const statusMap: Record<number, string> = {
-                                      0: 'Draft',
-                                      1: 'Pending',
-                                      3: 'Approved',
-                                      4: 'OnGoing',
-                                      5: 'Completed',
-                                    }
-                                    return statusMap[oldData.status] || `Status ${oldData.status}`
-                                  } catch {
-                                    return 'N/A'
-                                  }
-                                })()}
-                              </Badge>
-                              <span className="text-xs text-gray-400">→</span>
-                              <span className="text-xs text-gray-500">Sau:</span>
-                              <Badge variant="outline" className="text-xs">
-                                {(() => {
-                                  try {
-                                    const newData = JSON.parse(log.newEntity)
-                                    const statusMap: Record<number, string> = {
-                                      0: 'Draft',
-                                      1: 'Pending',
-                                      3: 'Approved',
-                                      4: 'OnGoing',
-                                      5: 'Completed',
-                                    }
-                                    return statusMap[newData.status] || `Status ${newData.status}`
-                                  } catch {
-                                    return 'N/A'
-                                  }
-                                })()}
-                              </Badge>
-                            </div>
-                          </div>
-                        )}
-                        {log.type === 'Publish' && (
-                          <p className="text-xs text-gray-600">Phiên đấu giá đã được xuất bản</p>
-                        )}
-                        {log.type === 'Create' && (
-                          <p className="text-xs text-gray-600">Phiên đấu giá đã được tạo mới</p>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-2">
-                        User ID: {log.userId.slice(0, 8)}...
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[600px] overflow-y-auto">
+                <SimpleTable>
+                  <TableHeader>
+                    <tr>
+                      <TableHead>STT</TableHead>
+                      <TableHead>Thương lái</TableHead>
+                      <TableHead className="text-right">Giá đặt</TableHead>
+                      <TableHead className="text-center">Tự động</TableHead>
+                      <TableHead className="text-right">Giới hạn auto bid</TableHead>
+                      <TableHead className="text-center">Đang dẫn đầu</TableHead>
+                      <TableHead className="text-center">Đã hủy</TableHead>
+                    </tr>
+                  </TableHeader>
+                  <TableBody>
+                    {bids.map((bid, index) => (
+                      <TableRow key={`${bid.userId}-${index}`}>
+                        <TableCell>{index + 1}</TableCell>
+                      <TableCell className="text-sm text-gray-900">
+                        {userNameMap[bid.userId] ?? bid.userId}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-700">
+                          {bid.bidAmount.toLocaleString('vi-VN')} đ
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {bid.isAutoBid ? 'Có' : 'Không'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {bid.autoBidMaxLimit > 0
+                            ? `${bid.autoBidMaxLimit.toLocaleString('vi-VN')} đ`
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {bid.isWinning ? '✔' : ''}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {bid.isCancelled ? '✔' : ''}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </SimpleTable>
               </div>
             )}
           </div>

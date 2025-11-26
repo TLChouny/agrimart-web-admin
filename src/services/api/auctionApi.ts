@@ -10,6 +10,8 @@ import type {
   ApiAuctionPauseSession,
   PauseAuctionDTO,
   ResumeAuctionDTO,
+  ApiAuctionExtend,
+  ApiAuctionBid,
 } from '../../types/api'
 import type { ApiEnglishAuction } from '../../types/api'
 
@@ -97,6 +99,34 @@ export const auctionApi = {
     return auctionHttpClient.post<ApiAuctionPauseSession>(
       ENDPOINTS.auction.englishAuction.resume,
       payload
+    )
+  },
+
+  async getAuctionExtends(): Promise<APIResponse<ApiAuctionExtend[]>> {
+    return auctionHttpClient.get<ApiAuctionExtend[]>(
+      ENDPOINTS.auction.auctionExtend.list,
+      { cache: false }
+    )
+  },
+
+  async getAuctionExtendsByAuctionId(auctionId: string): Promise<APIResponse<ApiAuctionExtend[]>> {
+    return auctionHttpClient.get<ApiAuctionExtend[]>(
+      ENDPOINTS.auction.auctionExtend.byAuction(auctionId),
+      { cache: false }
+    )
+  },
+
+  async getAuctionPausesByAuctionId(auctionId: string): Promise<APIResponse<ApiAuctionPauseSession[]>> {
+    return auctionHttpClient.get<ApiAuctionPauseSession[]>(
+      ENDPOINTS.auction.auctionPause.byAuction(auctionId),
+      { cache: false }
+    )
+  },
+
+  async getBidsByAuctionId(auctionId: string): Promise<APIResponse<ApiAuctionBid[]>> {
+    return auctionHttpClient.get<ApiAuctionBid[]>(
+      ENDPOINTS.auction.bid.byAuction(auctionId),
+      { cache: false }
     )
   },
 }

@@ -205,8 +205,29 @@ export interface ApiAuctionPauseSession {
   updatedAt: string | null
 }
 
+export type AuctionExtendType = 'PauseTime' | 'ResumeTime' | 'Other'
+
+export interface ApiAuctionExtend {
+  id: string
+  extendDurationInMinutes: number
+  extendType: AuctionExtendType
+  auctionId: string
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface ApiAuctionBid {
+  userId: string
+  bidAmount: number
+  isAutoBid: boolean
+  autoBidMaxLimit: number
+  isWinning: boolean
+  isCancelled: boolean
+  auctionSessionId: string
+}
+
 // Auction Log related types
-export type AuctionLogType = 'Create' | 'StatusChange' | 'Publish' | 'Update' | 'Delete'
+export type AuctionLogType = 'Create' | 'StatusChange' | 'Publish' | 'Update' | 'Delete' | 'End' | 'Extend' | 'Pause' | 'Resume'
 export interface ApiAuctionLog {
   id: string
   auctionPostId: string

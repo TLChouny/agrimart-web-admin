@@ -18,6 +18,7 @@ import ProductsPage from './pages/Admin/ProductsPage';
 import ShippersPage from './pages/Admin/ShippersPage';
 import AuctionsPage from './pages/Admin/AuctionsPage';
 import AuctionDetailPage from './pages/Admin/AuctionDetailPage'
+import AuctionActivityHistoryPage from './pages/Admin/AuctionActivityHistoryPage';
 import AuctionBidHistoryPage from './pages/Admin/AuctionBidHistoryPage';
 import AuctionWinnerPage from './pages/Admin/AuctionWinnerPage';
 import AuctionReportsPage from './pages/Admin/AuctionReportsPage';
@@ -129,6 +130,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminLayout><AuctionDetailPage /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_AUCTIONS_BY_ID_ACTIVITY_HISTORY}
+          element={
+            <ProtectedRoute>
+              <AdminLayout><AuctionActivityHistoryPage /></AdminLayout>
             </ProtectedRoute>
           }
         />

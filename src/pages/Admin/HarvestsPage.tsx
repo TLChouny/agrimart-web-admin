@@ -89,13 +89,13 @@ export default function HarvestsPage() {
   return (
     <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Thu hoạch</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Thu hoạch</h1>
         <p className="text-responsive-base text-gray-600">Danh sách tất cả các vụ thu hoạch</p>
       </div>
 
       <Card className="card-responsive">
         <div className="mb-4">
-          <h2 className="text-responsive-xl font-semibold text-gray-900 mb-2">Danh sách thu hoạch</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách thu hoạch</h2>
           <p className="text-responsive-sm text-gray-600">
             Có {filteredHarvests.length} vụ thu hoạch trong hệ thống
           </p>

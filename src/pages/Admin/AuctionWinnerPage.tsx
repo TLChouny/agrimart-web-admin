@@ -47,6 +47,7 @@ export default function AuctionWinnerPage() {
   }, [id])
 
   const getActiveTab = () => {
+    if (location.pathname.includes('/activity-history')) return 'activity-history'
     if (location.pathname.includes('/bid-history')) return 'bid-history'
     if (location.pathname.includes('/winner')) return 'winner'
     if (location.pathname.includes('/reports')) return 'reports'
@@ -57,6 +58,8 @@ export default function AuctionWinnerPage() {
     if (!id) return
     if (value === 'overview') {
       navigate(`/admin/auctions/${id}`)
+    } else if (value === 'activity-history') {
+      navigate(`/admin/auctions/${id}/activity-history`)
     } else if (value === 'bid-history') {
       navigate(`/admin/auctions/${id}/bid-history`)
     } else if (value === 'winner') {
@@ -103,6 +106,7 @@ export default function AuctionWinnerPage() {
         <Tabs value={getActiveTab()} onValueChange={handleTabChange} className="w-full">
           <TabsList>
             <TabsTrigger value="overview">Tổng Quan</TabsTrigger>
+            <TabsTrigger value="activity-history">Lịch Sử Hoạt Động</TabsTrigger>
             <TabsTrigger value="bid-history">Lịch Sử Đấu Giá</TabsTrigger>
             <TabsTrigger value="winner">Người Thắng Đấu Giá</TabsTrigger>
             <TabsTrigger value="reports">Báo Cáo</TabsTrigger>

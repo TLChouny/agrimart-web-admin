@@ -6,6 +6,7 @@ import { TrendingUp, Calendar, DollarSign, Users, Zap, Clock } from 'lucide-reac
 interface AuctionHeaderCardProps {
   auction: ApiEnglishAuction
   farmName: string
+  totalExtendMinutes?: number
 }
 
 function formatDateTime(iso: string | null) {
@@ -34,7 +35,7 @@ function getStatusBadge(status: AuctionStatus) {
   }
 }
 
-export function AuctionHeaderCard({ auction, farmName }: AuctionHeaderCardProps) {
+export function AuctionHeaderCard({ auction, farmName, totalExtendMinutes = 0, }: AuctionHeaderCardProps) {
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 overflow-hidden">
       <div className="p-8">
@@ -96,7 +97,16 @@ export function AuctionHeaderCard({ auction, farmName }: AuctionHeaderCardProps)
               <Calendar className="w-5 h-5 text-purple-600" />
               <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Kết Thúc</p>
             </div>
-            <p className="text-base font-bold text-gray-900">{formatDateTime(auction.endDate)}</p>
+            <div className="flex flex-col">
+              <p className="text-base font-bold text-gray-900">
+                {formatDateTime(auction.endDate)}
+              </p>
+              {totalExtendMinutes > 0 && (
+                <p className="text-xs text-green-600 mt-1">
+                  (+{totalExtendMinutes} phút từ {formatDateTime(auction.endDate)})
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-blue-100">

@@ -11,6 +11,7 @@ export const ROUTES = {
   ADMIN_HARVESTS: '/admin/harvests',
   ADMIN_AUCTIONS: '/admin/auctions',
   ADMIN_AUCTIONS_BY_ID: '/admin/auctions/:id',
+  ADMIN_AUCTIONS_BY_ID_ACTIVITY_HISTORY: '/admin/auctions/:id/activity-history',
   ADMIN_AUCTIONS_BY_ID_BID_HISTORY: '/admin/auctions/:id/bid-history',
   ADMIN_AUCTIONS_BY_ID_WINNER: '/admin/auctions/:id/winner',
   ADMIN_AUCTIONS_BY_ID_REPORTS: '/admin/auctions/:id/reports',

@@ -68,9 +68,20 @@ export const ENDPOINTS = {
       pause: '/api/auction-service/englishauction/pause',
       resume: '/api/auction-service/englishauction/resume',
     },
+    bid: {
+      byAuction: (auctionId: string) =>
+        `/api/auction-service/bid/auction/${encodeURIComponent(auctionId)}`,
+    },
     auctionLog: {
       byAuction: (auctionId: string) => `/api/auction-service/auctionlog/auction/${auctionId}`,
       byType: (logType: string) => `/api/auction-service/auctionlog/type/${logType}`,
+    },
+    auctionExtend: {
+      list: '/api/auction-service/auctionextend',
+      byAuction: (auctionId: string) => `/api/auction-service/auctionextend/auction/${encodeURIComponent(auctionId)}`,
+    },
+    auctionPause: {
+      byAuction: (auctionId: string) => `/api/auction-service/auctionpause/auction/${encodeURIComponent(auctionId)}`,
     },
   },
   report: {
