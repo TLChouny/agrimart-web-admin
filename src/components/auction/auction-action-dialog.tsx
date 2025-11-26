@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -18,6 +19,7 @@ interface AuctionActionDialogProps {
   actionLabel: string
   actionVariant: 'approve' | 'reject' | 'pending'
   isLoading?: boolean
+  children?: ReactNode
 }
 
 export function AuctionActionDialog({
@@ -29,6 +31,7 @@ export function AuctionActionDialog({
   actionLabel,
   actionVariant,
   isLoading = false,
+  children,
 }: AuctionActionDialogProps) {
   const [loading, setLoading] = useState(false)
 
@@ -36,9 +39,11 @@ export function AuctionActionDialog({
     setLoading(true)
     try {
       await onConfirm()
+      onOpenChange(false)
+    } catch (error) {
+      console.error(error)
     } finally {
       setLoading(false)
-      onOpenChange(false)
     }
   }
 
@@ -95,6 +100,12 @@ export function AuctionActionDialog({
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {children && (
+          <div className="mt-4 space-y-3">
+            {children}
+          </div>
+        )}
 
         <div className="flex gap-3 justify-end mt-6">
           <AlertDialogCancel

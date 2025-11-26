@@ -4,6 +4,7 @@ import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } f
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
 import { AuctionActionDialog } from '../../components/auction/auction-action-dialog'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
@@ -12,7 +13,7 @@ import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
-import { Search, Filter, ChevronDown, PauseCircle } from 'lucide-react'
+import { Search, Filter, ChevronDown, PauseCircle, PlayCircle } from 'lucide-react'
 
 interface ExtendedAuction extends ApiEnglishAuction {
   farmName: string
@@ -24,7 +25,7 @@ interface ExtendedAuction extends ApiEnglishAuction {
 interface DialogState {
   isOpen: boolean
   auctionId: string | null
-  actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel' | null
+  actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel' | 'pause' | 'resume' | null
 }
 
 function formatDateTime(iso: string) {
@@ -49,6 +50,8 @@ function getStatusBadge(status: AuctionStatus) {
       return <Badge variant="outline" className="text-green-600 border-green-600">Chấp nhận</Badge>
     case 'OnGoing':
       return <Badge variant="outline" className="text-blue-600 border-blue-600">Đang diễn ra</Badge>
+    case 'Pause':
+      return <Badge variant="outline" className="text-amber-600 border-amber-600">Đang tạm dừng</Badge>
     case 'Completed':
       return <Badge variant="outline" className="text-gray-600 border-gray-600">Hoàn thành</Badge>
     case 'NoWinner':
@@ -71,6 +74,8 @@ export default function AuctionsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const { toast } = useToastContext()
+  const [pauseReason, setPauseReason] = useState('')
+  const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
 
   const [dialogState, setDialogState] = useState<DialogState>({
     isOpen: false,
@@ -84,6 +89,7 @@ export default function AuctionsPage() {
     Rejected: 0,
     Approved: 0,
     OnGoing: 0,
+    Pause: 0,
     Completed: 0,
     NoWinner: 0,
     Cancelled: 0,
@@ -104,7 +110,16 @@ export default function AuctionsPage() {
 
       if (statusFilter === 'all') {
         // Khi xem "Tất cả", fetch tất cả các status (trừ Draft) và merge lại
-        const statusesToFetch: AuctionStatus[] = ['Pending', 'Approved', 'Rejected', 'OnGoing', 'Completed', 'NoWinner', 'Cancelled']
+        const statusesToFetch: AuctionStatus[] = [
+          'Pending',
+          'Approved',
+          'Rejected',
+          'OnGoing',
+          'Pause',
+          'Completed',
+          'NoWinner',
+          'Cancelled',
+        ]
         const allResults = await Promise.all(
           statusesToFetch.map(status =>
             auctionApi.getEnglishAuctions(status, 1, 1000) as Promise<APIResponse<PaginatedEnglishAuctions>>
@@ -196,7 +211,18 @@ export default function AuctionsPage() {
   }, [fetchAuctions])
 
   const fetchStatusCounts = useCallback(async () => {
-    const statusKeys: Array<'all' | AuctionStatus> = ['all', 'Pending', 'Approved', 'Rejected', 'OnGoing', 'Completed', 'Draft', 'NoWinner', 'Cancelled']
+    const statusKeys: Array<'all' | AuctionStatus> = [
+      'all',
+      'Pending',
+      'Approved',
+      'Rejected',
+      'OnGoing',
+      'Pause',
+      'Completed',
+      'Draft',
+      'NoWinner',
+      'Cancelled',
+    ]
     try {
       const entries = await Promise.all(
         statusKeys.map(async (key) => {
@@ -216,7 +242,16 @@ export default function AuctionsPage() {
     fetchStatusCounts()
   }, [fetchStatusCounts])
 
-  const handleActionClick = (auctionId: string, actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel') => {
+  const handleActionClick = (
+    auctionId: string,
+    actionType: 'approve' | 'reject' | 'pending' | 'stop' | 'cancel' | 'pause' | 'resume'
+  ) => {
+    if (actionType === 'pause') {
+      setPauseReason('')
+    }
+    if (actionType === 'resume') {
+      setResumeExtendMinute('0')
+    }
     setDialogState({
       isOpen: true,
       auctionId,
@@ -226,6 +261,94 @@ export default function AuctionsPage() {
 
   const handleConfirmAction = async () => {
     if (!dialogState.auctionId || !dialogState.actionType) return
+
+    if (dialogState.actionType === 'pause') {
+      const reason = pauseReason.trim()
+      if (!reason) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: 'Vui lòng nhập lý do tạm dừng.',
+          variant: 'destructive',
+        })
+        throw new Error('PAUSE_REASON_REQUIRED')
+      }
+      try {
+        const res = await auctionApi.pauseEnglishAuction({
+          auctionId: dialogState.auctionId,
+          reason,
+        })
+        if (res.isSuccess) {
+          setAuctions(prev =>
+            prev.map(item =>
+              item.id === dialogState.auctionId ? { ...item, status: 'Pause', uiStatus: 'Pause' } : item
+            )
+          )
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: AUCTION_MESSAGES.PAUSE_SUCCESS,
+          })
+          fetchStatusCounts()
+          fetchAuctions({ silent: true })
+        } else {
+          const message = res.message || AUCTION_MESSAGES.PAUSE_ERROR
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: message,
+            variant: 'destructive',
+          })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : AUCTION_MESSAGES.PAUSE_ERROR
+        console.error(err)
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+        throw err
+      }
+      return
+    }
+
+    if (dialogState.actionType === 'resume') {
+      const extendMinute = Math.max(0, Number(resumeExtendMinute) || 0)
+      try {
+        const res = await auctionApi.resumeEnglishAuction({
+          auctionId: dialogState.auctionId,
+          extendMinute,
+        })
+        if (res.isSuccess) {
+          setAuctions(prev =>
+            prev.map(item =>
+              item.id === dialogState.auctionId ? { ...item, status: 'OnGoing', uiStatus: 'OnGoing' } : item
+            )
+          )
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: AUCTION_MESSAGES.RESUME_SUCCESS,
+          })
+          fetchStatusCounts()
+          fetchAuctions({ silent: true })
+        } else {
+          const message = res.message || AUCTION_MESSAGES.RESUME_ERROR
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: message,
+            variant: 'destructive',
+          })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : AUCTION_MESSAGES.RESUME_ERROR
+        console.error(err)
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+        throw err
+      }
+      return
+    }
 
     const statusMap: Record<'approve' | 'reject' | 'pending' | 'stop' | 'cancel', AuctionStatus> = {
       approve: 'Approved',
@@ -271,8 +394,7 @@ export default function AuctionsPage() {
         variant: 'destructive',
       })
       fetchStatusCounts()
-    } finally {
-      setDialogState(prev => ({ ...prev, isOpen: false }))
+      throw err
     }
   }
 
@@ -310,6 +432,18 @@ export default function AuctionsPage() {
         actionLabel: 'Hủy',
         variant: 'reject' as const,
       },
+      pause: {
+        title: 'Tạm dừng phiên đấu giá',
+        description: 'Nhập lý do tạm dừng, phiên sẽ tạm thời bị khóa với người tham gia.',
+        actionLabel: 'Tạm dừng',
+        variant: 'pending' as const,
+      },
+      resume: {
+        title: 'Tiếp tục phiên đấu giá',
+        description: 'Thiết lập thời gian gia hạn (nếu cần) và mở lại phiên đấu giá.',
+        actionLabel: 'Tiếp tục',
+        variant: 'approve' as const,
+      },
     }
 
     return actionConfig[dialogState.actionType]
@@ -317,12 +451,65 @@ export default function AuctionsPage() {
 
   const dialogConfig = getDialogContent()
 
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDialogState(prev => ({ ...prev, isOpen: open }))
+      return
+    }
+    setDialogState({
+      isOpen: false,
+      auctionId: null,
+      actionType: null,
+    })
+    setPauseReason('')
+    setResumeExtendMinute('0')
+  }
+
+  const dialogFields = (() => {
+    if (dialogState.actionType === 'pause') {
+      return (
+        <div className="space-y-2 text-left">
+          <label className="text-sm font-medium text-gray-700" htmlFor="pause-reason">
+            Lý do tạm dừng<span className="text-red-500">*</span>
+          </label>
+          <Textarea
+            id="pause-reason"
+            rows={3}
+            value={pauseReason}
+            onChange={(e) => setPauseReason(e.target.value)}
+            placeholder="Nhập lý do tạm dừng phiên đấu giá..."
+          />
+          <p className="text-xs text-gray-500">Đây sẽ được ghi nhận trong lịch sử hoạt động của phiên.</p>
+        </div>
+      )
+    }
+    if (dialogState.actionType === 'resume') {
+      return (
+        <div className="space-y-2 text-left">
+          <label className="text-sm font-medium text-gray-700" htmlFor="resume-extend">
+            Gia hạn thêm (phút)
+          </label>
+          <Input
+            id="resume-extend"
+            type="number"
+            min={0}
+            value={resumeExtendMinute}
+            onChange={(e) => setResumeExtendMinute(e.target.value)}
+          />
+          <p className="text-xs text-gray-500">Đặt 0 nếu không muốn gia hạn thời gian.</p>
+        </div>
+      )
+    }
+    return null
+  })()
+
   const tabs: { key: 'all' | AuctionStatus; label: string }[] = [
     { key: 'all', label: 'Tất cả' },
     { key: 'Pending', label: 'Đợi xét duyệt' },
     { key: 'Approved', label: 'Đã duyệt' },
     { key: 'Rejected', label: 'Từ chối' },
     { key: 'OnGoing', label: 'Đang diễn ra' },
+    { key: 'Pause', label: 'Tạm dừng' },
   ]
 
   const additionalStatuses: { key: AuctionStatus; label: string }[] = [
@@ -495,10 +682,10 @@ export default function AuctionsPage() {
                         <Button
                           size="sm"
                           className="bg-amber-500 hover:bg-amber-600 text-white"
-                          onClick={() => handleActionClick(a.id, 'stop')}
+                          onClick={() => handleActionClick(a.id, 'pause')}
                         >
                           <PauseCircle className="w-4 h-4 mr-1.5" />
-                          Dừng
+                          Tạm dừng
                         </Button>
                         <Button
                           size="sm"
@@ -511,7 +698,28 @@ export default function AuctionsPage() {
                       </div>
                     )}
 
-                    {a.uiStatus !== 'Pending' && a.uiStatus !== 'OnGoing' && (
+                    {a.uiStatus === 'Pause' && (
+                      <div className="flex gap-1.5 justify-start flex-wrap">
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          onClick={() => handleActionClick(a.id, 'resume')}
+                        >
+                          <PlayCircle className="w-4 h-4 mr-1.5" />
+                          Tiếp tục
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                          onClick={() => handleActionClick(a.id, 'cancel')}
+                        >
+                          ✕ Hủy
+                        </Button>
+                      </div>
+                    )}
+
+                    {a.uiStatus !== 'Pending' && a.uiStatus !== 'OnGoing' && a.uiStatus !== 'Pause' && (
                       <span className="text-sm text-gray-400">—</span>
                     )}
                   </TableCell>
@@ -562,13 +770,15 @@ export default function AuctionsPage() {
       {dialogConfig && (
         <AuctionActionDialog
           isOpen={dialogState.isOpen}
-          onOpenChange={(open) => setDialogState(prev => ({ ...prev, isOpen: open }))}
+          onOpenChange={handleDialogOpenChange}
           onConfirm={handleConfirmAction}
           title={dialogConfig.title}
           description={dialogConfig.description}
           actionLabel={dialogConfig.actionLabel}
           actionVariant={dialogConfig.variant}
-        />
+        >
+          {dialogFields}
+        </AuctionActionDialog>
       )}
     </div>
   )

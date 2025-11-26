@@ -141,28 +141,28 @@ export default function UsersPage() {
       </div>
 
       <Card className="p-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách người dùng</h2>
             <p className="text-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredUsers.length} / ${users.length} người dùng`}
               {error && <span className="text-red-600"> · {error}</span>}
             </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo tên, email hoặc ID"
+              className="pl-9"
+            />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo tên, email hoặc ID"
-                className="pl-9"
-              />
-            </div>
             <Button variant="outline" size="sm" onClick={() => fetchUsers()} disabled={isLoading}>
-              {isLoading ? 'Đang tải...' : 'Làm mới'}
-            </Button>
-          </div>
+            {isLoading ? 'Đang tải...' : 'Làm mới'}
+          </Button>
+        </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -268,13 +268,13 @@ export default function UsersPage() {
                 <div className="flex items-center justify-end mt-4 text-sm">
                   <span className="text-gray-600 mr-4">Trang {safePage}/{totalPages}</span>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>
-                      Trước
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>
-                      Sau
-                    </Button>
-                  </div>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>
+                  Trước
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>
+                  Sau
+                </Button>
+              </div>
                 </div>
               )}
             </>

@@ -1,7 +1,16 @@
 // auctionApi.ts
 import { HttpClient } from './httpClient'
 import { ENDPOINTS } from '../constants/apiConstants'
-import type { ApiEnglishAuctionHarvest, APIResponse, AuctionStatus, ApiAuctionLog, AuctionLogType } from '../../types/api'
+import type {
+  ApiEnglishAuctionHarvest,
+  APIResponse,
+  AuctionStatus,
+  ApiAuctionLog,
+  AuctionLogType,
+  ApiAuctionPauseSession,
+  PauseAuctionDTO,
+  ResumeAuctionDTO,
+} from '../../types/api'
 import type { ApiEnglishAuction } from '../../types/api'
 
 const GATEWAY_BASE_URL = import.meta.env.VITE_GATEWAY_URL ?? 'https://gateway.a-379.store'
@@ -73,5 +82,21 @@ export const auctionApi = {
       { cache: false }
     )
   },
-  
+  async pauseEnglishAuction(
+    payload: PauseAuctionDTO
+  ): Promise<APIResponse<ApiAuctionPauseSession>> {
+    return auctionHttpClient.post<ApiAuctionPauseSession>(
+      ENDPOINTS.auction.englishAuction.pause,
+      payload
+    )
+  },
+
+  async resumeEnglishAuction(
+    payload: ResumeAuctionDTO
+  ): Promise<APIResponse<ApiAuctionPauseSession>> {
+    return auctionHttpClient.post<ApiAuctionPauseSession>(
+      ENDPOINTS.auction.englishAuction.resume,
+      payload
+    )
+  },
 }

@@ -26,6 +26,7 @@ function getStatusBadge(status: AuctionStatus) {
     case 'Rejected': return <Badge className="bg-red-100 text-red-700">Bị từ chối</Badge>
     case 'Approved': return <Badge className="bg-green-100 text-green-700">Chấp nhận</Badge>
     case 'OnGoing': return <Badge className="bg-blue-100 text-blue-700">Đang diễn ra</Badge>
+    case 'Pause': return <Badge className="bg-amber-100 text-amber-700">Đang tạm dừng</Badge>
     case 'Completed': return <Badge className="bg-gray-100 text-gray-700">Hoàn thành</Badge>
     case 'NoWinner': return <Badge className="bg-orange-100 text-orange-700">Không có người chiến thắng</Badge>
     case 'Cancelled': return <Badge className="bg-rose-100 text-rose-700">Hủy</Badge>

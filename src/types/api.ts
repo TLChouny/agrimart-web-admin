@@ -168,7 +168,7 @@ export interface ApiEnglishAuction {
   buyNowPrice: number
   enableAntiSniping: boolean
   antiSnipingExtensionSeconds: number
-  status: 'Draft' | 'Pending' | 'Rejected' | 'Approved' | 'OnGoing' | 'Completed' | 'NoWinner' | 'Cancelled'
+  status: 'Draft' | 'Pending' | 'Rejected' | 'Approved' | 'OnGoing' | 'Pause' | 'Completed' | 'NoWinner' | 'Cancelled'
   winnerId: string | null
   note: string
   expectedHarvestDate: string
@@ -181,6 +181,28 @@ export interface ApiEnglishAuction {
 export interface ApiEnglishAuctionHarvest {
   auctionSessionId: string
   harvestId: string
+}
+
+export interface PauseAuctionDTO {
+  auctionId: string
+  reason: string
+}
+
+export interface ResumeAuctionDTO {
+  auctionId: string
+  extendMinute?: number
+}
+
+export interface ApiAuctionPauseSession {
+  id: string
+  auctionId: string
+  pauseStartAt: string
+  pauseEndAt: string | null
+  pauseDurationInMinutes: number | null
+  reason: string
+  note: string
+  createdAt: string
+  updatedAt: string | null
 }
 
 // Auction Log related types

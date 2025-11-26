@@ -173,6 +173,10 @@ export const AUCTION_MESSAGES = {
   FETCH_ERROR: 'Không thể tải danh sách phiên đấu giá. Vui lòng thử lại.',
   STATUS_UPDATE_SUCCESS: 'Cập nhật trạng thái phiên đấu giá thành công.',
   STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái phiên đấu giá.',
+  PAUSE_SUCCESS: 'Tạm dừng phiên đấu giá thành công.',
+  PAUSE_ERROR: 'Không thể tạm dừng phiên đấu giá.',
+  RESUME_SUCCESS: 'Tiếp tục phiên đấu giá thành công.',
+  RESUME_ERROR: 'Không thể tiếp tục phiên đấu giá.',
 } as const
 
 export const CATEGORY_MESSAGES = {
