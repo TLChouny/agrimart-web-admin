@@ -169,15 +169,21 @@ export default function ReportsPage() {
   const filteredReports = useMemo(() => {
     if (!reports?.items) return []
     const keyword = searchTerm.trim().toLowerCase()
-    if (!keyword) return reports.items
-    return reports.items.filter(report =>
-      report.note.toLowerCase().includes(keyword) ||
-      report.auctionId.toLowerCase().includes(keyword) ||
-      getAuctionName(report.auctionId).toLowerCase().includes(keyword) ||
-      report.reporterId.toLowerCase().includes(keyword) ||
-      getReporterName(report.reporterId).toLowerCase().includes(keyword) ||
-      REPORT_TYPE_LABELS[report.reportType].toLowerCase().includes(keyword)
-    )
+    const filtered = !keyword 
+      ? reports.items 
+      : reports.items.filter(report =>
+          report.note.toLowerCase().includes(keyword) ||
+          report.auctionId.toLowerCase().includes(keyword) ||
+          getAuctionName(report.auctionId).toLowerCase().includes(keyword) ||
+          report.reporterId.toLowerCase().includes(keyword) ||
+          getReporterName(report.reporterId).toLowerCase().includes(keyword) ||
+          REPORT_TYPE_LABELS[report.reportType].toLowerCase().includes(keyword)
+        )
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+      return dateB - dateA // Mới nhất trước
+    })
   }, [reports, searchTerm, getAuctionName, getReporterName])
 
   const getStatusBadge = (status: ReportStatus) => {

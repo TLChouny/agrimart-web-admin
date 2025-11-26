@@ -248,12 +248,18 @@ export default function BuyRequestsPage() {
 
   const filteredBuyRequests = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase()
-    return buyRequests.filter(br =>
-      !keyword ||
-      br.title.toLowerCase().includes(keyword) ||
-      br.location.toLowerCase().includes(keyword) ||
-      (br.notes || '').toLowerCase().includes(keyword)
-    )
+    return buyRequests
+      .filter(br =>
+        !keyword ||
+        br.title.toLowerCase().includes(keyword) ||
+        br.location.toLowerCase().includes(keyword) ||
+        (br.notes || '').toLowerCase().includes(keyword)
+      )
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime()
+        const dateB = new Date(b.createdAt).getTime()
+        return dateB - dateA // Mới nhất trước
+      })
   }, [buyRequests, searchTerm])
 
   const visibleTotalCount = useMemo(() => {

@@ -744,6 +744,11 @@ export default function AuctionsPage() {
         a.farmName.toLowerCase().includes(keyword) ||
         a.note.toLowerCase().includes(keyword)
       )
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime()
+        const dateB = new Date(b.createdAt).getTime()
+        return dateB - dateA // Mới nhất trước
+      })
   }, [auctions, searchTerm])
 
   const visibleTotalCount = useMemo(() => {
