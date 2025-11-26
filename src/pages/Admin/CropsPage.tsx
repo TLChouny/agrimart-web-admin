@@ -286,8 +286,8 @@ export default function CropsPage() {
   return (
     <div className="mx-auto max-w-[1800px] p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Vụ trồng</h1>
-        <p className="text-base text-gray-600">Danh sách vụ trồng của các nông trại</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Lô trồng</h1>
+        <p className="text-base text-gray-600">Danh sách lô trồng của các nông trại</p>
       </div>
 
       <Card className="p-6 mb-6">
@@ -322,9 +322,9 @@ export default function CropsPage() {
       <Card className="p-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách vụ trồng</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách lô trồng</h2>
             <p className="text-sm text-gray-600">
-              {isLoadingCrops ? 'Đang tải...' : `Hiển thị ${filteredCrops.length} / ${crops.length} vụ trồng`}
+              {isLoadingCrops ? 'Đang tải...' : `Hiển thị ${filteredCrops.length} / ${crops.length} lô trồng`}
               {cropError && <span className="text-red-600"> · {cropError}</span>}
             </p>
           </div>
@@ -356,7 +356,7 @@ export default function CropsPage() {
               <SimpleTable>
                 <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left w-[22%] min-w-[200px]">Vụ trồng</TableHead>
+                  <TableHead className="text-left w-[22%] min-w-[200px]">Lô trồng</TableHead>
                   <TableHead className="text-left w-[26%] min-w-[220px]">Thông tin</TableHead>
                   <TableHead className="text-left hidden lg:table-cell w-[14%] min-w-[110px]">Gieo trồng</TableHead>
                   <TableHead className="text-left hidden xl:table-cell w-[14%] min-w-[130px]">Dự kiến thu hoạch</TableHead>
@@ -395,7 +395,7 @@ export default function CropsPage() {
                 <SimpleTable>
                   <TableHeader>
                   <TableRow>
-                    <TableHead className="text-left w-[22%] min-w-[200px]">Vụ trồng</TableHead>
+                    <TableHead className="text-left w-[22%] min-w-[200px]">Lô trồng</TableHead>
                     {/* <TableHead className="text-left min-w-[150px]">Loại</TableHead> */}
                     <TableHead className="text-left w-[26%] min-w-[220px]">Thông tin</TableHead>
                     <TableHead className="text-left hidden lg:table-cell w-[14%] min-w-[110px]">Gieo trồng</TableHead>

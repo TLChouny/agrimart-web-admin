@@ -6,7 +6,10 @@ import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
 import { reportApi } from "../../services/api"
+import { userApi } from "../../services/api/userApi"
+import { auctionApi } from "../../services/api/auctionApi"
 import type { PaginatedReports, ReportListParams, ReportStatus, ReportType } from "../../types"
+import type { User as ApiUser, ListResponse } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
 import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES } from "../../services/constants/messages"
 
@@ -28,6 +31,8 @@ export default function ReportsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [auctionMap, setAuctionMap] = useState<Record<string, string>>({})
+  const [userMap, setUserMap] = useState<Record<string, string>>({})
   const { toast } = useToastContext()
 
   const handleFilterChange = (key: keyof ReportListParams, value?: string) => {
@@ -61,6 +66,53 @@ export default function ReportsPage() {
       setLoading(false)
     }
   }, [filters, toast])
+
+  // Fetch auctions and users for mapping
+  useEffect(() => {
+    const fetchAuctionAndUserData = async () => {
+      try {
+        // Fetch all auctions (fetch multiple pages if needed)
+        const auctionMap: Record<string, string> = {}
+        let pageNumber = 1
+        let hasMore = true
+        const pageSize = 100
+        
+        while (hasMore) {
+          const auctionsRes = await auctionApi.getEnglishAuctions(undefined, pageNumber, pageSize)
+          if (auctionsRes.isSuccess && auctionsRes.data?.items) {
+            const items = auctionsRes.data.items
+            items.forEach(auction => {
+              auctionMap[auction.id] = auction.sessionCode || auction.id
+            })
+            
+            // If we got less than pageSize items, we've reached the end
+            hasMore = items.length === pageSize
+            pageNumber++
+          } else {
+            hasMore = false
+          }
+        }
+        
+        setAuctionMap(auctionMap)
+
+        // Fetch all users
+        const usersRes = await userApi.list()
+        if (usersRes.isSuccess && usersRes.data) {
+          const payload = usersRes.data as ApiUser[] | ListResponse<ApiUser>
+          const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
+          const userMap: Record<string, string> = {}
+          apiUsers.forEach(user => {
+            userMap[user.id] = `${user.firstName} ${user.lastName}`.trim() || user.email
+          })
+          setUserMap(userMap)
+        }
+      } catch (err) {
+        console.error('Error fetching auction and user data:', err)
+      }
+    }
+
+    fetchAuctionAndUserData()
+  }, [])
 
   useEffect(() => {
     fetchReports({ silent: true })
@@ -104,6 +156,15 @@ export default function ReportsPage() {
     }
   }
 
+  // Helper functions
+  const getAuctionName = useCallback((auctionId: string): string => {
+    return auctionMap[auctionId] || auctionId
+  }, [auctionMap])
+
+  const getReporterName = useCallback((reporterId: string): string => {
+    return userMap[reporterId] || reporterId
+  }, [userMap])
+
   // Filter reports by search term
   const filteredReports = useMemo(() => {
     if (!reports?.items) return []
@@ -112,12 +173,13 @@ export default function ReportsPage() {
     return reports.items.filter(report =>
       report.note.toLowerCase().includes(keyword) ||
       report.auctionId.toLowerCase().includes(keyword) ||
+      getAuctionName(report.auctionId).toLowerCase().includes(keyword) ||
       report.reporterId.toLowerCase().includes(keyword) ||
+      getReporterName(report.reporterId).toLowerCase().includes(keyword) ||
       REPORT_TYPE_LABELS[report.reportType].toLowerCase().includes(keyword)
     )
-  }, [reports, searchTerm])
+  }, [reports, searchTerm, getAuctionName, getReporterName])
 
-  // Helper functions
   const getStatusBadge = (status: ReportStatus) => {
     switch (status) {
       case "Pending":
@@ -283,13 +345,13 @@ export default function ReportsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm min-h-[48px] w-[15%]">
-                        <div className="truncate max-w-[200px]" title={report.auctionId}>
-                          {report.auctionId}
+                        <div className="truncate max-w-[200px]" title={getAuctionName(report.auctionId)}>
+                          {getAuctionName(report.auctionId)}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm min-h-[48px] w-[15%]">
-                        <div className="truncate max-w-[200px]" title={report.reporterId}>
-                          {report.reporterId}
+                        <div className="truncate max-w-[200px]" title={getReporterName(report.reporterId)}>
+                          {getReporterName(report.reporterId)}
                         </div>
                       </TableCell>
                       <TableCell className="min-h-[48px] w-[10%]">{getStatusBadge(report.reportStatus)}</TableCell>
@@ -320,7 +382,7 @@ export default function ReportsPage() {
                               size="sm"
                               onClick={() => handleUpdateStatus(report.id, "Rejected")}
                               disabled={Boolean(updatingId)}
-                              className="text-red-600 border-red-600 hover:bg-red-50"
+                              className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
                             >
                               {updatingId === report.id ? (
                                 <>

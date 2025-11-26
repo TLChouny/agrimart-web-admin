@@ -221,7 +221,7 @@ export default function CategoriesPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           {/* <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Danh mục</p> */}
-          <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý loại mãng cầu</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Quản lý loại mãng cầu</h1>
           <p className="text-responsive-base text-gray-600">Tạo và cập nhật danh mục phục vụ các quy trình nông trại.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -245,7 +245,7 @@ export default function CategoriesPage() {
       <Card className="card-responsive">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-responsive-xl font-semibold text-gray-900">Danh sách loại mãng cầu</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Danh sách loại mãng cầu</h2>
             <p className="text-responsive-sm text-gray-600">
               {isLoadingTypes ? 'Đang tải...' : `Có ${filteredTypes.length} loại`}
               {error ? ` · Lỗi: ${error}` : ''}

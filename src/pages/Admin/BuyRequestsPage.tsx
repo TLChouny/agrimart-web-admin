@@ -268,8 +268,8 @@ export default function BuyRequestsPage() {
       <div className="mb-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Yêu cầu mua hàng</p>
-            <h1 className="text-responsive-2xl font-bold text-gray-900">Quản lý yêu cầu mua hàng</h1>
+            {/* <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Yêu cầu mua hàng</p> */}
+            <h1 className="text-2xl font-bold text-gray-900">Quản lý yêu cầu mua hàng</h1>
             <p className="text-responsive-base text-gray-600">Theo dõi và quản lý các yêu cầu mua hàng từ nhà buôn.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -349,7 +349,7 @@ export default function BuyRequestsPage() {
       <Card className="card-responsive">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-responsive-xl font-semibold text-gray-900">Danh sách yêu cầu mua hàng</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Danh sách yêu cầu mua hàng</h2>
             <p className="text-responsive-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredBuyRequests.length} / ${visibleTotalCount || totalCount} yêu cầu`}
             </p>
