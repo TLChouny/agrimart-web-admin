@@ -4,7 +4,7 @@ import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { X, Search, RefreshCw, Sprout, Eye } from 'lucide-react'
+import { X, Search, RefreshCw, Sprout, Eye, Filter, ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { farmApi } from '../../services/api/farmApi'
@@ -16,7 +16,6 @@ export default function CropsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [farms, setFarms] = useState<Farm[]>([])
   const [crops, setCrops] = useState<Crop[]>([])
-  const [isLoadingFarms, setIsLoadingFarms] = useState(false)
   const [isLoadingCrops, setIsLoadingCrops] = useState(false)
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -33,7 +32,6 @@ export default function CropsPage() {
 
   // API functions
   const fetchFarms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
-    setIsLoadingFarms(true)
     setFarmError(null)
     try {
       const response = await farmApi.getFarms()
@@ -73,8 +71,6 @@ export default function CropsPage() {
         description: message,
         variant: 'destructive',
       })
-    } finally {
-      setIsLoadingFarms(false)
     }
   }, [toast])
 
@@ -290,64 +286,73 @@ export default function CropsPage() {
         <p className="text-base text-gray-600">Danh sách lô trồng của các nông trại</p>
       </div>
 
-      <Card className="p-6 mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="max-w-xs">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Lọc theo nông trại</h2>
-            {isLoadingFarms ? (
-              <p className="text-sm text-gray-500">Đang tải...</p>
-            ) : (
+      <Card className="p-6">
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách lô trồng</h2>
+              <p className="text-sm text-gray-600">
+                {isLoadingCrops ? 'Đang tải...' : `Hiển thị ${filteredCrops.length} / ${crops.length} lô trồng`}
+                {cropError && <span className="text-red-600"> · {cropError}</span>}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm theo tên, nông trại, loại..."
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fetchCrops(selectedFarmId || undefined)}
+                disabled={isLoadingCrops || farms.length === 0}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingCrops ? 'animate-spin' : ''}`} />
+                {isLoadingCrops ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Bộ lọc theo style AuctionsPage */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Filter className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+                selectedFarmId ? 'text-emerald-600' : 'text-gray-400'
+              }`} />
               <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white h-10"
                 value={selectedFarmId || ''}
-                onChange={(e) => handleFarmFilterChange(e.target.value || null)}
+                onChange={(e) => {
+                  handleFarmFilterChange(e.target.value || null)
+                  setCropPage(1)
+                }}
+                className={`appearance-none rounded-2xl border px-10 py-2 pr-8 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 ${
+                  selectedFarmId
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+                }`}
               >
                 <option value="">Tất cả nông trại</option>
-                {farms.map(farm => (
-                  <option key={farm.id} value={farm.id}>
-                    {farm.name}
-                  </option>
-                ))}
+                {farms.map(farm => {
+                  const farmCropsCount = crops.filter(c => c.farmId === farm.id).length
+                  return (
+                    <option key={farm.id} value={farm.id}>
+                      {farm.name} ({farmCropsCount})
+                    </option>
+                  )
+                })}
               </select>
-            )}
-            {farmError && <p className="text-xs text-red-600 mt-2">{farmError}</p>}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => fetchFarms()} disabled={isLoadingFarms}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingFarms ? 'animate-spin' : ''}`} />
-            {isLoadingFarms ? 'Đang tải...' : 'Làm mới'}
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách lô trồng</h2>
-            <p className="text-sm text-gray-600">
-              {isLoadingCrops ? 'Đang tải...' : `Hiển thị ${filteredCrops.length} / ${crops.length} lô trồng`}
-              {cropError && <span className="text-red-600"> · {cropError}</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo tên, nông trại, loại..."
-                className="pl-9"
-              />
+              <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+                selectedFarmId ? 'text-emerald-600' : 'text-gray-400'
+              }`} />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchCrops(selectedFarmId || undefined)}
-              disabled={isLoadingCrops || farms.length === 0}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingCrops ? 'animate-spin' : ''}`} />
-              {isLoadingCrops ? 'Đang tải...' : 'Làm mới'}
-            </Button>
           </div>
+
+          {farmError && <p className="text-xs text-red-600 mt-2">{farmError}</p>}
         </div>
 
         <div className="overflow-x-auto">

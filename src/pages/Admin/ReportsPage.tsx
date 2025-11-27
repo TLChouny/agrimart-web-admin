@@ -4,7 +4,7 @@ import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } f
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
-import { Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
+import { Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle, Filter, ChevronDown } from "lucide-react"
 import { reportApi } from "../../services/api"
 import { userApi } from "../../services/api/userApi"
 import { auctionApi } from "../../services/api/auctionApi"
@@ -125,13 +125,6 @@ export default function ReportsPage() {
     }))
   }
 
-  const handlePageSizeChange = (size: number) => {
-    setFilters(prev => ({
-      ...prev,
-      pageSize: size,
-      pageNumber: 1,
-    }))
-  }
 
   const handleUpdateStatus = async (reportId: string, status: ReportStatus) => {
     try {
@@ -220,81 +213,111 @@ export default function ReportsPage() {
         <p className="text-base text-gray-600">Quản lý báo cáo và cập nhật trạng thái xử lý.</p>
       </div>
 
-      <Card className="p-6 mb-6">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Bộ lọc</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card className="p-6">
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
-              <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white h-10"
-                value={filters.status ?? ""}
-                onChange={e => handleFilterChange("status", e.target.value || undefined)}
-              >
-                <option value="">Tất cả</option>
-                {reportStatuses.map(status => (
-                  <option key={status} value={status}>{REPORT_STATUS_LABELS[status]}</option>
-                ))}
-              </select>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách báo cáo</h2>
+              <p className="text-sm text-gray-600">
+                {loading ? "Đang tải..." : reports ? `Hiển thị ${filteredReports.length} / ${reports.totalCount} báo cáo` : "Chưa có dữ liệu"}
+              </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Loại báo cáo</label>
+            <div className="flex items-center gap-3">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm theo nội dung, mã phiên..."
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fetchReports()}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {loading ? "Đang tải..." : "Làm mới"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Bộ lọc theo style AuctionsPage */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Button tabs cho trạng thái */}
+            <button
+              type="button"
+              onClick={() => handleFilterChange("status", undefined)}
+              className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                !filters.status
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+              }`}
+            >
+              Tất cả trạng thái
+              {reports && (
+                <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+                  {reports.totalCount}
+                </span>
+              )}
+            </button>
+
+            {reportStatuses.map(status => {
+              const count = reports?.items?.filter(r => r.reportStatus === status).length ?? 0
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => handleFilterChange("status", status)}
+                  className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    filters.status === status
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+                  }`}
+                >
+                  {REPORT_STATUS_LABELS[status]}
+                  {reports && (
+                    <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+
+            {/* Dropdown cho loại báo cáo */}
+            <div className="relative">
+              <Filter className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+                filters.type ? 'text-emerald-600' : 'text-gray-400'
+              }`} />
               <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white h-10"
                 value={filters.type ?? ""}
                 onChange={e => handleFilterChange("type", e.target.value || undefined)}
+                className={`appearance-none rounded-2xl border px-10 py-2 pr-8 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 ${
+                  filters.type
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+                }`}
               >
-                <option value="">Tất cả</option>
-                {reportTypes.map(type => (
-                  <option key={type} value={type}>{REPORT_TYPE_LABELS[type]}</option>
-                ))}
+                <option value="">Tất cả loại báo cáo</option>
+                {reportTypes.map(type => {
+                  const count = reports?.items?.filter(r => r.reportType === type).length ?? 0
+                  return (
+                    <option key={type} value={type}>
+                      {REPORT_TYPE_LABELS[type]} {reports && `(${count})`}
+                    </option>
+                  )
+                })}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Kích thước trang</label>
-              <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white h-10"
-                value={filters.pageSize ?? 10}
-                onChange={e => handlePageSizeChange(Number(e.target.value))}
-              >
-                {[10, 20, 50].map(size => (
-                  <option key={size} value={size}>{size} kết quả</option>
-                ))}
-              </select>
+              <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+                filters.type ? 'text-emerald-600' : 'text-gray-400'
+              }`} />
             </div>
           </div>
-        </div>
-        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-      </Card>
 
-      <Card className="p-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách báo cáo</h2>
-            <p className="text-sm text-gray-600">
-              {loading ? "Đang tải..." : reports ? `Hiển thị ${filteredReports.length} / ${reports.totalCount} báo cáo` : "Chưa có dữ liệu"}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo nội dung, mã phiên..."
-                className="pl-9"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchReports()}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Đang tải..." : "Làm mới"}
-            </Button>
-          </div>
+          {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
 
         <div className="overflow-x-auto">

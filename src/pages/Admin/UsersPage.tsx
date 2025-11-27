@@ -4,14 +4,16 @@ import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } f
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { userApi } from '../../services/api/userApi'
 import type { User as ApiUser, UserListItem } from '../../types/api'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES, USER_MESSAGES } from '../../services/constants/messages'
-import { Search, Users as UsersIcon } from 'lucide-react'
+import { Search, Users as UsersIcon, Filter, ChevronDown, Eye } from 'lucide-react'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserListItem[]>([])
+  const [usersMap, setUsersMap] = useState<Record<string, ApiUser>>({}) // Lưu toàn bộ user data
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const PAGE_SIZE = 10
@@ -19,6 +21,10 @@ export default function UsersPage() {
   const [blockedMap, setBlockedMap] = useState<Record<string, boolean>>({})
   const { toast } = useToastContext()
   const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   // API functions
   const fetchUsers = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -32,7 +38,7 @@ export default function UsersPage() {
         const mapRole = (u: ApiUser): UserListItem['role'] => {
           const r = (u as unknown as { role?: unknown }).role
           if (typeof r === 'string') {
-            if (r === 'admin' || r === 'farmer' || r === 'wholesaler') return r
+            if (r === 'farmer' || r === 'wholesaler') return r
           }
           if (r && typeof r === 'object' && 'name' in (r as Record<string, unknown>)) {
             const name = String((r as { name?: unknown }).name || '').toLowerCase()
@@ -49,6 +55,8 @@ export default function UsersPage() {
           createdAt: u.createdAt,
         }))
         setUsers(mapped)
+        // Lưu toàn bộ user data để hiển thị chi tiết
+        setUsersMap(Object.fromEntries(apiUsers.map(u => [u.id, u])))
         setBlockedMap(Object.fromEntries(mapped.map(u => [u.id, false])))
         setPage(1)
         if (!silent) {
@@ -87,22 +95,49 @@ export default function UsersPage() {
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
   const filteredUsers = useMemo(() => {
+    let filtered = users
+
+    // Filter by search term
     const keyword = searchTerm.trim().toLowerCase()
-    if (!keyword) return users
-    return users.filter(user =>
-      user.fullName.toLowerCase().includes(keyword) ||
-      user.email.toLowerCase().includes(keyword) ||
-      user.id.toLowerCase().includes(keyword)
-    )
-  }, [users, searchTerm])
+    if (keyword) {
+      filtered = filtered.filter(user =>
+        user.fullName.toLowerCase().includes(keyword) ||
+        user.email.toLowerCase().includes(keyword) ||
+        user.id.toLowerCase().includes(keyword)
+      )
+    }
+
+    // Filter by role
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(user => user.role === roleFilter)
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(user => {
+        if (statusFilter === 'active') {
+          return user.status === 'active' && !blockedMap[user.id]
+        } else if (statusFilter === 'inactive') {
+          return user.status === 'inactive' || blockedMap[user.id]
+        }
+        return true
+      })
+    }
+
+    // Sắp xếp theo ngày tạo mới nhất
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+      return dateB - dateA // Mới nhất trước
+    })
+  }, [users, searchTerm, roleFilter, statusFilter, blockedMap])
 
   useEffect(() => {
     setPage(1)
-  }, [searchTerm])
+  }, [searchTerm, roleFilter, statusFilter])
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'admin': return <Badge variant="outline" className="text-red-600 border-red-600">Admin</Badge>
       case 'farmer': return <Badge variant="outline" className="text-green-600 border-green-600">Farmer</Badge>
       case 'wholesaler': return <Badge variant="outline" className="text-blue-600 border-blue-600">Wholesaler</Badge>
       default: return <Badge variant="outline">Unknown</Badge>
@@ -126,6 +161,20 @@ export default function UsersPage() {
     })
   }
 
+  const handleViewDetail = (userId: string) => {
+    const user = usersMap[userId]
+    if (user) {
+      setSelectedUser(user)
+      setIsDetailModalOpen(true)
+    } else {
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: 'Không tìm thấy thông tin chi tiết người dùng',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const start = (safePage - 1) * PAGE_SIZE
@@ -141,40 +190,118 @@ export default function UsersPage() {
       </div>
 
       <Card className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách người dùng</h2>
             <p className="text-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredUsers.length} / ${users.length} người dùng`}
               {error && <span className="text-red-600"> · {error}</span>}
             </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên, email hoặc ID"
-              className="pl-9"
-            />
           </div>
-            <Button variant="outline" size="sm" onClick={() => fetchUsers()} disabled={isLoading}>
-            {isLoading ? 'Đang tải...' : 'Làm mới'}
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm theo tên, email hoặc ID"
+                className="pl-9"
+              />
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => fetchUsers()} disabled={isLoading}>
+              {isLoading ? 'Đang tải...' : 'Làm mới'}
+            </Button>
+          </div>
         </div>
+
+        {/* Bộ lọc theo style AuctionsPage */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter tabs cho vai trò */}
+          <button
+            type="button"
+            onClick={() => { setRoleFilter('all'); setPage(1) }}
+            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+              roleFilter === 'all'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+            }`}
+          >
+            Tất cả vai trò
+            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+              {users.length}
+            </span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => { setRoleFilter('farmer'); setPage(1) }}
+            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+              roleFilter === 'farmer'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+            }`}
+          >
+            Farmer
+            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+              {users.filter(u => u.role === 'farmer').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setRoleFilter('wholesaler'); setPage(1) }}
+            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+              roleFilter === 'wholesaler'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+            }`}
+          >
+            Wholesaler
+            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+              {users.filter(u => u.role === 'wholesaler').length}
+            </span>
+          </button>
+
+          {/* Dropdown cho trạng thái */}
+          <div className="relative">
+            <Filter className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+              statusFilter !== 'all' ? 'text-emerald-600' : 'text-gray-400'
+            }`} />
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value)
+                setPage(1)
+              }}
+              className={`appearance-none rounded-2xl border px-10 py-2 pr-8 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 ${
+                statusFilter !== 'all'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
+              }`}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
+            </select>
+            <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+              statusFilter !== 'all' ? 'text-emerald-600' : 'text-gray-400'
+            }`} />
+          </div>
         </div>
+      </div>
 
         <div className="overflow-x-auto">
           {isLoading ? (
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[35%]">Họ và tên</TableHead>
-                  <TableHead className="w-[25%]">Email</TableHead>
-                  <TableHead className="w-[15%]">Vai trò</TableHead>
-                  <TableHead className="w-[15%]">Trạng thái</TableHead>
+                  <TableHead className="w-[30%]">Họ và tên</TableHead>
+                  <TableHead className="w-[20%]">Email</TableHead>
+                  <TableHead className="w-[12%]">Vai trò</TableHead>
+                  <TableHead className="w-[12%]">Trạng thái</TableHead>
                   <TableHead className="w-[10%] text-right">Khóa</TableHead>
+                  <TableHead className="w-[16%] text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -195,11 +322,12 @@ export default function UsersPage() {
                 <SimpleTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[35%] text-left">Họ và tên</TableHead>
-                      <TableHead className="w-[25%] text-left">Email</TableHead>
-                      <TableHead className="w-[15%] text-left">Vai trò</TableHead>
-                      <TableHead className="w-[15%] text-left">Trạng thái</TableHead>
+                      <TableHead className="w-[30%] text-left">Họ và tên</TableHead>
+                      <TableHead className="w-[20%] text-left">Email</TableHead>
+                      <TableHead className="w-[12%] text-left">Vai trò</TableHead>
+                      <TableHead className="w-[12%] text-left">Trạng thái</TableHead>
                       <TableHead className="w-[10%] text-right">Khóa</TableHead>
+                      <TableHead className="w-[16%] text-center">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -228,6 +356,17 @@ export default function UsersPage() {
                             <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Blocked' : 'Active'}</span>
                           </label>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetail(user.id)}
+                            className="text-xs"
+                          >
+                            <Eye className="h-4 w-4 mr-1.5" />
+                            Chi tiết
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -253,13 +392,24 @@ export default function UsersPage() {
                       <p className="text-xs text-gray-500">ID: {user.id}</p>
                       <p className="text-xs text-gray-500">Ngày tạo: {formatDate(user.createdAt)}</p>
                     </div>
-                    <label className="mt-3 inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
-                      <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
-                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
-                      </span>
-                      <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
-                    </label>
+                    <div className="mt-3 flex items-center justify-between">
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
+                        <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                        </span>
+                        <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDetail(user.id)}
+                        className="text-xs"
+                      >
+                        <Eye className="h-4 w-4 mr-1.5" />
+                        Chi tiết
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -284,12 +434,168 @@ export default function UsersPage() {
                 <UsersIcon className="h-6 w-6 text-emerald-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Chưa có người dùng nào phù hợp</h3>
-              <p className="text-sm text-gray-500 max-w-md">Thử thay đổi từ khóa tìm kiếm hoặc tải lại danh sách người dùng.</p>
-              <Button onClick={() => { setSearchTerm(''); fetchUsers(); }}>Tải lại danh sách</Button>
+              <p className="text-sm text-gray-500 max-w-md">Thử thay đổi từ khóa tìm kiếm, bộ lọc hoặc tải lại danh sách người dùng.</p>
+              <Button onClick={() => { 
+                setSearchTerm('')
+                setRoleFilter('all')
+                setStatusFilter('all')
+                fetchUsers()
+              }}>Xóa bộ lọc và tải lại</Button>
             </div>
           )}
         </div>
       </Card>
+
+      {/* Dialog hiển thị chi tiết user */}
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold text-gray-900">
+              Chi tiết người dùng
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedUser ? (
+            <div className="space-y-6 mt-4">
+              {/* Thông tin cơ bản */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">Thông tin cơ bản</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">ID</p>
+                    <p className="text-sm font-semibold text-slate-900 font-mono break-all">{selectedUser.id}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Email</p>
+                    <p className="text-sm font-semibold text-slate-900 break-all">{selectedUser.email}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Họ</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.firstName || '—'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Tên</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.lastName || '—'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Số điện thoại</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.phoneNumber || '—'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Vai trò</p>
+                    <div className="mt-1">{getRoleBadge(users.find(u => u.id === selectedUser.id)?.role || 'wholesaler')}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Địa chỉ */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">Địa chỉ</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white p-4 sm:col-span-2">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Địa chỉ</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.address || '—'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xã/Phường</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.communes || '—'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Tỉnh/Thành phố</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.province || '—'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trạng thái tài khoản */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">Trạng thái tài khoản</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xác nhận email</p>
+                    <div className="mt-1">
+                      {selectedUser.emailConfirmed ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600">Đã xác nhận</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-red-600 border-red-600">Chưa xác nhận</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xác nhận số điện thoại</p>
+                    <div className="mt-1">
+                      {selectedUser.phoneNumberConfirmed ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600">Đã xác nhận</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-red-600 border-red-600">Chưa xác nhận</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xác thực 2 yếu tố</p>
+                    <div className="mt-1">
+                      {selectedUser.twoFactorEnabled ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600">Đã bật</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-600 border-gray-600">Chưa bật</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Khóa tài khoản</p>
+                    <div className="mt-1">
+                      {selectedUser.lockoutEnabled ? (
+                        <Badge variant="outline" className="text-red-600 border-red-600">Đã bật</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-600 border-gray-600">Chưa bật</Badge>
+                      )}
+                    </div>
+                  </div>
+                  {selectedUser.lockoutEnd && (
+                    <div className="rounded-2xl bg-white p-4 sm:col-span-2">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Ngày hết hạn khóa</p>
+                      <p className="text-sm font-semibold text-slate-900">{formatDate(selectedUser.lockoutEnd)}</p>
+                    </div>
+                  )}
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Số lần đăng nhập sai</p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedUser.accessFailedCount || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Thông tin hệ thống */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">Thông tin hệ thống</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Ngày tạo</p>
+                    <p className="text-sm font-semibold text-slate-900">{formatDate(selectedUser.createdAt)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Ngày cập nhật</p>
+                    <p className="text-sm font-semibold text-slate-900">{formatDate(selectedUser.updatedAt)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Role ID</p>
+                    <p className="text-sm font-semibold text-slate-900 font-mono text-xs break-all">{selectedUser.roleId}</p>
+                  </div>
+                  {selectedUser.role && (
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Tên vai trò</p>
+                      <p className="text-sm font-semibold text-slate-900">{selectedUser.role.name || selectedUser.role.fullName || '—'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-sm text-gray-500">Không có thông tin để hiển thị</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
