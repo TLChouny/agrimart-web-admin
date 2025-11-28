@@ -11,7 +11,7 @@ import type {
   PauseAuctionDTO,
   ResumeAuctionDTO,
   ApiAuctionExtend,
-  ApiAuctionBid,
+  ApiAuctionBidLog,
 } from '../../types/api'
 import type { ApiEnglishAuction } from '../../types/api'
 
@@ -123,9 +123,9 @@ export const auctionApi = {
     )
   },
 
-  async getBidsByAuctionId(auctionId: string): Promise<APIResponse<ApiAuctionBid[]>> {
-    return auctionHttpClient.get<ApiAuctionBid[]>(
-      ENDPOINTS.auction.bid.byAuction(auctionId),
+  async getBidLogsByAuctionId(auctionId: string): Promise<APIResponse<ApiAuctionBidLog[]>> {
+    return auctionHttpClient.get<ApiAuctionBidLog[]>(
+      ENDPOINTS.auction.bidLog.byAuction(auctionId),
       { cache: false }
     )
   },

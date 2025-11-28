@@ -72,6 +72,10 @@ export const ENDPOINTS = {
       byAuction: (auctionId: string) =>
         `/api/auction-service/bid/auction/${encodeURIComponent(auctionId)}`,
     },
+    bidLog: {
+      byAuction: (auctionId: string) =>
+        `/api/auction-service/bidlog/auction/${encodeURIComponent(auctionId)}`,
+    },
     auctionLog: {
       byAuction: (auctionId: string) => `/api/auction-service/auctionlog/auction/${auctionId}`,
       byType: (logType: string) => `/api/auction-service/auctionlog/type/${logType}`,
@@ -93,11 +97,6 @@ export const ENDPOINTS = {
     list: '/api/post-service/post',
     detail: (id: string) => `/api/post-service/post/${encodeURIComponent(id)}`,
     updateStatus: (id: string) => `/api/post-service/post/${encodeURIComponent(id)}/status`,
-  },
-  buyRequest: {
-    list: '/api/auction-service/buyrequest',
-    detail: (id: string) => `/api/auction-service/buyrequest/${encodeURIComponent(id)}`,
-    updateStatus: (id: string) => `/api/auction-service/buyrequest/${encodeURIComponent(id)}/status`,
   },
 } as const
 

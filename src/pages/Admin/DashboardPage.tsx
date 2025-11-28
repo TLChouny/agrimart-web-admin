@@ -9,14 +9,11 @@ import { useNavigate } from "react-router-dom"
 import { farmApi } from "../../services/api/farmApi"
 import { auctionApi } from "../../services/api/auctionApi"
 import { reportApi } from "../../services/api/reportApi"
-import { buyRequestApi } from "../../services/api/buyRequestApi"
 import type {
   ApiFarm,
   ApiEnglishAuction,
-  ApiBuyRequest,
   ReportItem,
   ReportType,
-  BuyRequestStatus,
   OrderStatus,
 } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
@@ -53,14 +50,6 @@ const getRelativeTime = (iso?: string | null) => {
   if (diffHours < 24) return `${diffHours} giờ trước`
   const diffDays = Math.floor(diffHours / 24)
   return `${diffDays} ngày trước`
-}
-
-const BUY_REQUEST_STATUS_TO_ORDER_STATUS: Record<BuyRequestStatus, OrderStatus> = {
-  Pending: "pending",
-  Approved: "confirmed",
-  Rejected: "cancelled",
-  Fulfilled: "delivered",
-  Cancelled: "cancelled",
 }
 
 const AUCTION_STATUS_META: Record<
@@ -102,23 +91,20 @@ export default function AdminDashboardPage() {
   const [farms, setFarms] = useState<ApiFarm[]>([])
   const [auctions, setAuctions] = useState<ApiEnglishAuction[]>([])
   const [reports, setReports] = useState<ReportItem[]>([])
-  const [buyRequests, setBuyRequests] = useState<ApiBuyRequest[]>([])
 
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      const [farmRes, auctionRes, reportRes, buyRequestRes] = await Promise.all([
+      const [farmRes, auctionRes, reportRes] = await Promise.all([
         farmApi.getFarms(),
         auctionApi.getEnglishAuctions(undefined, 1, 100),
         reportApi.getReports({ pageNumber: 1, pageSize: 50 }),
-        buyRequestApi.getBuyRequests(undefined, 1, 10),
       ])
 
       setFarms(farmRes.data ?? [])
       setAuctions(auctionRes.data?.items ?? [])
       setReports(reportRes.data?.items ?? [])
-      setBuyRequests(buyRequestRes.data?.items ?? [])
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không thể tải dữ liệu dashboard"
       setErrorMessage(message)
@@ -210,18 +196,25 @@ export default function AdminDashboardPage() {
   }, [auctions])
 
   const orderSummaries = useMemo<DeliverySummaryItem[]>(() => {
-    if (!buyRequests.length) return []
-    return buyRequests.slice(0, 3).map(request => {
-      const total = Math.max(request.desiredPrice * request.requiredQuantity, 0)
+    if (!auctions.length) return []
+    return auctions.slice(0, 3).map(auction => {
+      const baseAmount = auction.currentPrice ?? auction.winningPrice ?? auction.startingPrice ?? 0
+      const total = Math.max(baseAmount, 0)
       const depositAmount = Math.round(total * 0.2)
-      const status = BUY_REQUEST_STATUS_TO_ORDER_STATUS[request.status]
+      const status: OrderStatus =
+        auction.status === "Completed" ? "delivered" :
+        auction.status === "OnGoing" ? "shipping" :
+        auction.status === "Pending" ? "pending" :
+        auction.status === "Rejected" || auction.status === "Cancelled" ? "cancelled" :
+        "confirmed"
+
       return {
-        id: request.id,
-        farm: request.location || "Chưa xác định",
-        customer: request.title,
+        id: auction.id,
+        farm: auction.sessionCode,
+        customer: auction.note || "Phiên đấu giá",
         total,
         status,
-        createdAt: request.createdAt,
+        createdAt: auction.createdAt,
         payment: {
           depositPaid: status !== "pending",
           depositAmount,
@@ -230,7 +223,7 @@ export default function AdminDashboardPage() {
         },
       }
     })
-  }, [buyRequests])
+  }, [auctions])
 
   const auctionProgress = useMemo<AuctionProgressItem[]>(() => {
     if (!auctions.length) return []
@@ -286,21 +279,11 @@ export default function AdminDashboardPage() {
       })
     })
 
-    buyRequests.forEach(request => {
-      activities.push({
-        id: `buy-request-${request.id}`,
-        title: request.title,
-        subtitle: `Trạng thái: ${request.status}`,
-        time: request.createdAt,
-        accent: "yellow",
-      })
-    })
-
     return activities
       .filter(activity => !!activity.time)
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, 4)
-  }, [auctions, reports, buyRequests])
+  }, [auctions, reports])
 
   const ActivitySkeleton = () => (
     <div className="space-y-3">

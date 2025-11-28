@@ -3,5 +3,4 @@ export type { HttpRequestOptions } from './httpClient'
 export { requestCache, RequestCache } from './requestCache'
 export { reportApi } from './reportApi'
 export { postApi } from './postApi'
-export { buyRequestApi } from './buyRequestApi'
 

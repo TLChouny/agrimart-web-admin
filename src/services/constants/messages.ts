@@ -203,15 +203,3 @@ export const POST_MESSAGES = {
   STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái bài đăng.',
 } as const
 
-export const BUY_REQUEST_MESSAGES = {
-  FETCH_SUCCESS: 'Tải danh sách yêu cầu mua hàng thành công.',
-  FETCH_ERROR: 'Không thể tải danh sách yêu cầu mua hàng. Vui lòng thử lại.',
-  STATUS_UPDATE_SUCCESS: 'Cập nhật trạng thái yêu cầu mua hàng thành công.',
-  STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái yêu cầu mua hàng.',
-  APPROVE_SUCCESS: 'Duyệt yêu cầu mua hàng thành công.',
-  APPROVE_ERROR: 'Không thể duyệt yêu cầu mua hàng. Vui lòng thử lại.',
-  REJECT_SUCCESS: 'Từ chối yêu cầu mua hàng thành công.',
-  REJECT_ERROR: 'Không thể từ chối yêu cầu mua hàng. Vui lòng thử lại.',
-} as const
-
-

@@ -25,7 +25,6 @@ import AuctionReportsPage from './pages/Admin/AuctionReportsPage';
 import AdminSettingsPage from './pages/Admin/SettingsPage';
 import AdminHelpPage from './pages/Admin/HelpPage';
 import ReportsPage from './pages/Admin/ReportsPage';
-import BuyRequestsPage from './pages/Admin/BuyRequestsPage';
 
 import { ROUTES } from './constants';
 import { ToastProvider } from './contexts/ToastContext';
@@ -103,11 +102,6 @@ function App() {
         <Route path={ROUTES.ADMIN_REPORTS} element={
           <ProtectedRoute>
             <AdminLayout><ReportsPage /></AdminLayout>
-          </ProtectedRoute>
-        } />
-        <Route path={ROUTES.ADMIN_BUY_REQUESTS} element={
-          <ProtectedRoute>
-            <AdminLayout><BuyRequestsPage /></AdminLayout>
           </ProtectedRoute>
         } />
         <Route path={ROUTES.ADMIN_PRODUCTS} element={

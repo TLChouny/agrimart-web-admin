@@ -451,6 +451,7 @@ export default function AuctionsPage() {
           description: AUCTION_MESSAGES.STATUS_UPDATE_SUCCESS,
         })
         fetchStatusCounts()
+        fetchAuctions({ silent: true })
       } else {
         const message = res.message || AUCTION_MESSAGES.STATUS_UPDATE_ERROR
         toast({

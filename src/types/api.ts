@@ -216,14 +216,16 @@ export interface ApiAuctionExtend {
   updatedAt: string | null
 }
 
-export interface ApiAuctionBid {
+export interface ApiAuctionBidLog {
+  id: string
+  bidId: string
   userId: string
-  bidAmount: number
-  isAutoBid: boolean
-  autoBidMaxLimit: number
-  isWinning: boolean
-  isCancelled: boolean
-  auctionSessionId: string
+  userName: string
+  type: string
+  isAutoBidding: boolean
+  dateTimeUpdate: string
+  oldEntity: string | null
+  newEntity: string | null
 }
 
 // Auction Log related types
@@ -356,35 +358,4 @@ export interface UpdatePostDTO {
   tags?: string[]
   featuredImage?: string
   status?: PostStatus
-}
-
-// BuyRequest related types
-export type BuyRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Fulfilled' | 'Cancelled'
-export interface ApiBuyRequest {
-  id: string
-  wholesalerId: string
-  title: string
-  productTypeId: string
-  requiredQuantity: number
-  desiredPrice: number
-  requiredDate: string
-  location: string
-  notes: string
-  status: BuyRequestStatus
-  createdAt: string
-  updatedAt: string | null
-}
-
-export interface PaginatedBuyRequests {
-  items: ApiBuyRequest[]
-  pageNumber: number
-  pageSize: number
-  totalPages: number
-  totalCount: number
-  previousPage: boolean
-  nextPage: boolean
-}
-
-export interface UpdateBuyRequestStatusDTO {
-  status: BuyRequestStatus
 }

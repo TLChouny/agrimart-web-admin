@@ -5,8 +5,15 @@ import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { Card } from '../../components/ui/card'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
-import { userApi } from '../../services/api/userApi'
-import type { ApiEnglishAuction, ApiAuctionBid, User as ApiUser, ListResponse, ApiAuctionExtend } from '../../types/api'
+import type { ApiEnglishAuction, ApiAuctionBidLog, ApiAuctionExtend } from '../../types/api'
+
+type BidDetailsFromLog = {
+  bidAmount?: number
+  isAutoBid?: boolean
+  autoBidMaxLimit?: number
+  isWinning?: boolean
+  isCancelled?: boolean
+}
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
@@ -28,11 +35,40 @@ export default function AuctionBidHistoryPage() {
   const [auction, setAuction] = useState<ApiEnglishAuction | null>(null)
   const [farmName, setFarmName] = useState<string>('Unknown')
   const [loading, setLoading] = useState<boolean>(true)
-  const [bids, setBids] = useState<ApiAuctionBid[]>([])
-  const [bidsLoading, setBidsLoading] = useState<boolean>(false)
-  const [userNameMap, setUserNameMap] = useState<Record<string, string>>({})
+  const [bidLogs, setBidLogs] = useState<ApiAuctionBidLog[]>([])
+  const [bidLogsLoading, setBidLogsLoading] = useState<boolean>(false)
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
   const { toast } = useToastContext()
+
+  const extractBidDetails = (log: ApiAuctionBidLog): BidDetailsFromLog | null => {
+    const raw = log.newEntity || log.oldEntity
+    if (!raw) return null
+
+    try {
+      const parsed = JSON.parse(raw)
+      const bid = parsed?.Bid ?? parsed?.bid
+      if (!bid) return null
+
+      const toNumber = (value: unknown): number | undefined =>
+        typeof value === 'number' ? value : undefined
+      const toBoolean = (value: unknown): boolean | undefined => {
+        if (typeof value === 'boolean') return value
+        if (typeof value === 'number') return value === 1
+        if (typeof value === 'string') return value.toLowerCase() === 'true'
+        return undefined
+      }
+
+      return {
+        bidAmount: toNumber(bid.BidAmount ?? bid.bidAmount),
+        isAutoBid: toBoolean(bid.IsAutoBid ?? bid.isAutoBid),
+        autoBidMaxLimit: toNumber(bid.AutoBidMaxLimit ?? bid.autoBidMaxLimit),
+        isWinning: toBoolean(bid.IsWinning ?? bid.isWinning),
+        isCancelled: toBoolean(bid.IsCancelled ?? bid.isCancelled),
+      }
+    } catch {
+      return null
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,8 +91,8 @@ export default function AuctionBidHistoryPage() {
           }
         }
 
-        // Lấy danh sách bids của auction
-        await fetchAuctionBids(id)
+        // Lấy danh sách bid logs của auction
+        await fetchAuctionBidLogs(id)
         await fetchAuctionExtends(id)
       } finally {
         setLoading(false)
@@ -66,13 +102,15 @@ export default function AuctionBidHistoryPage() {
     fetchData()
   }, [id])
 
-  const fetchAuctionBids = async (auctionId: string) => {
+  const fetchAuctionBidLogs = async (auctionId: string) => {
     try {
-      setBidsLoading(true)
-      const res = await auctionApi.getBidsByAuctionId(auctionId)
+      setBidLogsLoading(true)
+      const res = await auctionApi.getBidLogsByAuctionId(auctionId)
       if (res.isSuccess && res.data) {
-        setBids(res.data)
-        await loadUsersForBids(res.data)
+        const sortedLogs = [...res.data].sort(
+          (a, b) => new Date(b.dateTimeUpdate).getTime() - new Date(a.dateTimeUpdate).getTime()
+        )
+        setBidLogs(sortedLogs)
       } else {
         toast({
           title: TOAST_TITLES.ERROR,
@@ -88,32 +126,7 @@ export default function AuctionBidHistoryPage() {
         variant: 'destructive',
       })
     } finally {
-      setBidsLoading(false)
-    }
-  }
-
-  const loadUsersForBids = async (bidsData: ApiAuctionBid[]) => {
-    // Nếu không có bid nào thì không cần gọi API user
-    if (!bidsData.length) return
-
-    try {
-      const res = await userApi.list()
-      if (!res.isSuccess || !res.data) return
-
-      const raw = res.data as ListResponse<ApiUser> | ApiUser[]
-      const usersArray: ApiUser[] = Array.isArray(raw) ? raw : raw.items ?? []
-
-      if (!usersArray.length) return
-
-      const map: Record<string, string> = {}
-      usersArray.forEach((u) => {
-        const fullName = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()
-        map[u.id] = fullName || u.email
-      })
-
-      setUserNameMap(map)
-    } catch {
-      // Silent fail: nếu lỗi thì vẫn hiển thị userId như cũ
+      setBidLogsLoading(false)
     }
   }
 
@@ -213,16 +226,16 @@ export default function AuctionBidHistoryPage() {
                   Lịch Sử Đặt Giá
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {bidsLoading ? 'Đang tải...' : `Tổng ${bids.length} lượt đặt giá`}
+                  {bidLogsLoading ? 'Đang tải...' : `Tổng ${bidLogs.length} lượt đặt giá`}
                 </p>
               </div>
             </div>
 
-            {bidsLoading ? (
+            {bidLogsLoading ? (
               <div className="text-center py-12">
                 <p className="text-gray-500">Đang tải danh sách đặt giá...</p>
               </div>
-            ) : bids.length === 0 ? (
+            ) : bidLogs.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500">Chưa có lượt đặt giá nào cho phiên đấu giá này</p>
               </div>
@@ -236,36 +249,31 @@ export default function AuctionBidHistoryPage() {
                       <TableHead className="text-right">Giá đặt</TableHead>
                       <TableHead className="text-center">Tự động</TableHead>
                       <TableHead className="text-right">Giới hạn auto bid</TableHead>
-                      <TableHead className="text-center">Đang dẫn đầu</TableHead>
-                      <TableHead className="text-center">Đã hủy</TableHead>
                     </tr>
                   </TableHeader>
                   <TableBody>
-                    {bids.map((bid, index) => (
-                      <TableRow key={`${bid.userId}-${index}`}>
-                        <TableCell>{index + 1}</TableCell>
-                      <TableCell className="text-sm text-gray-900">
-                        {userNameMap[bid.userId] ?? bid.userId}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-emerald-700">
-                          {bid.bidAmount.toLocaleString('vi-VN')} đ
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {bid.isAutoBid ? 'Có' : 'Không'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {bid.autoBidMaxLimit > 0
-                            ? `${bid.autoBidMaxLimit.toLocaleString('vi-VN')} đ`
-                            : '-'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {bid.isWinning ? '✔' : ''}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {bid.isCancelled ? '✔' : ''}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {bidLogs.map((log, index) => {
+                      const details = extractBidDetails(log)
+                      return (
+                        <TableRow key={log.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell className="text-sm text-gray-900">
+                            {log.userName?.trim()}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-emerald-700">
+                            {details?.bidAmount !== undefined ? `${details.bidAmount.toLocaleString('vi-VN')} đ` : '—'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {details?.isAutoBid ? 'Có' : 'Không'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {details && details.autoBidMaxLimit && details.autoBidMaxLimit > 0
+                              ? `${details.autoBidMaxLimit.toLocaleString('vi-VN')} đ`
+                              : '—'}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </SimpleTable>
               </div>
