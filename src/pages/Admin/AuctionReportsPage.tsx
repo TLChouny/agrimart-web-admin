@@ -12,7 +12,7 @@ import { reportApi } from "../../services/api"
 import { auctionApi } from "../../services/api/auctionApi"
 import { farmApi } from "../../services/api/farmApi"
 import type { PaginatedReports, ReportStatus, ReportType } from "../../types"
-import type { ApiEnglishAuction } from "../../types/api"
+import type { ApiEnglishAuction, ApiAuctionExtend } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
 import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES } from "../../services/constants/messages"
 import { ROUTES } from "../../constants"
@@ -45,6 +45,7 @@ export default function AuctionReportsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
   const { toast } = useToastContext()
 
   // Fetch auction data
@@ -65,6 +66,8 @@ export default function AuctionReportsPage() {
             setFarmName(farm.name)
           }
         }
+
+        await fetchAuctionExtends(id)
       } finally {
         setLoading(false)
       }
@@ -72,6 +75,17 @@ export default function AuctionReportsPage() {
 
     fetchAuctionData()
   }, [id])
+
+  const fetchAuctionExtends = async (auctionId: string) => {
+    try {
+      const res = await auctionApi.getAuctionExtendsByAuctionId(auctionId)
+      if (res.isSuccess && res.data) {
+        setAuctionExtends(res.data)
+      }
+    } catch (err) {
+      console.error('Error fetching auction extends:', err)
+    }
+  }
 
   const handleFilterChange = (key: 'status' | 'type', value?: string) => {
     setFilters(prev => ({ ...prev, [key]: value || undefined }))
@@ -247,6 +261,8 @@ export default function AuctionReportsPage() {
     </div>
   )
 
+  const totalExtendMinutes = auctionExtends.reduce((acc, extend) => acc + extend.extendDurationInMinutes, 0)
+
   return (
     <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
       {/* Header with Tabs */}
@@ -279,7 +295,7 @@ export default function AuctionReportsPage() {
       {/* Main Content - Reports */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} />
+        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
 
         {/* Filters */}
         <Card className="p-6">

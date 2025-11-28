@@ -24,6 +24,9 @@ const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   Other: "Khác",
 }
 
+const compactHeadClass = "text-left px-3 py-2 text-xs whitespace-nowrap"
+const compactCellClass = "px-3 py-2 text-xs align-top"
+
 export default function ReportsPage() {
   const [filters, setFilters] = useState<ReportListParams>({ pageNumber: 1, pageSize: 10 })
   const [reports, setReports] = useState<PaginatedReports | null>(null)
@@ -322,70 +325,70 @@ export default function ReportsPage() {
 
         <div className="overflow-x-auto">
           {loading ? (
-            <SimpleTable>
+            <SimpleTable className="text-xs">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left w-[12%] min-w-[130px]">Loại báo cáo</TableHead>
-                  <TableHead className="text-left w-[20%] min-w-[200px]">Nội dung</TableHead>
-                  <TableHead className="text-left w-[15%] min-w-[150px]">Mã phiên đấu giá</TableHead>
-                  <TableHead className="text-left w-[15%] min-w-[150px]">Người báo cáo</TableHead>
-                  <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
-                  <TableHead className="text-left w-[13%] min-w-[150px]">Ngày tạo</TableHead>
-                  <TableHead className="text-right w-[15%] min-w-[180px]">Thao tác</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[12%] min-w-[110px]`}>Loại báo cáo</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[20%] min-w-[180px]`}>Nội dung</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Mã phiên đấu giá</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Người báo cáo</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[10%] min-w-[110px]`}>Trạng thái</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[13%] min-w-[130px]`}>Ngày tạo</TableHead>
+                  <TableHead className={`${compactHeadClass} text-right w-[15%] min-w-[150px]`}>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i} className="hover:bg-gray-50">
-                    <TableCell className="w-[12%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="w-[20%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="w-[15%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="w-[15%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="w-[10%]"><div className="h-4 bg-gray-200 rounded animate-pulse w-20" /></TableCell>
-                    <TableCell className="w-[13%]"><div className="h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell className="text-right w-[15%]"><div className="h-8 bg-gray-200 rounded animate-pulse w-24 ml-auto" /></TableCell>
+                    <TableCell className={`${compactCellClass} w-[12%]`}><div className="h-3 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className={`${compactCellClass} w-[20%]`}><div className="h-3 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className={`${compactCellClass} w-[15%]`}><div className="h-3 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className={`${compactCellClass} w-[15%]`}><div className="h-3 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className={`${compactCellClass} w-[10%]`}><div className="h-3 bg-gray-200 rounded animate-pulse w-16" /></TableCell>
+                    <TableCell className={`${compactCellClass} w-[13%]`}><div className="h-3 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell className={`${compactCellClass} text-right w-[15%]`}><div className="h-6 bg-gray-200 rounded animate-pulse w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </SimpleTable>
           ) : filteredReports.length > 0 ? (
             <>
-              <SimpleTable>
+              <SimpleTable className="text-xs">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-left w-[12%] min-w-[130px]">Loại báo cáo</TableHead>
-                    <TableHead className="text-left w-[20%] min-w-[200px]">Nội dung</TableHead>
-                    <TableHead className="text-left w-[15%] min-w-[150px]">Mã phiên đấu giá</TableHead>
-                    <TableHead className="text-left w-[15%] min-w-[150px]">Người báo cáo</TableHead>
-                    <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
-                    <TableHead className="text-left w-[13%] min-w-[150px]">Ngày tạo</TableHead>
-                    <TableHead className="text-right w-[15%] min-w-[180px]">Thao tác</TableHead>
+                    <TableHead className={`${compactHeadClass} w-[12%] min-w-[110px]`}>Loại báo cáo</TableHead>
+                    <TableHead className={`${compactHeadClass} w-[20%] min-w-[180px]`}>Nội dung</TableHead>
+                    <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Mã phiên đấu giá</TableHead>
+                    <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Người báo cáo</TableHead>
+                    <TableHead className={`${compactHeadClass} w-[10%] min-w-[110px]`}>Trạng thái</TableHead>
+                    <TableHead className={`${compactHeadClass} w-[13%] min-w-[130px]`}>Ngày tạo</TableHead>
+                    <TableHead className={`${compactHeadClass} text-right w-[15%] min-w-[150px]`}>Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map(report => (
                     <TableRow key={report.id} className="hover:bg-gray-50">
-                      <TableCell className="min-h-[48px] w-[12%]">
-                        <div className="font-medium text-gray-900">{REPORT_TYPE_LABELS[report.reportType]}</div>
+                      <TableCell className={`${compactCellClass} w-[12%]`}>
+                        <div className="font-medium text-gray-900 truncate">{REPORT_TYPE_LABELS[report.reportType]}</div>
                       </TableCell>
-                      <TableCell className="min-h-[48px] w-[20%]">
-                        <div className="text-sm text-gray-700 line-clamp-2" title={report.note}>
+                      <TableCell className={`${compactCellClass} w-[20%]`}>
+                        <div className="text-xs text-gray-700 line-clamp-2" title={report.note}>
                           {report.note}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[48px] w-[15%]">
+                      <TableCell className={`${compactCellClass} w-[15%]`}>
                         <div className="truncate max-w-[200px]" title={getAuctionName(report.auctionId)}>
                           {getAuctionName(report.auctionId)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm min-h-[48px] w-[15%]">
+                      <TableCell className={`${compactCellClass} w-[15%]`}>
                         <div className="truncate max-w-[200px]" title={getReporterName(report.reporterId)}>
                           {getReporterName(report.reporterId)}
                         </div>
                       </TableCell>
-                      <TableCell className="min-h-[48px] w-[10%]">{getStatusBadge(report.reportStatus)}</TableCell>
-                      <TableCell className="text-sm min-h-[48px] w-[13%]">{formatDate(report.createdAt)}</TableCell>
-                      <TableCell className="text-right min-h-[48px] w-[15%]">
+                      <TableCell className={`${compactCellClass} w-[10%]`}>{getStatusBadge(report.reportStatus)}</TableCell>
+                      <TableCell className={`${compactCellClass} w-[13%]`}>{formatDate(report.createdAt)}</TableCell>
+                      <TableCell className={`${compactCellClass} text-right w-[15%]`}>
                         {report.reportStatus === "Pending" ? (
                           <div className="flex items-center justify-end gap-2">
                             <Button

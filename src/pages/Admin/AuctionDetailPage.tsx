@@ -496,7 +496,7 @@ export default function AuctionDetailPage() {
             {selectedCategory && selectedCategory !== 'other' && (
               <div className="mt-4">
                 <p className="text-sm font-medium text-gray-700 mb-3">
-                  Lý do tạm dừng<span className="text-red-500">*</span>
+            Lý do tạm dừng<span className="text-red-500">*</span>
                 </p>
                 <div className="space-y-2">
                   {selectedReasons.map((reason, index) => (
@@ -517,7 +517,7 @@ export default function AuctionDetailPage() {
                         <div>
                           <p className="text-sm text-gray-800">{reason}</p>
                         </div>
-                      </label>
+          </label>
                     </div>
                   ))}
                 </div>
@@ -530,13 +530,13 @@ export default function AuctionDetailPage() {
                 <p className="text-sm font-medium text-gray-700 mb-2">
                   Lý do tạm dừng<span className="text-red-500">*</span>
                 </p>
-                <Textarea
-                  id="detail-pause-reason"
-                  rows={3}
-                  value={pauseReason}
-                  onChange={(e) => setPauseReason(e.target.value)}
-                  placeholder="Nhập lý do tạm dừng phiên đấu giá..."
-                />
+          <Textarea
+            id="detail-pause-reason"
+            rows={3}
+            value={pauseReason}
+            onChange={(e) => setPauseReason(e.target.value)}
+            placeholder="Nhập lý do tạm dừng phiên đấu giá..."
+          />
               </div>
             )}
           </div>

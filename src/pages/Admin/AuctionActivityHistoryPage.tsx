@@ -239,6 +239,7 @@ export default function AuctionActivityHistoryPage() {
     })
   }
 
+  const totalExtendMinutes = auctionExtends.reduce((acc, extend) => acc + extend.extendDurationInMinutes, 0)
 
   const getActiveTab = () => {
     if (location.pathname.includes('/activity-history')) return 'activity-history'
@@ -311,7 +312,7 @@ export default function AuctionActivityHistoryPage() {
       {/* Main Content - Auction Logs */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} />
+        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
 
         {/* Auction Logs Section */}
         <Card className="overflow-hidden">

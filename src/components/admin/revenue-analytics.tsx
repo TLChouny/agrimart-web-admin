@@ -1,22 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
 
-const data = [
-  { month: "T1", revenue: 125000000 },
-  { month: "T2", revenue: 180000000 },
-  { month: "T3", revenue: 165000000 },
-  { month: "T4", revenue: 220000000 },
-  { month: "T5", revenue: 195000000 },
-  { month: "T6", revenue: 240000000 },
-  { month: "T7", revenue: 210000000 },
-  { month: "T8", revenue: 275000000 },
-  { month: "T9", revenue: 255000000 },
-  { month: "T10", revenue: 290000000 },
-  { month: "T11", revenue: 320000000 },
-  { month: "T12", revenue: 350000000 },
-]
+export interface RevenuePoint {
+  label: string
+  value: number
+}
+
+interface RevenueAnalyticsProps {
+  title?: string
+  subtitle?: string
+  data: RevenuePoint[]
+  isLoading?: boolean
+}
 
 const formatCurrency = (value: number) => {
+  if (!Number.isFinite(value)) return "0 ₫"
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
@@ -25,27 +23,52 @@ const formatCurrency = (value: number) => {
   }).format(value)
 }
 
-export function RevenueAnalytics() {
+function ChartSkeleton() {
+  return (
+    <div className="h-64 flex items-center justify-center">
+      <div className="w-full h-48 bg-gray-100 rounded-lg animate-pulse" />
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div className="h-64 flex flex-col items-center justify-center text-sm text-gray-500">
+      <p>Chưa có dữ liệu doanh thu để hiển thị.</p>
+      <p>Vui lòng thử lại sau.</p>
+    </div>
+  )
+}
+
+export function RevenueAnalytics({
+  title = "Phân tích doanh thu theo tháng",
+  subtitle = "Tổng hợp giá trị phiên đấu giá đã hoàn tất",
+  data,
+  isLoading,
+}: RevenueAnalyticsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">Phân tích doanh thu theo tháng</CardTitle>
-        <p className="text-sm text-gray-600">Doanh thu từ bán nông sản trong năm 2024</p>
+        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <p className="text-sm text-gray-600">{subtitle}</p>
       </CardHeader>
       <CardContent>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} className="text-xs" />
-              <YAxis hide />
-              <Tooltip
-                formatter={(value: number) => [formatCurrency(value), "Doanh thu"]}
-                labelFormatter={(label) => `Tháng ${label}`}
-              />
-              <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} className="fill-emerald-600" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {isLoading ? (
+          <ChartSkeleton />
+        ) : data.length ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <XAxis dataKey="label" axisLine={false} tickLine={false} className="text-xs" />
+                <YAxis hide />
+                <Tooltip formatter={(value: number) => [formatCurrency(value), "Doanh thu"]} />
+                <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} className="fill-emerald-600" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <EmptyState />
+        )}
       </CardContent>
     </Card>
   )

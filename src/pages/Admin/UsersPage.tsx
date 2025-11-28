@@ -101,10 +101,10 @@ export default function UsersPage() {
     const keyword = searchTerm.trim().toLowerCase()
     if (keyword) {
       filtered = filtered.filter(user =>
-        user.fullName.toLowerCase().includes(keyword) ||
-        user.email.toLowerCase().includes(keyword) ||
-        user.id.toLowerCase().includes(keyword)
-      )
+      user.fullName.toLowerCase().includes(keyword) ||
+      user.email.toLowerCase().includes(keyword) ||
+      user.id.toLowerCase().includes(keyword)
+    )
     }
 
     // Filter by role
@@ -192,26 +192,26 @@ export default function UsersPage() {
       <Card className="p-6">
       <div className="mb-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách người dùng</h2>
             <p className="text-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredUsers.length} / ${users.length} người dùng`}
               {error && <span className="text-red-600"> · {error}</span>}
             </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo tên, email hoặc ID"
+              className="pl-9"
+            />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo tên, email hoặc ID"
-                className="pl-9"
-              />
-            </div>
             <Button variant="secondary" size="sm" onClick={() => fetchUsers()} disabled={isLoading}>
-              {isLoading ? 'Đang tải...' : 'Làm mới'}
-            </Button>
+            {isLoading ? 'Đang tải...' : 'Làm mới'}
+          </Button>
           </div>
         </div>
 
@@ -289,7 +289,7 @@ export default function UsersPage() {
             }`} />
           </div>
         </div>
-      </div>
+        </div>
 
         <div className="overflow-x-auto">
           {isLoading ? (
@@ -394,12 +394,12 @@ export default function UsersPage() {
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
-                        <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
-                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
-                        </span>
-                        <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
-                      </label>
+                      <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
+                      <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                      </span>
+                      <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
+                    </label>
                       <Button
                         variant="outline"
                         size="sm"

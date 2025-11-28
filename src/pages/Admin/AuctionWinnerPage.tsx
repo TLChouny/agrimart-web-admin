@@ -5,7 +5,7 @@ import { WinnerSection } from '../../components/auction/winner-section'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
-import type { ApiEnglishAuction } from '../../types/api'
+import type { ApiEnglishAuction, ApiAuctionExtend } from '../../types/api'
 import { ROUTES } from '../../constants'
 import { ArrowLeft } from 'lucide-react'
 
@@ -17,6 +17,7 @@ export default function AuctionWinnerPage() {
   const [auction, setAuction] = useState<ApiEnglishAuction | null>(null)
   const [farmName, setFarmName] = useState<string>('Unknown')
   const [loading, setLoading] = useState<boolean>(true)
+  const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +39,8 @@ export default function AuctionWinnerPage() {
             setFarmName(farm.name)
           }
         }
+
+        await fetchAuctionExtends(id)
       } finally {
         setLoading(false)
       }
@@ -45,6 +48,19 @@ export default function AuctionWinnerPage() {
 
     fetchData()
   }, [id])
+
+  const fetchAuctionExtends = async (auctionId: string) => {
+    try {
+      const res = await auctionApi.getAuctionExtendsByAuctionId(auctionId)
+      if (res.isSuccess && res.data) {
+        setAuctionExtends(res.data)
+      }
+    } catch (err) {
+      console.error('Error fetching auction extends:', err)
+    }
+  }
+
+  const totalExtendMinutes = auctionExtends.reduce((acc, extend) => acc + extend.extendDurationInMinutes, 0)
 
   const getActiveTab = () => {
     if (location.pathname.includes('/activity-history')) return 'activity-history'
@@ -117,7 +133,7 @@ export default function AuctionWinnerPage() {
       {/* Main Content - Only Winner */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} />
+        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
 
         {/* Winner Section */}
         <WinnerSection />

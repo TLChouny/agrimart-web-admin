@@ -6,7 +6,7 @@ import { Card } from '../../components/ui/card'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
 import { userApi } from '../../services/api/userApi'
-import type { ApiEnglishAuction, ApiAuctionBid, User as ApiUser, ListResponse } from '../../types/api'
+import type { ApiEnglishAuction, ApiAuctionBid, User as ApiUser, ListResponse, ApiAuctionExtend } from '../../types/api'
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
@@ -31,6 +31,7 @@ export default function AuctionBidHistoryPage() {
   const [bids, setBids] = useState<ApiAuctionBid[]>([])
   const [bidsLoading, setBidsLoading] = useState<boolean>(false)
   const [userNameMap, setUserNameMap] = useState<Record<string, string>>({})
+  const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
   const { toast } = useToastContext()
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function AuctionBidHistoryPage() {
 
         // Lấy danh sách bids của auction
         await fetchAuctionBids(id)
+        await fetchAuctionExtends(id)
       } finally {
         setLoading(false)
       }
@@ -114,6 +116,19 @@ export default function AuctionBidHistoryPage() {
       // Silent fail: nếu lỗi thì vẫn hiển thị userId như cũ
     }
   }
+
+  const fetchAuctionExtends = async (auctionId: string) => {
+    try {
+      const res = await auctionApi.getAuctionExtendsByAuctionId(auctionId)
+      if (res.isSuccess && res.data) {
+        setAuctionExtends(res.data)
+      }
+    } catch (err) {
+      console.error('Error fetching auction extends:', err)
+    }
+  }
+
+  const totalExtendMinutes = auctionExtends.reduce((acc, extend) => acc + extend.extendDurationInMinutes, 0)
 
   const getActiveTab = () => {
     if (location.pathname.includes('/activity-history')) return 'activity-history'
@@ -186,7 +201,7 @@ export default function AuctionBidHistoryPage() {
       {/* Main Content - Auction Logs */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} />
+        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
 
         {/* Auction Bids Section */}
         <Card className="overflow-hidden">
