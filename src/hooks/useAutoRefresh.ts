@@ -13,7 +13,7 @@ export function useAutoRefresh<T = void>(
   enabled: boolean = true,
   immediate: boolean = true
 ) {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const fetchFnRef = useRef(fetchFn)
 
   // Update ref khi fetchFn thay đổi
