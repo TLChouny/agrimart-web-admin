@@ -18,6 +18,7 @@ import type {
 } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
 import { TOAST_TITLES } from "../../services/constants/messages"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 
 const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   Fraud: "Gian lận",
@@ -121,6 +122,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadDashboardData()
   }, [loadDashboardData])
+
+  // Tự động refresh data mỗi 30 giây
+  useAutoRefresh(loadDashboardData, 30000, true, false)
 
   const statsCards = useMemo<DashboardStatCard[]>(() => {
     const totalFarms = farms.length

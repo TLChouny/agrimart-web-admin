@@ -14,6 +14,7 @@ import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 import { Search, Filter, ChevronDown, PauseCircle, PlayCircle } from 'lucide-react'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
 interface ExtendedAuction extends ApiEnglishAuction {
   farmName: string
@@ -244,6 +245,12 @@ export default function AuctionsPage() {
   useEffect(() => {
     fetchStatusCounts()
   }, [fetchStatusCounts])
+
+  // Tự động refresh data mỗi 30 giây
+  useAutoRefresh(() => {
+    fetchAuctions({ silent: true })
+    fetchStatusCounts()
+  }, 30000, true, false)
 
   // Fetch auction extends for all auctions
   const fetchAuctionExtendsForAuctions = useCallback(async (auctionIds: string[]) => {

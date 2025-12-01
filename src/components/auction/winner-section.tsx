@@ -59,7 +59,7 @@ export function WinnerSection({ winner }: WinnerSectionProps) {
               <p className="text-lg font-bold text-green-600">{winner.finalPrice.toLocaleString()} đ</p>
             </div>
             <div className="bg-white rounded-lg p-3 border border-amber-200">
-              <p className="text-xs text-gray-600 mb-1">Số Lần Bid</p>
+              <p className="text-xs text-gray-600 mb-1">Số Lần Đấu Giá</p>
               <p className="text-lg font-bold text-blue-600">{winner.bidCount} lần</p>
             </div>
           </div>

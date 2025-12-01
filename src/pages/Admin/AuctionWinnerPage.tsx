@@ -5,6 +5,7 @@ import { WinnerSection } from '../../components/auction/winner-section'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
+import { userApi } from '../../services/api/userApi'
 import type { ApiEnglishAuction, ApiAuctionExtend } from '../../types/api'
 import { ROUTES } from '../../constants'
 import { ArrowLeft } from 'lucide-react'
@@ -18,6 +19,15 @@ export default function AuctionWinnerPage() {
   const [farmName, setFarmName] = useState<string>('Unknown')
   const [loading, setLoading] = useState<boolean>(true)
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
+  const [winnerInfo, setWinnerInfo] = useState<{
+    id: string
+    name: string
+    email: string
+    phone: string
+    finalPrice: number
+    bidCount: number
+    winTime: Date
+  } | undefined>(undefined)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +49,53 @@ export default function AuctionWinnerPage() {
             setFarmName(farm.name)
           }
         }
+
+        // Lấy thông tin người thắng nếu có
+        if (auctionData.winnerId && auctionData.winningPrice) {
+          try {
+            // Lấy thông tin user
+            const userRes = await userApi.getById(auctionData.winnerId)
+            if (userRes.isSuccess && userRes.data) {
+              const user = userRes.data
+              
+              // Lấy lịch sử đấu giá để đếm số lần bid
+              const bidLogsRes = await auctionApi.getBidLogsByAuctionId(id)
+              let bidCount = 0
+              if (bidLogsRes.isSuccess && bidLogsRes.data) {
+                // Đếm số lần bid của người thắng
+                bidCount = bidLogsRes.data.filter(log => log.userId === auctionData.winnerId).length
+              }
+
+              // Tạo thông tin người thắng
+              const winnerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || auctionData.winnerId
+              setWinnerInfo({
+                id: user.id,
+                name: winnerName,
+                email: user.email || '',
+                phone: user.phoneNumber || '',
+                finalPrice: auctionData.winningPrice,
+                bidCount: bidCount,
+                winTime: new Date(auctionData.updatedAt || auctionData.endDate),
+              })
+            }
+          } catch (error) {
+            console.error('Error fetching winner info:', error)
+            // Nếu không lấy được user info, vẫn hiển thị với thông tin cơ bản
+            if (auctionData.winnerId && auctionData.winningPrice) {
+              setWinnerInfo({
+                id: auctionData.winnerId,
+                name: auctionData.winnerId,
+                email: '',
+                phone: '',
+                finalPrice: auctionData.winningPrice,
+                bidCount: 0,
+                winTime: new Date(auctionData.updatedAt || auctionData.endDate),
+              })
+            }
+            }
+          } else {
+            setWinnerInfo(undefined)
+          }
 
         await fetchAuctionExtends(id)
       } finally {
@@ -136,7 +193,7 @@ export default function AuctionWinnerPage() {
         <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
 
         {/* Winner Section */}
-        <WinnerSection />
+        <WinnerSection winner={winnerInfo} />
       </div>
     </div>
   )

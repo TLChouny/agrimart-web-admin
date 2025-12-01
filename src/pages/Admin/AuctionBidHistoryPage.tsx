@@ -248,7 +248,7 @@ export default function AuctionBidHistoryPage() {
                       <TableHead>Thương lái</TableHead>
                       <TableHead className="text-right">Giá đặt</TableHead>
                       <TableHead className="text-center">Tự động</TableHead>
-                      <TableHead className="text-right">Giới hạn auto bid</TableHead>
+                      <TableHead className="text-right">Giới hạn tự động đặt giá</TableHead>
                     </tr>
                   </TableHeader>
                   <TableBody>

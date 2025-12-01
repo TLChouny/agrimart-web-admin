@@ -9,5 +9,9 @@ export const userApi = {
     // identity currently returns APIResponse<User[]>; support both.
     return httpClient.get<ListResponse<ApiUser> | ApiUser[]>(ENDPOINTS.users.list, { cache: false })
   },
+
+  async getById(userId: string): Promise<APIResponse<ApiUser>> {
+    return httpClient.get<ApiUser>(ENDPOINTS.users.detail(userId), { cache: false })
+  },
 }
 
