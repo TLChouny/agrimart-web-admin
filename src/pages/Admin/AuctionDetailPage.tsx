@@ -10,7 +10,16 @@ import { Textarea } from '../../components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { auctionApi } from '../../services/api/auctionApi'
 import { farmApi } from '../../services/api/farmApi'
-import type { ApiEnglishAuction, ApiHarvest, ApiFarm, ApiCrop, ApiHarvestGradeDetail, HarvestGradeDetailDTO, AuctionStatus, ApiAuctionExtend } from '../../types/api'
+import type {
+  ApiEnglishAuction,
+  ApiHarvest,
+  ApiFarm,
+  ApiCrop,
+  ApiHarvestGradeDetail,
+  HarvestGradeDetailDTO,
+  AuctionStatus,
+  ApiAuctionExtend,
+} from '../../types/api'
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
@@ -41,6 +50,7 @@ export default function AuctionDetailPage() {
   const [pauseReasonSpecific, setPauseReasonSpecific] = useState<string>('')
   const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
+  const [priceChartData, setPriceChartData] = useState<{ time: string; price: number }[]>([])
   const { toast } = useToastContext()
 
   // Fetch auction extends for this specific auction
@@ -129,6 +139,58 @@ export default function AuctionDetailPage() {
 
         // Fetch auction extends for this auction
         await fetchAuctionExtends(auctionData.id)
+
+        // Fetch bid logs for this auction (dùng cho biểu đồ giá)
+        const bidLogsRes = await auctionApi.getBidLogsByAuctionId(auctionData.id)
+        if (bidLogsRes.isSuccess && bidLogsRes.data) {
+          const logs = bidLogsRes.data
+
+          // Sắp xếp theo thời gian tăng dần
+          const sortedLogs = [...logs].sort(
+            (a, b) =>
+              new Date(a.dateTimeUpdate).getTime() - new Date(b.dateTimeUpdate).getTime()
+          )
+
+          const mappedChartData = sortedLogs
+            .map(log => {
+              let price = 0
+
+              // Giá bid được lưu trong newEntity (JSON string), cố gắng parse linh hoạt
+              if (log.newEntity) {
+                try {
+                  const parsed = JSON.parse(log.newEntity as string) as any
+                  price =
+                    parsed.price ??
+                    parsed.bidAmount ??
+                    parsed.amount ??
+                    parsed.currentPrice ??
+                    0
+                } catch {
+                  // ignore parse error, fallback bên dưới
+                }
+              }
+
+              if (!price || Number.isNaN(price)) {
+                return null
+              }
+
+              const timeLabel = new Date(log.dateTimeUpdate).toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })
+
+              return {
+                time: timeLabel,
+                price,
+              }
+            })
+            .filter(
+              (item): item is { time: string; price: number } => item !== null
+            )
+
+          setPriceChartData(mappedChartData)
+        }
 
       } finally {
         setLoading(false)
@@ -684,7 +746,8 @@ export default function AuctionDetailPage() {
         />
 
         {/* Price Chart */}
-        <PriceChart 
+        <PriceChart
+          data={priceChartData}
           currentPrice={auction.currentPrice || auction.startingPrice}
           startingPrice={auction.startingPrice}
         />

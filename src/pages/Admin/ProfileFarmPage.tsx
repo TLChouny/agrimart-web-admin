@@ -11,6 +11,7 @@ import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, LandPlot, Sprout, Scissors, Gavel, Calendar, User, Package, FileWarning, TrendingUp, DollarSign } from 'lucide-react'
+import { formatCurrencyVND } from '../../utils/currency'
 
 interface CropWithHarvests extends ApiCrop {
   harvests: ApiHarvest[]
@@ -390,7 +391,9 @@ export default function ProfileFarmPage() {
                               </div>
                               <div>
                                 <span className="font-medium text-gray-600">Giá bán:</span>
-                                <span className="ml-2 font-semibold text-green-600">{harvest.salePrice.toLocaleString('vi-VN')} đ</span>
+                                <span className="ml-2 font-semibold text-green-600">
+                                  {formatCurrencyVND(harvest.salePrice)}
+                                </span>
                               </div>
                               <div>
                                 <span className="font-medium text-gray-600">Ngày tạo:</span>
@@ -483,7 +486,7 @@ export default function ProfileFarmPage() {
                           <TrendingUp className="w-4 h-4 text-blue-600" />
                           <span className="font-medium text-gray-600">Giá khởi điểm</span>
                         </div>
-                        <p className="text-lg font-bold text-blue-700">{auction.startingPrice.toLocaleString('vi-VN')} đ</p>
+                        <p className="text-lg font-bold text-blue-700">{formatCurrencyVND(auction.startingPrice)}</p>
                       </div>
                       <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                         <div className="flex items-center gap-2 mb-1">
@@ -491,7 +494,7 @@ export default function ProfileFarmPage() {
                           <span className="font-medium text-gray-600">Giá hiện tại</span>
                         </div>
                         <p className="text-lg font-bold text-green-700">
-                          {auction.currentPrice ? `${auction.currentPrice.toLocaleString('vi-VN')} đ` : '—'}
+                          {auction.currentPrice ? formatCurrencyVND(auction.currentPrice) : '—'}
                         </p>
                       </div>
                       <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
@@ -500,12 +503,12 @@ export default function ProfileFarmPage() {
                           <span className="font-medium text-gray-600">Giá thắng</span>
                         </div>
                         <p className="text-lg font-bold text-amber-700">
-                          {auction.winningPrice ? `${auction.winningPrice.toLocaleString('vi-VN')} đ` : '—'}
+                          {auction.winningPrice ? formatCurrencyVND(auction.winningPrice) : '—'}
                         </p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <span className="font-medium text-gray-600 text-xs block mb-1">Bước giá tối thiểu</span>
-                        <p className="text-lg font-bold text-gray-700">{auction.minBidIncrement.toLocaleString('vi-VN')} đ</p>
+                        <p className="text-lg font-bold text-gray-700">{formatCurrencyVND(auction.minBidIncrement)}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600 mt-3">
@@ -529,7 +532,7 @@ export default function ProfileFarmPage() {
                         <span className="font-medium">Mua ngay:</span>
                         <span className="ml-2">{auction.enableBuyNow ? 'Có' : 'Không'}</span>
                         {auction.enableBuyNow && auction.buyNowPrice && (
-                          <span className="ml-2 font-semibold">({auction.buyNowPrice.toLocaleString('vi-VN')} đ)</span>
+                          <span className="ml-2 font-semibold">({formatCurrencyVND(auction.buyNowPrice)})</span>
                         )}
                       </div>
                       <div>

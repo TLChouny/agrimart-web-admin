@@ -7,6 +7,7 @@ import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { farmApi } from '../../services/api/farmApi'
 import type { ApiHarvest, ApiHarvestGradeDetail } from '../../types/api'
+import { formatCurrencyVND } from '../../utils/currency'
 
 export default function HarvestsPage() {
   const [harvests, setHarvests] = useState<ApiHarvest[]>([])
@@ -47,10 +48,6 @@ export default function HarvestsPage() {
       hour: '2-digit',
       minute: '2-digit',
     })
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
   }
 
   // Event handlers
@@ -134,7 +131,7 @@ export default function HarvestsPage() {
                       <TableCell className="text-xs w-[12%]">{harvest.totalQuantity}</TableCell>
                       <TableCell className="text-xs w-[10%]">{harvest.unit}</TableCell>
                       <TableCell className="text-xs w-[14%]">
-                        {harvest.salePrice > 0 ? formatCurrency(harvest.salePrice) : '—'}
+                        {harvest.salePrice > 0 ? formatCurrencyVND(harvest.salePrice) : '—'}
                       </TableCell>
                       <TableCell className="text-xs text-gray-600 w-[20%]">{harvest.note || '—'}</TableCell>
                       <TableCell className="text-right w-[10%]">

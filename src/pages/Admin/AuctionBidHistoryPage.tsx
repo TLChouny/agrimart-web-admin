@@ -18,6 +18,7 @@ import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, FileText } from 'lucide-react'
+import { formatCurrencyVND } from '../../utils/currency'
 import {
   SimpleTable,
   TableHeader,
@@ -261,14 +262,14 @@ export default function AuctionBidHistoryPage() {
                             {log.userName?.trim()}
                           </TableCell>
                           <TableCell className="text-right font-semibold text-emerald-700">
-                            {details?.bidAmount !== undefined ? `${details.bidAmount.toLocaleString('vi-VN')} đ` : '—'}
+                            {details?.bidAmount !== undefined ? formatCurrencyVND(details.bidAmount) : '—'}
                           </TableCell>
                           <TableCell className="text-center">
                             {details?.isAutoBid ? 'Có' : 'Không'}
                           </TableCell>
                           <TableCell className="text-right">
                             {details && details.autoBidMaxLimit && details.autoBidMaxLimit > 0
-                              ? `${details.autoBidMaxLimit.toLocaleString('vi-VN')} đ`
+                              ? formatCurrencyVND(details.autoBidMaxLimit)
                               : '—'}
                           </TableCell>
                         </TableRow>

@@ -11,6 +11,7 @@ import { farmApi } from '../../services/api/farmApi'
 import type { Crop, Farm, ApiHarvest } from '../../types/api'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CROP_MESSAGES, FARM_MESSAGES, HARVEST_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
+import { formatCurrencyVND } from '../../utils/currency'
 
 export default function CropsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -249,10 +250,6 @@ export default function CropsPage() {
       hour: '2-digit',
       minute: '2-digit',
     })
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
   }
 
   // Computed values
@@ -554,7 +551,7 @@ export default function CropsPage() {
                       <TableCell className="text-xs w-[14%]">{harvest.totalQuantity}</TableCell>
                       <TableCell className="text-xs w-[10%]">{harvest.unit}</TableCell>
                       <TableCell className="text-xs w-[16%]">
-                        {harvest.salePrice > 0 ? formatCurrency(harvest.salePrice) : '—'}
+                        {harvest.salePrice > 0 ? formatCurrencyVND(harvest.salePrice) : '—'}
                       </TableCell>
                       <TableCell className="text-xs text-gray-600 w-[24%]">{harvest.note || '—'}</TableCell>
                     </TableRow>

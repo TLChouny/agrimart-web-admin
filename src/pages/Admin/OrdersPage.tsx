@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button'
 import { X } from 'lucide-react'
 import { useState } from 'react'
 import type { Order, OrderParty } from '../../types/api'
+import { formatCurrencyVND } from '../../utils/currency'
 
 const mockOrders: Order[] = [
   { id: 'ORD001', farm: 'Nông trại A', customer: 'Nguyễn Văn A', total: 150000, status: 'pending', createdAt: '2024-01-15T10:30:00Z', auctionId: 'AUC-001', auctionTitle: 'Phiên đấu giá nông sản tuần 45', winnerName: 'Nguyễn Văn A', payment: { depositPaid: true, depositAmount: 30000, remainingPaid: false, remainingAmount: 120000 }, farmerBank: { bankName: 'Vietcombank', accountName: 'Nguyen Van A', accountNumber: '0123456789' }, buyerBank: { bankName: 'Techcombank', accountName: 'Le Thi B', accountNumber: '9876543210' }, messages: [ { from: 'buyer', content: 'Tôi muốn xác nhận thời gian giao hàng dự kiến?', time: '2024-01-15T11:00:00Z' }, { from: 'farmer', content: 'Dự kiến ngày 18/01, tôi sẽ liên hệ shipper.', time: '2024-01-15T11:10:00Z' } ] },
@@ -26,7 +27,7 @@ export default function OrdersPage() {
     }
   }
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
-  const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
+  const formatCurrency = (amount: number) => formatCurrencyVND(amount)
   const getStatusBadge = (status: string) => status === 'pending' ? (<Badge variant="outline" className="text-yellow-600 border-yellow-600">Chờ xác nhận</Badge>) : status === 'confirmed' ? (<Badge variant="outline" className="text-blue-600 border-blue-600">Đã xác nhận</Badge>) : status === 'shipping' ? (<Badge variant="outline" className="text-purple-600 border-purple-600">Đang giao</Badge>) : status === 'delivered' ? (<Badge variant="outline" className="text-green-600 border-green-600">Đã giao</Badge>) : status === 'cancelled' ? (<Badge variant="outline" className="text-red-600 border-red-600">Đã hủy</Badge>) : (<Badge variant="outline">Unknown</Badge>)
 
   return (

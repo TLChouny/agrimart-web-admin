@@ -519,9 +519,9 @@ export default function AuctionActivityHistoryPage() {
                           )
                         })()}
                       </div>
-                      <p className="text-xs text-gray-400 mt-2">
+                      {/* <p className="text-xs text-gray-400 mt-2">
                         User ID: {log.userId.slice(0, 8)}...
-                      </p>
+                      </p> */}
                     </div>
                   </div>
                 ))}

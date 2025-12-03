@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { TrendingUp, Crown } from 'lucide-react'
+import { formatCurrencyVND } from '../../utils/currency'
 
 interface Bid {
   id: string
@@ -76,7 +77,7 @@ export function BidHistorySection({
               <Crown className="w-5 h-5 text-amber-600" />
               <span className="text-sm font-semibold text-amber-900">Giá Cao Nhất Hiện Tại</span>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{highestBidder.price.toLocaleString()} đ</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrencyVND(highestBidder.price)}</p>
             <p className="text-sm text-gray-700 mt-1">Người đặt: <span className="font-semibold">{highestBidder.name}</span></p>
           </div>
         )}
@@ -110,7 +111,7 @@ export function BidHistorySection({
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-green-600">{bid.price.toLocaleString()} đ</p>
+                  <p className="text-lg font-bold text-green-600">{formatCurrencyVND(bid.price)}</p>
                   {bid.bidCount && (
                     <Badge variant="outline" className="text-xs mt-1">{bid.bidCount} lần</Badge>
                   )}

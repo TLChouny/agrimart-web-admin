@@ -4,6 +4,7 @@ import { Badge } from "../ui/badge"
 import { CalendarDays, User, Leaf, DollarSign } from "lucide-react"
 import { Link } from "react-router-dom"
 import type { OrderStatus, OrderPaymentInfo } from "../../types/api"
+import { formatCurrencyVND } from "../../utils/currency"
 
 export interface DeliverySummaryItem {
   id: string
@@ -22,9 +23,6 @@ interface DeliveryInfoProps {
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" })
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
 
 const getStatusBadge = (status: OrderStatus) => {
   switch (status) {
@@ -87,7 +85,9 @@ export function DeliveryInfo({ orders, isLoading }: DeliveryInfoProps) {
                   </div>
                   <div className="flex items-center gap-2 text-gray-700">
                     <DollarSign className="w-4 h-4 text-gray-400" />
-                    <span>Tổng: <span className="font-medium text-green-600">{formatCurrency(order.total)}</span></span>
+                    <span>
+                      Tổng: <span className="font-medium text-green-600">{formatCurrencyVND(order.total)}</span>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-700">
                     <CalendarDays className="w-4 h-4 text-gray-400" />
@@ -99,12 +99,12 @@ export function DeliveryInfo({ orders, isLoading }: DeliveryInfoProps) {
                   <div className="inline-flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${order.payment.depositPaid ? "bg-emerald-600" : "bg-gray-300"}`} />
                     <span>{order.payment.depositPaid ? "Đã cọc" : "Chưa cọc"}</span>
-                    <span className="hidden md:inline text-gray-500">· {formatCurrency(order.payment.depositAmount)}</span>
+                    <span className="hidden md:inline text-gray-500">· {formatCurrencyVND(order.payment.depositAmount)}</span>
                   </div>
                   <div className="inline-flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${order.payment.remainingPaid ? "bg-emerald-600" : "bg-gray-300"}`} />
                     <span>{order.payment.remainingPaid ? "Đã TT" : "Chưa TT"}</span>
-                    <span className="hidden md:inline text-gray-500">· {formatCurrency(order.payment.remainingAmount)}</span>
+                    <span className="hidden md:inline text-gray-500">· {formatCurrencyVND(order.payment.remainingAmount)}</span>
                   </div>
                 </div>
               </div>

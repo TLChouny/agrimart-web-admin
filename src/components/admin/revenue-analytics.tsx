@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
+import { formatCurrencyVND } from "../../utils/currency"
 
 export interface RevenuePoint {
   label: string
@@ -13,15 +14,7 @@ interface RevenueAnalyticsProps {
   isLoading?: boolean
 }
 
-const formatCurrency = (value: number) => {
-  if (!Number.isFinite(value)) return "0 ₫"
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
+const formatChartCurrency = (value: number) => formatCurrencyVND(value, { fallback: "0 VND" })
 
 function ChartSkeleton() {
   return (
@@ -61,7 +54,7 @@ export function RevenueAnalytics({
               <BarChart data={data}>
                 <XAxis dataKey="label" axisLine={false} tickLine={false} className="text-xs" />
                 <YAxis hide />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), "Doanh thu"]} />
+                <Tooltip formatter={(value: number) => [formatChartCurrency(value), "Doanh thu"]} />
                 <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} className="fill-emerald-600" />
               </BarChart>
             </ResponsiveContainer>

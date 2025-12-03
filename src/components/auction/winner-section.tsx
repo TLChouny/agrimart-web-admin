@@ -1,6 +1,7 @@
 import { Card } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Trophy, CheckCircle2, Mail, Phone } from 'lucide-react'
+import { formatCurrencyVND } from '../../utils/currency'
 
 interface WinnerSectionProps {
   winner?: {
@@ -56,7 +57,7 @@ export function WinnerSection({ winner }: WinnerSectionProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-lg p-3 border border-amber-200">
               <p className="text-xs text-gray-600 mb-1">Giá Thắng</p>
-              <p className="text-lg font-bold text-green-600">{winner.finalPrice.toLocaleString()} đ</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrencyVND(winner.finalPrice)}</p>
             </div>
             <div className="bg-white rounded-lg p-3 border border-amber-200">
               <p className="text-xs text-gray-600 mb-1">Số Lần Đấu Giá</p>
