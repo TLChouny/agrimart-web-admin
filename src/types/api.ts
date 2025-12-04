@@ -359,3 +359,39 @@ export interface UpdatePostDTO {
   featuredImage?: string
   status?: PostStatus
 }
+
+// Wallet related types
+export type WalletStatus = 0 | 1 | 2 // 0: Active, 1: Suspended, 2: Closed
+export type Direction = 1 | 2 // 1: Credit (+), 2: Debit (-)
+
+export interface ApiWallet {
+  id: string
+  userId: string
+  isSystemWallet: boolean
+  balance: number
+  walletStatus: WalletStatus
+  currency: string
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface ApiLedger {
+  id?: string
+  walletId: string
+  transactionId: string
+  direction: Direction
+  amount: number
+  balanceAfter: number
+  description: string
+  createdAt?: string
+  updatedAt?: string | null
+}
+
+export interface CreateLedgerDTO {
+  walletId: string
+  transactionId: string
+  direction: Direction
+  amount: number
+  balanceAfter: number
+  description: string
+}

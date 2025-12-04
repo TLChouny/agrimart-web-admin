@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { AuctionHeaderCard } from '../../components/auction/auction-header-card'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
@@ -11,6 +11,7 @@ import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, FileText, Clock, Play, Ban, Edit, Filter, PauseCircle, PlayCircle, TrendingUp } from 'lucide-react'
+import { signalRService, type BidPlacedEvent } from '../../services/signalrService'
 
 export default function AuctionActivityHistoryPage() {
   const { id } = useParams<{ id: string }>()
@@ -25,46 +26,12 @@ export default function AuctionActivityHistoryPage() {
   const [logTypeFilter, setLogTypeFilter] = useState<'all' | AuctionLogType>('all')
   const [pauseSessions, setPauseSessions] = useState<ApiAuctionPauseSession[]>([])
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
+  const [priceChanged, setPriceChanged] = useState(false)
+  // Track notified bids to prevent duplicate notifications
+  const [, setNotifiedBids] = useState<Set<string>>(new Set())
   const { toast } = useToastContext()
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return
-      try {
-        setLoading(true)
-
-        // Lấy auction
-        const auctionRes = await auctionApi.getEnglishAuctionById(id)
-        if (!auctionRes.isSuccess || !auctionRes.data) return
-        const auctionData = auctionRes.data
-        setAuction(auctionData)
-
-        // Lấy farm name
-        const farmsRes = await farmApi.getFarms()
-        if (farmsRes.isSuccess && farmsRes.data) {
-          const farm = farmsRes.data.find(f => f.userId === auctionData.farmerId)
-          if (farm) {
-            setFarmName(farm.name)
-          }
-        }
-
-        // Lấy auction logs
-        await fetchAuctionLogs(id)
-        
-        // Lấy pause sessions và extends cho auction này
-        await Promise.all([
-          fetchPauseSessions(id),
-          fetchAuctionExtends(id),
-        ])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [id])
-
-  const fetchAuctionLogs = async (auctionId: string, filterType?: AuctionLogType) => {
+  const fetchAuctionLogs = useCallback(async (auctionId: string, filterType?: AuctionLogType) => {
     try {
       setLogsLoading(true)
       let logsRes
@@ -109,7 +76,56 @@ export default function AuctionActivityHistoryPage() {
     } finally {
       setLogsLoading(false)
     }
-  }
+  }, [toast])
+
+  // SignalR real-time updates - auto refresh on new bid
+  useEffect(() => {
+    if (!id) return
+
+    signalRService
+      .connect(id, {
+        bidPlaced: (event: BidPlacedEvent) => {
+          if (event.auctionId !== id) return
+          
+          // Update auction current price immediately for real-time header update
+          setAuction(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              currentPrice: event.newPrice,
+            }
+          })
+          
+          // Trigger price animation
+          setPriceChanged(true)
+          setTimeout(() => setPriceChanged(false), 1000)
+          
+          // Show toast notification only once per bid
+          setNotifiedBids(prev => {
+            if (prev.has(event.bidId)) {
+              return prev
+            }
+            const newSet = new Set(prev)
+            newSet.add(event.bidId)
+            toast({
+              title: 'Có lượt đặt giá mới',
+              description: `${event.userName} đã đặt giá ${event.newPrice.toLocaleString('vi-VN')} VNĐ`,
+            })
+            return newSet
+          })
+          
+          // Auto refresh auction logs when new bid is placed
+          fetchAuctionLogs(id, logTypeFilter === 'all' ? undefined : logTypeFilter)
+        },
+      })
+      .catch(error => {
+        console.error('[AuctionActivityHistoryPage] Failed to init realtime connection:', error)
+      })
+
+    return () => {
+      signalRService.disconnect().catch(console.error)
+    }
+  }, [id, logTypeFilter, fetchAuctionLogs])
 
   const fetchPauseSessions = async (auctionId: string) => {
     try {
@@ -133,12 +149,65 @@ export default function AuctionActivityHistoryPage() {
     }
   }
 
+  // Fetch auction data và farm name
+  useEffect(() => {
+    if (!id) return
+
+    const fetchAuctionData = async () => {
+      try {
+        setLoading(true)
+        const auctionRes = await auctionApi.getEnglishAuctionById(id)
+        if (auctionRes.isSuccess && auctionRes.data) {
+          setAuction(auctionRes.data)
+          // Fetch farm name
+          if (auctionRes.data.farmerId) {
+            try {
+              const farmsRes = await farmApi.getFarms()
+              if (farmsRes.isSuccess && farmsRes.data) {
+                const farm = farmsRes.data.find((f: any) => f.userId === auctionRes.data?.farmerId)
+                if (farm) {
+                  setFarmName(farm.name)
+                }
+              }
+            } catch (err) {
+              console.error('Error fetching farm:', err)
+            }
+          }
+        } else {
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: auctionRes.message || 'Không thể tải thông tin phiên đấu giá',
+            variant: 'destructive',
+          })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải thông tin phiên đấu giá'
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAuctionData()
+  }, [id, toast])
+
+  // Fetch pause sessions và extends
+  useEffect(() => {
+    if (!id) return
+    fetchPauseSessions(id)
+    fetchAuctionExtends(id)
+  }, [id])
+
   // Khi filter thay đổi, fetch lại logs
   useEffect(() => {
     if (id) {
       fetchAuctionLogs(id, logTypeFilter === 'all' ? undefined : logTypeFilter)
     }
-  }, [logTypeFilter, id])
+  }, [logTypeFilter, id, fetchAuctionLogs])
 
   const getLogTypeIcon = (type: string) => {
     switch (type) {
@@ -312,7 +381,12 @@ export default function AuctionActivityHistoryPage() {
       {/* Main Content - Auction Logs */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
+        <AuctionHeaderCard 
+          auction={auction} 
+          farmName={farmName} 
+          totalExtendMinutes={totalExtendMinutes}
+          priceChanged={priceChanged}
+        />
 
         {/* Auction Logs Section */}
         <Card className="overflow-hidden">

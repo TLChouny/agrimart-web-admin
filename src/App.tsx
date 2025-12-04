@@ -25,6 +25,7 @@ import AuctionReportsPage from './pages/Admin/AuctionReportsPage';
 import AdminSettingsPage from './pages/Admin/SettingsPage';
 import AdminHelpPage from './pages/Admin/HelpPage';
 import ReportsPage from './pages/Admin/ReportsPage';
+import WalletPage from './pages/Admin/WalletPage';
 
 import { ROUTES } from './constants';
 import { ToastProvider } from './contexts/ToastContext';
@@ -167,6 +168,11 @@ function App() {
         <Route path="/admin/help" element={
           <ProtectedRoute>
             <AdminLayout><AdminHelpPage /></AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path={ROUTES.ADMIN_WALLET} element={
+          <ProtectedRoute>
+            <AdminLayout><WalletPage /></AdminLayout>
           </ProtectedRoute>
         } />
 

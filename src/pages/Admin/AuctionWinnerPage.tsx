@@ -9,6 +9,8 @@ import { userApi } from '../../services/api/userApi'
 import type { ApiEnglishAuction, ApiAuctionExtend } from '../../types/api'
 import { ROUTES } from '../../constants'
 import { ArrowLeft } from 'lucide-react'
+import { signalRService, type BidPlacedEvent, type BuyNowEvent } from '../../services/signalrService'
+import { useToastContext } from '../../contexts/ToastContext'
 
 export default function AuctionWinnerPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,6 +21,10 @@ export default function AuctionWinnerPage() {
   const [farmName, setFarmName] = useState<string>('Unknown')
   const [loading, setLoading] = useState<boolean>(true)
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
+  const [priceChanged, setPriceChanged] = useState(false)
+  // Track notified bids to prevent duplicate notifications
+  const [, setNotifiedBids] = useState<Set<string>>(new Set())
+  const { toast } = useToastContext()
   const [winnerInfo, setWinnerInfo] = useState<{
     id: string
     name: string
@@ -29,75 +35,137 @@ export default function AuctionWinnerPage() {
     winTime: Date
   } | undefined>(undefined)
 
+  const fetchWinnerData = async () => {
+    if (!id) return
+    try {
+      // Lấy auction
+      const auctionRes = await auctionApi.getEnglishAuctionById(id)
+      if (!auctionRes.isSuccess || !auctionRes.data) return
+      const auctionData = auctionRes.data
+      setAuction(auctionData)
+
+      // Lấy farm name
+      const farmsRes = await farmApi.getFarms()
+      if (farmsRes.isSuccess && farmsRes.data) {
+        const farm = farmsRes.data.find(f => f.userId === auctionData.farmerId)
+        if (farm) {
+          setFarmName(farm.name)
+        }
+      }
+
+      // Lấy thông tin người thắng nếu có
+      if (auctionData.winnerId && auctionData.winningPrice) {
+        try {
+          // Lấy thông tin user
+          const userRes = await userApi.getById(auctionData.winnerId)
+          if (userRes.isSuccess && userRes.data) {
+            const user = userRes.data
+            
+            // Lấy lịch sử đấu giá để đếm số lần bid
+            const bidLogsRes = await auctionApi.getBidLogsByAuctionId(id)
+            let bidCount = 0
+            if (bidLogsRes.isSuccess && bidLogsRes.data) {
+              // Đếm số lần bid của người thắng
+              bidCount = bidLogsRes.data.filter(log => log.userId === auctionData.winnerId).length
+            }
+
+            // Tạo thông tin người thắng
+            const winnerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || auctionData.winnerId
+            setWinnerInfo({
+              id: user.id,
+              name: winnerName,
+              email: user.email || '',
+              phone: user.phoneNumber || '',
+              finalPrice: auctionData.winningPrice,
+              bidCount: bidCount,
+              winTime: new Date(auctionData.updatedAt || auctionData.endDate),
+            })
+          }
+        } catch (error) {
+          console.error('Error fetching winner info:', error)
+          // Nếu không lấy được user info, vẫn hiển thị với thông tin cơ bản
+          if (auctionData.winnerId && auctionData.winningPrice) {
+            setWinnerInfo({
+              id: auctionData.winnerId,
+              name: auctionData.winnerId,
+              email: '',
+              phone: '',
+              finalPrice: auctionData.winningPrice,
+              bidCount: 0,
+              winTime: new Date(auctionData.updatedAt || auctionData.endDate),
+            })
+          }
+        }
+      } else {
+        setWinnerInfo(undefined)
+      }
+
+      await fetchAuctionExtends(id)
+    } catch (error) {
+      console.error('Error fetching winner data:', error)
+    }
+  }
+
+  // SignalR real-time updates - auto refresh on new bid or buy now
+  useEffect(() => {
+    if (!id) return
+
+    signalRService
+      .connect(id, {
+        bidPlaced: (event: BidPlacedEvent) => {
+          if (event.auctionId !== id) return
+          
+          // Update auction current price immediately for real-time header update
+          setAuction(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              currentPrice: event.newPrice,
+            }
+          })
+          
+          // Trigger price animation
+          setPriceChanged(true)
+          setTimeout(() => setPriceChanged(false), 1000)
+          
+          // Show toast notification only once per bid
+          setNotifiedBids(prev => {
+            if (prev.has(event.bidId)) {
+              return prev
+            }
+            const newSet = new Set(prev)
+            newSet.add(event.bidId)
+            toast({
+              title: 'Có lượt đặt giá mới',
+              description: `${event.userName} đã đặt giá ${event.newPrice.toLocaleString('vi-VN')} VNĐ`,
+            })
+            return newSet
+          })
+          
+          // Refresh winner data when new bid is placed
+          fetchWinnerData()
+        },
+        buyNow: (event: BuyNowEvent) => {
+          if (event.auctionId !== id) return
+          // Refresh winner data when buy now happens
+          fetchWinnerData()
+        },
+      })
+      .catch(error => {
+        console.error('[AuctionWinnerPage] Failed to init realtime connection:', error)
+      })
+
+    return () => {
+      signalRService.disconnect().catch(console.error)
+    }
+  }, [id])
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return
       try {
         setLoading(true)
-
-        // Lấy auction
-        const auctionRes = await auctionApi.getEnglishAuctionById(id)
-        if (!auctionRes.isSuccess || !auctionRes.data) return
-        const auctionData = auctionRes.data
-        setAuction(auctionData)
-
-        // Lấy farm name
-        const farmsRes = await farmApi.getFarms()
-        if (farmsRes.isSuccess && farmsRes.data) {
-          const farm = farmsRes.data.find(f => f.userId === auctionData.farmerId)
-          if (farm) {
-            setFarmName(farm.name)
-          }
-        }
-
-        // Lấy thông tin người thắng nếu có
-        if (auctionData.winnerId && auctionData.winningPrice) {
-          try {
-            // Lấy thông tin user
-            const userRes = await userApi.getById(auctionData.winnerId)
-            if (userRes.isSuccess && userRes.data) {
-              const user = userRes.data
-              
-              // Lấy lịch sử đấu giá để đếm số lần bid
-              const bidLogsRes = await auctionApi.getBidLogsByAuctionId(id)
-              let bidCount = 0
-              if (bidLogsRes.isSuccess && bidLogsRes.data) {
-                // Đếm số lần bid của người thắng
-                bidCount = bidLogsRes.data.filter(log => log.userId === auctionData.winnerId).length
-              }
-
-              // Tạo thông tin người thắng
-              const winnerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || auctionData.winnerId
-              setWinnerInfo({
-                id: user.id,
-                name: winnerName,
-                email: user.email || '',
-                phone: user.phoneNumber || '',
-                finalPrice: auctionData.winningPrice,
-                bidCount: bidCount,
-                winTime: new Date(auctionData.updatedAt || auctionData.endDate),
-              })
-            }
-          } catch (error) {
-            console.error('Error fetching winner info:', error)
-            // Nếu không lấy được user info, vẫn hiển thị với thông tin cơ bản
-            if (auctionData.winnerId && auctionData.winningPrice) {
-              setWinnerInfo({
-                id: auctionData.winnerId,
-                name: auctionData.winnerId,
-                email: '',
-                phone: '',
-                finalPrice: auctionData.winningPrice,
-                bidCount: 0,
-                winTime: new Date(auctionData.updatedAt || auctionData.endDate),
-              })
-            }
-            }
-          } else {
-            setWinnerInfo(undefined)
-          }
-
-        await fetchAuctionExtends(id)
+        await fetchWinnerData()
       } finally {
         setLoading(false)
       }
@@ -190,7 +258,12 @@ export default function AuctionWinnerPage() {
       {/* Main Content - Only Winner */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
+        <AuctionHeaderCard 
+          auction={auction} 
+          farmName={farmName} 
+          totalExtendMinutes={totalExtendMinutes}
+          priceChanged={priceChanged}
+        />
 
         {/* Winner Section */}
         <WinnerSection winner={winnerInfo} />

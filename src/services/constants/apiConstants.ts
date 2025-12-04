@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://identity.a-379.store'
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://gateway.a-379.store'
 
 export const ENDPOINTS = {
   auth: {
@@ -97,6 +97,17 @@ export const ENDPOINTS = {
     list: '/api/post-service/post',
     detail: (id: string) => `/api/post-service/post/${encodeURIComponent(id)}`,
     updateStatus: (id: string) => `/api/post-service/post/${encodeURIComponent(id)}/status`,
+  },
+  wallet: {
+    list: '/api/payment-service/wallet',
+    system: '/api/payment-service/wallet/system',
+    detail: (id: string) => `/api/payment-service/wallet/${id}`,
+    byUser: (userId: string) => `/api/payment-service/wallet/user/${userId}`,
+  },
+  ledger: {
+    list: '/api/payment-service/ledger',
+    byWallet: (walletId: string) => `/api/payment-service/ledger/wallet/${walletId}`,
+    create: '/api/payment-service/ledger',
   },
 } as const
 

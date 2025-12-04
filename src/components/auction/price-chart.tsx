@@ -7,14 +7,18 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { formatCurrencyVND } from '../../utils/currency'
+import { useEffect, useState } from 'react'
 
 interface PriceDataPoint {
-  time: string
+  // timestamp dùng cho tính toán & trục X (ms since epoch)
+  timestamp: number
+  // label hiển thị dưới trục X
+  label: string
   price: number
 }
 
@@ -29,14 +33,34 @@ export function PriceChart({
   currentPrice = 0,
   startingPrice = 0,
 }: PriceChartProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Nếu có data từ bid log thì dùng, nếu không thì dùng dữ liệu mẫu dựa trên giá khởi điểm / hiện tại
   const chartData: PriceDataPoint[] =
     data.length > 0
       ? data
       : [
-          { time: 'Bắt đầu', price: startingPrice },
-          { time: 'Hiện tại', price: currentPrice || startingPrice },
+          {
+            timestamp: Date.now(),
+            label: 'Bắt đầu',
+            price: startingPrice,
+          },
+          {
+            timestamp: Date.now() + 1000,
+            label: 'Hiện tại',
+            price: currentPrice || startingPrice,
+          },
         ]
+
+  // Debug: Log chart data changes
+  useEffect(() => {
+    console.log('[PriceChart] Chart data updated:', chartData.length, 'points', chartData)
+    console.log('[PriceChart] Current price:', currentPrice, 'Starting price:', startingPrice)
+  }, [chartData.length, currentPrice, startingPrice, data.length])
 
   const prices = chartData.map(d => d.price)
   const minPrice = prices.length ? Math.min(...prices) : 0
@@ -45,6 +69,27 @@ export function PriceChart({
   const percentChange =
     startingPrice !== 0 ? ((priceChange / startingPrice) * 100).toFixed(1) : '0.0'
   const formattedPriceChange = formatCurrencyVND(Math.abs(priceChange))
+
+  // Don't render chart until mounted to avoid size calculation issues
+  if (!mounted) {
+    return (
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Biểu Đồ Giá
+              </h3>
+            </div>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-2 h-80 flex items-center justify-center">
+            <p className="text-gray-500">Đang tải biểu đồ...</p>
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -69,18 +114,28 @@ export function PriceChart({
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-2 h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
+        <div className="bg-gray-50 rounded-lg p-2 w-full" style={{ height: '320px', minHeight: '320px' }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
               data={chartData}
               margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-              barSize={32}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
-                dataKey="time"
+                dataKey="timestamp"
+                type="number"
+                scale="time"
+                domain={['dataMin', 'dataMax']}
                 stroke="#9ca3af"
                 style={{ fontSize: '12px' }}
+                tickFormatter={(value: number) =>
+                  new Date(value).toLocaleTimeString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                  })
+                }
               />
               <YAxis
                 stroke="#9ca3af"
@@ -96,13 +151,21 @@ export function PriceChart({
                 formatter={(value: number) => [formatCurrencyVND(value), 'Giá']}
                 labelStyle={{ color: '#1f2937' }}
               />
-              <Bar
+              <Line
+                type="stepAfter"
                 dataKey="price"
-                name="Giá đặt"
-                fill="#3b82f6"
-                radius={[4, 4, 0, 0]}
+                name="Giá đấu"
+                stroke="#3b82f6"
+                strokeWidth={3}
+                dot={{
+                  r: 4,
+                  strokeWidth: 2,
+                  stroke: '#3b82f6',
+                  fill: '#fff',
+                }}
+                activeDot={{ r: 6 }}
               />
-            </BarChart>
+            </LineChart>
           </ResponsiveContainer>
         </div>
 

@@ -17,6 +17,7 @@ import { useToastContext } from "../../contexts/ToastContext"
 import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES } from "../../services/constants/messages"
 import { ROUTES } from "../../constants"
 import { ArrowLeft } from "lucide-react"
+import { signalRService, type BidPlacedEvent } from "../../services/signalrService"
 
 const reportStatuses: ReportStatus[] = ["Pending", "InReview", "Resolved", "ActionTaken", "Rejected"]
 const reportTypes: ReportType[] = ["Fraud", "FalseInformation", "TechnicalIssue", "PolicyViolated", "Other"]
@@ -46,34 +47,95 @@ export default function AuctionReportsPage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
+  const [priceChanged, setPriceChanged] = useState(false)
+  // Track notified bids to prevent duplicate notifications
+  const [, setNotifiedBids] = useState<Set<string>>(new Set())
   const { toast } = useToastContext()
+
+  const fetchAuctionData = async () => {
+    if (!id) return
+    try {
+      const auctionRes = await auctionApi.getEnglishAuctionById(id)
+      if (!auctionRes.isSuccess || !auctionRes.data) return
+      const auctionData = auctionRes.data
+      setAuction(auctionData)
+
+      const farmsRes = await farmApi.getFarms()
+      if (farmsRes.isSuccess && farmsRes.data) {
+        const farm = farmsRes.data.find(f => f.userId === auctionData.farmerId)
+        if (farm) {
+          setFarmName(farm.name)
+        }
+      }
+
+      await fetchAuctionExtends(id)
+    } catch (error) {
+      console.error('Error fetching auction data:', error)
+    }
+  }
+
+  // SignalR real-time updates - refresh auction data on new bid
+  useEffect(() => {
+    if (!id) return
+
+    signalRService
+      .connect(id, {
+        bidPlaced: (event: BidPlacedEvent) => {
+          if (event.auctionId !== id) return
+          
+          // Update auction current price immediately for real-time header update
+          setAuction(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              currentPrice: event.newPrice,
+            }
+          })
+          
+          // Trigger price animation
+          setPriceChanged(true)
+          setTimeout(() => setPriceChanged(false), 1000)
+          
+          // Show toast notification only once per bid
+          setNotifiedBids(prev => {
+            if (prev.has(event.bidId)) {
+              return prev
+            }
+            const newSet = new Set(prev)
+            newSet.add(event.bidId)
+            toast({
+              title: 'Có lượt đặt giá mới',
+              description: `${event.userName} đã đặt giá ${event.newPrice.toLocaleString('vi-VN')} VNĐ`,
+            })
+            return newSet
+          })
+          
+          // Refresh auction data when new bid is placed (async, may take time)
+          fetchAuctionData()
+        },
+      })
+      .catch(error => {
+        console.error('[AuctionReportsPage] Failed to init realtime connection:', error)
+      })
+
+    return () => {
+      signalRService.disconnect().catch(console.error)
+    }
+  }, [id])
 
   // Fetch auction data
   useEffect(() => {
-    const fetchAuctionData = async () => {
+    const loadData = async () => {
       if (!id) return
       try {
         setLoading(true)
-        const auctionRes = await auctionApi.getEnglishAuctionById(id)
-        if (!auctionRes.isSuccess || !auctionRes.data) return
-        const auctionData = auctionRes.data
-        setAuction(auctionData)
-
-        const farmsRes = await farmApi.getFarms()
-        if (farmsRes.isSuccess && farmsRes.data) {
-          const farm = farmsRes.data.find(f => f.userId === auctionData.farmerId)
-          if (farm) {
-            setFarmName(farm.name)
-          }
-        }
-
-        await fetchAuctionExtends(id)
+        await fetchAuctionData()
       } finally {
         setLoading(false)
       }
     }
 
-    fetchAuctionData()
+    loadData()
   }, [id])
 
   const fetchAuctionExtends = async (auctionId: string) => {
@@ -295,7 +357,12 @@ export default function AuctionReportsPage() {
       {/* Main Content - Reports */}
       <div className="space-y-6">
         {/* Auction Header Card */}
-        <AuctionHeaderCard auction={auction} farmName={farmName} totalExtendMinutes={totalExtendMinutes} />
+        <AuctionHeaderCard 
+          auction={auction} 
+          farmName={farmName} 
+          totalExtendMinutes={totalExtendMinutes}
+          priceChanged={priceChanged}
+        />
 
         {/* Filters */}
         <Card className="p-6">

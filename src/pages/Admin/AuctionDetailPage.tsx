@@ -24,6 +24,8 @@ import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, CheckCircle2, XCircle, PauseCircle, Ban, PlayCircle } from 'lucide-react'
+import { signalRService, type BidPlacedEvent, type BuyNowEvent } from '../../services/signalrService'
+import { extractBidAmountFromLog } from '../../utils/bidLog'
 
 export default function AuctionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -50,7 +52,12 @@ export default function AuctionDetailPage() {
   const [pauseReasonSpecific, setPauseReasonSpecific] = useState<string>('')
   const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
-  const [priceChartData, setPriceChartData] = useState<{ time: string; price: number }[]>([])
+  const [priceChartData, setPriceChartData] = useState<{ timestamp: number; label: string; price: number }[]>([])
+  const [priceChanged, setPriceChanged] = useState(false)
+  const [, setRefreshTrigger] = useState(0)
+  const [, setSignalRConnected] = useState(false)
+  // Track notified bids to prevent duplicate notifications
+  const [, setNotifiedBids] = useState<Set<string>>(new Set())
   const { toast } = useToastContext()
 
   // Fetch auction extends for this specific auction
@@ -64,6 +71,139 @@ export default function AuctionDetailPage() {
       console.error('Error fetching auction extends:', err)
     }
   }, [])
+
+  // SignalR real-time updates
+  useEffect(() => {
+    if (!id) {
+      console.log('[AuctionDetailPage] No auction ID, skipping SignalR setup')
+      return
+    }
+
+    console.log('[AuctionDetailPage] Setting up SignalR for auction:', id)
+
+    signalRService
+      .connect(id, {
+        // Khi có bid mới được đặt
+        bidPlaced: (event: BidPlacedEvent) => {
+          // Đảm bảo đúng phiên đang xem
+          if (event.auctionId !== id) {
+            console.log('[AuctionDetailPage] Event auctionId mismatch, ignoring:', event.auctionId, 'vs', id)
+            return
+          }
+
+          console.log('[AuctionDetailPage] Processing BidPlaced event for auction:', id)
+
+          // Trigger price change animation
+          setPriceChanged(true)
+          setTimeout(() => setPriceChanged(false), 1000)
+
+          // Update auction current price
+          setAuction(prev => {
+            if (!prev) {
+              console.warn('[AuctionDetailPage] No auction data to update')
+              return prev
+            }
+            console.log('[AuctionDetailPage] Updating price from', prev.currentPrice, 'to', event.newPrice)
+            return {
+              ...prev,
+              currentPrice: event.newPrice,
+            }
+          })
+
+          // Update price chart data
+          setPriceChartData(prev => {
+            const timestamp = new Date(event.placedAt).getTime()
+            if (Number.isNaN(timestamp)) return prev
+
+            const label = new Date(timestamp).toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            })
+
+            const newDataPoint = {
+              timestamp,
+              label,
+              price: event.newPrice,
+            }
+
+            console.log('[AuctionDetailPage] Adding new chart data point:', newDataPoint)
+            console.log('[AuctionDetailPage] Previous chart data length:', prev.length)
+            
+            const updatedData = [
+              ...prev,
+              newDataPoint,
+            ]
+
+            console.log('[AuctionDetailPage] Updated chart data length:', updatedData.length)
+            return updatedData
+          })
+
+          // Trigger refresh for other tabs
+          setRefreshTrigger(prev => {
+            const newValue = prev + 1
+            console.log('[AuctionDetailPage] Refresh trigger updated to:', newValue)
+            return newValue
+          })
+
+          // Show toast notification only once per bid
+          setNotifiedBids(prev => {
+            if (prev.has(event.bidId)) {
+              // Already notified, skip
+              return prev
+            }
+            // Mark as notified and show toast
+            const newSet = new Set(prev)
+            newSet.add(event.bidId)
+            toast({
+              title: 'Có lượt đặt giá mới',
+              description: `${event.userName} đã đặt giá ${event.newPrice.toLocaleString('vi-VN')} VNĐ`,
+            })
+            return newSet
+          })
+        },
+        // Khi có user mua ngay
+        buyNow: (event: BuyNowEvent) => {
+          if (event.auctionId !== id) {
+            console.log('[AuctionDetailPage] Event auctionId mismatch, ignoring:', event.auctionId, 'vs', id)
+            return
+          }
+
+          console.log('[AuctionDetailPage] Processing BuyNow event for auction:', id)
+
+          // Update auction status to completed
+          setAuction(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              status: 'Completed' as AuctionStatus,
+              currentPrice: event.buyNowPrice,
+            }
+          })
+
+          // Show toast notification
+          toast({
+            title: 'Đã mua ngay',
+            description: `${event.userName} đã mua ngay với giá ${event.buyNowPrice.toLocaleString('vi-VN')} VNĐ`,
+            variant: 'default',
+          })
+        },
+      })
+      .then(() => {
+        console.log('[AuctionDetailPage] SignalR connected successfully')
+        setSignalRConnected(true)
+      })
+      .catch(error => {
+        console.error('[AuctionDetailPage] Failed to init realtime auction connection:', error)
+        setSignalRConnected(false)
+      })
+
+    return () => {
+      console.log('[AuctionDetailPage] Cleaning up SignalR connection for auction:', id)
+      signalRService.disconnect().catch(console.error)
+    }
+  }, [id, toast])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,7 +282,10 @@ export default function AuctionDetailPage() {
 
         // Fetch bid logs for this auction (dùng cho biểu đồ giá)
         const bidLogsRes = await auctionApi.getBidLogsByAuctionId(auctionData.id)
+        // Initialize notified bids set with existing bids to prevent duplicate notifications
         if (bidLogsRes.isSuccess && bidLogsRes.data) {
+          const existingBidIds = new Set(bidLogsRes.data.map(log => log.bidId || log.id).filter(Boolean))
+          setNotifiedBids(existingBidIds)
           const logs = bidLogsRes.data
 
           // Sắp xếp theo thời gian tăng dần
@@ -153,40 +296,29 @@ export default function AuctionDetailPage() {
 
           const mappedChartData = sortedLogs
             .map(log => {
-              let price = 0
-
-              // Giá bid được lưu trong newEntity (JSON string), cố gắng parse linh hoạt
-              if (log.newEntity) {
-                try {
-                  const parsed = JSON.parse(log.newEntity as string) as any
-                  price =
-                    parsed.price ??
-                    parsed.bidAmount ??
-                    parsed.amount ??
-                    parsed.currentPrice ??
-                    0
-                } catch {
-                  // ignore parse error, fallback bên dưới
-                }
-              }
-
-              if (!price || Number.isNaN(price)) {
+              const price = extractBidAmountFromLog(log)
+              if (price === null || Number.isNaN(price)) {
                 return null
               }
 
-              const timeLabel = new Date(log.dateTimeUpdate).toLocaleTimeString('vi-VN', {
+              const timestamp = new Date(log.dateTimeUpdate).getTime()
+              if (Number.isNaN(timestamp)) return null
+
+              const label = new Date(timestamp).toLocaleTimeString('vi-VN', {
                 hour: '2-digit',
                 minute: '2-digit',
+                second: '2-digit',
                 hour12: false,
               })
 
               return {
-                time: timeLabel,
+                timestamp,
+                label,
                 price,
               }
             })
             .filter(
-              (item): item is { time: string; price: number } => item !== null
+              (item): item is { timestamp: number; label: string; price: number } => item !== null
             )
 
           setPriceChartData(mappedChartData)
@@ -736,6 +868,14 @@ export default function AuctionDetailPage() {
         </Tabs>
       </div>
 
+      {/* SignalR Connection Status Indicator */}
+      {/* <div className="mb-4 flex items-center gap-2 text-sm">
+        <div className={`w-2 h-2 rounded-full ${signalRConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+        <span className={signalRConnected ? 'text-green-600' : 'text-red-600'}>
+          {signalRConnected ? 'Đã kết nối real-time' : 'Chưa kết nối real-time'}
+        </span>
+      </div> */}
+
       {/* Main Content - Only show overview content */}
       <div className="space-y-6">
         {/* Auction Header Card */}
@@ -743,6 +883,7 @@ export default function AuctionDetailPage() {
           auction={auction} 
           farmName={farmName}
           totalExtendMinutes={getTotalExtendMinutes()}
+          priceChanged={priceChanged}
         />
 
         {/* Price Chart */}

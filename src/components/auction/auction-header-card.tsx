@@ -3,11 +3,13 @@ import { Badge } from '../../components/ui/badge'
 import type { ApiEnglishAuction, AuctionStatus } from '../../types/api'
 import { TrendingUp, Calendar, DollarSign, Users, Zap, Clock } from 'lucide-react'
 import { formatCurrencyVND } from '../../utils/currency'
+import { useEffect, useState } from 'react'
 
 interface AuctionHeaderCardProps {
   auction: ApiEnglishAuction
   farmName: string
   totalExtendMinutes?: number
+  priceChanged?: boolean
 }
 
 function formatDateTime(iso: string | null) {
@@ -36,7 +38,41 @@ function getStatusBadge(status: AuctionStatus) {
   }
 }
 
-export function AuctionHeaderCard({ auction, farmName, totalExtendMinutes = 0, }: AuctionHeaderCardProps) {
+export function AuctionHeaderCard({ auction, farmName, totalExtendMinutes = 0, priceChanged = false }: AuctionHeaderCardProps) {
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [displayPrice, setDisplayPrice] = useState<number | null>(auction.currentPrice ?? null)
+  const [previousPrice, setPreviousPrice] = useState<number | null>(auction.currentPrice ?? null)
+
+  // Update display price when auction.currentPrice changes
+  useEffect(() => {
+    const newPrice = auction.currentPrice ?? null
+    if (newPrice !== displayPrice && newPrice !== null && displayPrice !== null) {
+      // Price increased - show green animation
+      setPreviousPrice(displayPrice)
+      setIsAnimating(true)
+      setDisplayPrice(newPrice)
+      // Reset animation after 1.5 seconds
+      const timer = setTimeout(() => {
+        setIsAnimating(false)
+      }, 1500)
+      return () => clearTimeout(timer)
+    } else if (newPrice !== displayPrice && newPrice !== null) {
+      // First load or price changed from null
+      setDisplayPrice(newPrice)
+    }
+  }, [auction.currentPrice, displayPrice])
+
+  // Also trigger animation when priceChanged prop changes
+  useEffect(() => {
+    if (priceChanged) {
+      setIsAnimating(true)
+      const timer = setTimeout(() => {
+        setIsAnimating(false)
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [priceChanged])
+
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 overflow-hidden">
       <div className="p-8">
@@ -59,31 +95,51 @@ export function AuctionHeaderCard({ auction, farmName, totalExtendMinutes = 0, }
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="w-5 h-5 text-green-600" />
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Giá Khởi Điểm</p>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-[0.18em]">Giá Khởi Điểm</p>
             </div>
-            <p className="text-xl font-extrabold text-gray-900">
-              {formatCurrencyVND(auction.startingPrice, { unit: 'VND/kg' })}
+            <p className="text-lg font-extrabold text-gray-900 whitespace-nowrap">
+              {formatCurrencyVND(auction.startingPrice, { unit: 'VND' })}
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border border-blue-100">
+          <div className={`bg-white rounded-2xl p-4 border transition-all duration-500 ${
+            isAnimating ? 'border-green-400 bg-green-50 shadow-lg shadow-green-200/50' : 'border-blue-100'
+          }`}>
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Giá Hiện Tại</p>
+              <TrendingUp className={`w-5 h-5 transition-colors duration-300 ${
+                isAnimating ? 'text-green-600' : 'text-blue-600'
+              }`} />
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-[0.18em]">Giá Hiện Tại</p>
             </div>
-            <p className="text-xl font-extrabold text-gray-900">
-              {auction.currentPrice !== undefined && auction.currentPrice !== null
+            <p
+              className={`text-lg font-extrabold whitespace-nowrap transition-all duration-500 ${
+                isAnimating 
+                  ? 'scale-110 drop-shadow-lg' 
+                  : 'text-gray-900 scale-100'
+              }`}
+              style={isAnimating ? {
+                animation: 'priceUpdate 1.5s ease-in-out'
+              } : {}}
+            >
+              {displayPrice !== null && displayPrice !== undefined
+                ? formatCurrencyVND(displayPrice)
+                : auction.currentPrice !== undefined && auction.currentPrice !== null
                 ? formatCurrencyVND(auction.currentPrice)
                 : '-'}
             </p>
+            {isAnimating && previousPrice !== null && displayPrice !== null && displayPrice > previousPrice && (
+              <div className="mt-1 text-xs font-semibold text-green-600 opacity-0 animate-in fade-in duration-300">
+                ↑ +{formatCurrencyVND(displayPrice - previousPrice)}
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-5 h-5 text-orange-600" />
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Bước Giá</p>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-[0.18em]">Bước Giá</p>
             </div>
-            <p className="text-xl font-extrabold text-gray-900">
+            <p className="text-lg font-extrabold text-gray-900 whitespace-nowrap">
               {formatCurrencyVND(auction.minBidIncrement)}
             </p>
           </div>
@@ -116,33 +172,41 @@ export function AuctionHeaderCard({ auction, farmName, totalExtendMinutes = 0, }
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-5 h-5 text-indigo-600" />
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-[0.18em]">Nông Trại</p>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-[0.18em]">Nông Trại</p>
             </div>
-            <p className="text-base font-bold text-gray-900 truncate">{farmName}</p>
+            <p className="text-sm font-bold text-gray-900 truncate whitespace-nowrap">{farmName}</p>
           </div>
         </div>
 
         {/* Additional Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-base">
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
-            <span className="text-gray-600 font-medium">Mua ngay: </span>
-            <span className="font-semibold text-gray-900">
-              {auction.enableBuyNow ? formatCurrencyVND(auction.buyNowPrice) : 'Không'}
-            </span>
+            <p className="whitespace-nowrap">
+              <span className="text-gray-600 font-medium">Mua ngay: </span>
+              <span className="font-semibold text-gray-900">
+                {auction.enableBuyNow ? formatCurrencyVND(auction.buyNowPrice) : 'Không'}
+              </span>
+            </p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
-            <span className="text-gray-600 font-medium">Chống chốt giá cuối: </span>
-            <span className="font-semibold text-gray-900">
-              {auction.enableAntiSniping ? `Có (+${auction.antiSnipingExtensionSeconds} giây)` : 'Không'}
-            </span>
+            <p className="whitespace-nowrap">
+              <span className="text-gray-600 font-medium">Chống chốt giá cuối: </span>
+              <span className="font-semibold text-gray-900">
+                {auction.enableAntiSniping ? `Có (+${auction.antiSnipingExtensionSeconds} giây)` : 'Không'}
+              </span>
+            </p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
-            <span className="text-gray-600 font-medium">Dự thu hoạch: </span>
-            <span className="font-semibold text-gray-900">{formatDateTime(auction.expectedHarvestDate)}</span>
+            <p className="whitespace-nowrap">
+              <span className="text-gray-600 font-medium">Dự thu hoạch: </span>
+              <span className="font-semibold text-gray-900">{formatDateTime(auction.expectedHarvestDate)}</span>
+            </p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
-            <span className="text-gray-600 font-medium">Tổng lượng dự kiến: </span>
-            <span className="font-semibold text-gray-900">{auction.expectedTotalQuantity} kg</span>
+            <p className="whitespace-nowrap">
+              <span className="text-gray-600 font-medium">Tổng lượng dự kiến: </span>
+              <span className="font-semibold text-gray-900">{auction.expectedTotalQuantity} kg</span>
+            </p>
           </div>
         </div>
       </div>
