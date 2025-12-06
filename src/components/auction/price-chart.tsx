@@ -15,10 +15,7 @@ import { formatCurrencyVND } from '../../utils/currency'
 import { useEffect, useState } from 'react'
 
 interface PriceDataPoint {
-  // timestamp dùng cho tính toán & trục X (ms since epoch)
-  timestamp: number
-  // label hiển thị dưới trục X
-  label: string
+  time: string
   price: number
 }
 
@@ -44,16 +41,8 @@ export function PriceChart({
     data.length > 0
       ? data
       : [
-          {
-            timestamp: Date.now(),
-            label: 'Bắt đầu',
-            price: startingPrice,
-          },
-          {
-            timestamp: Date.now() + 1000,
-            label: 'Hiện tại',
-            price: currentPrice || startingPrice,
-          },
+          { time: 'Bắt đầu', price: startingPrice },
+          { time: 'Hiện tại', price: currentPrice || startingPrice },
         ]
 
   // Debug: Log chart data changes
@@ -122,20 +111,9 @@ export function PriceChart({
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
-                dataKey="timestamp"
-                type="number"
-                scale="time"
-                domain={['dataMin', 'dataMax']}
+                dataKey="time"
                 stroke="#9ca3af"
                 style={{ fontSize: '12px' }}
-                tickFormatter={(value: number) =>
-                  new Date(value).toLocaleTimeString('vi-VN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false,
-                  })
-                }
               />
               <YAxis
                 stroke="#9ca3af"

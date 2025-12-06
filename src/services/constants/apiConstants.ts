@@ -107,7 +107,29 @@ export const ENDPOINTS = {
   ledger: {
     list: '/api/payment-service/ledger',
     byWallet: (walletId: string) => `/api/payment-service/ledger/wallet/${walletId}`,
+    byTransaction: (transactionId: string) => `/api/payment-service/ledger/transaction/${transactionId}`,
     create: '/api/payment-service/ledger',
+  },
+  transaction: {
+    list: '/api/payment-service/transaction',
+    detail: (id: string) => `/api/payment-service/transaction/${id}`,
+    byWallet: (walletId: string) => `/api/payment-service/transaction/wallet/${walletId}`,
+  },
+  withdrawRequest: {
+    list: '/api/payment-service/withdrawrequest',
+    detail: (id: string) => `/api/payment-service/withdrawrequest/${id}`,
+    byUser: (userId: string) => `/api/payment-service/withdrawrequest/user/${userId}`,
+    myRequests: '/api/payment-service/withdrawrequest/my-requests',
+    create: '/api/payment-service/withdrawrequest',
+    approve: (id: string) => `/api/payment-service/withdrawrequest/${id}/approve`,
+    reject: (id: string) => `/api/payment-service/withdrawrequest/${id}/reject`,
+    complete: (id: string) => `/api/payment-service/withdrawrequest/${id}/complete`,
+  },
+  userBankAccount: {
+    detail: (id: string) => `/api/payment-service/userbankaccount/${id}`,
+  },
+  bank: {
+    list: '/api/payment-service/bank',
   },
 } as const
 

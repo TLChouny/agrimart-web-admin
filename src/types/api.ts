@@ -395,3 +395,74 @@ export interface CreateLedgerDTO {
   balanceAfter: number
   description: string
 }
+
+// Transaction related types
+export type TransactionType = 0 | 1 | 2 | 3 | 4 // 0: Unknown, 1: Payment, 2: Refund, 3: Transfer, 4: Escrow
+export type PaymentType = 0 | 1 | 2 // 0: Unknown, 1: VNPay, 2: Wallet
+
+export interface ApiTransaction {
+  id: string
+  code: string
+  desc: string
+  success: boolean
+  orderCode: number
+  amount: number
+  transactionDateTime: string
+  currency: string
+  paymentLinkId: string
+  escrowId: string
+  transactionType: TransactionType
+  paymentType: PaymentType
+  fromWalletId: string | null
+  toWalletId: string | null
+  signature: string
+  createdAt: string
+  updatedAt: string | null
+}
+
+// Withdraw Request related types
+export type WithdrawRequestStatus = 0 | 1 | 2 | 3 | 4 // 0: Pending, 1: Approved, 2: Rejected, 3: Completed, 4: Cancelled
+
+export interface ApiWithdrawRequest {
+  id: string
+  userId: string
+  walletId: string
+  amount: number
+  transactionId: string
+  status: WithdrawRequestStatus
+  userBankAccountId: string
+  reason: string | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface CreateWithdrawRequestDTO {
+  walletId: string
+  amount: number
+  userBankAccountId: string
+}
+
+export interface RejectWithdrawRequestDTO {
+  reason?: string
+}
+
+// Bank related types
+export interface ApiBank {
+  id: number
+  name: string
+  code: string
+  shortName: string
+  logo: string
+}
+
+export interface ApiUserBankAccount {
+  id: string
+  userId: string
+  accountNumber: string
+  accountName: string
+  bankId: number
+  bank: ApiBank
+  isPrimary: boolean
+  createdAt: string
+  updatedAt: string | null
+}

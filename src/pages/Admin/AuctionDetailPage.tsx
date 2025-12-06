@@ -25,7 +25,6 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, CheckCircle2, XCircle, PauseCircle, Ban, PlayCircle } from 'lucide-react'
 import { signalRService, type BidPlacedEvent, type BuyNowEvent } from '../../services/signalrService'
-import { extractBidAmountFromLog } from '../../utils/bidLog'
 
 export default function AuctionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,10 +51,9 @@ export default function AuctionDetailPage() {
   const [pauseReasonSpecific, setPauseReasonSpecific] = useState<string>('')
   const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
-  const [priceChartData, setPriceChartData] = useState<{ timestamp: number; label: string; price: number }[]>([])
+  const [priceChartData, setPriceChartData] = useState<{ time: string; price: number }[]>([])
   const [priceChanged, setPriceChanged] = useState(false)
   const [, setRefreshTrigger] = useState(0)
-  const [, setSignalRConnected] = useState(false)
   // Track notified bids to prevent duplicate notifications
   const [, setNotifiedBids] = useState<Set<string>>(new Set())
   const { toast } = useToastContext()
@@ -112,19 +110,14 @@ export default function AuctionDetailPage() {
 
           // Update price chart data
           setPriceChartData(prev => {
-            const timestamp = new Date(event.placedAt).getTime()
-            if (Number.isNaN(timestamp)) return prev
-
-            const label = new Date(timestamp).toLocaleTimeString('vi-VN', {
+            const timeLabel = new Date(event.placedAt).toLocaleTimeString('vi-VN', {
               hour: '2-digit',
               minute: '2-digit',
-              second: '2-digit',
               hour12: false,
             })
 
             const newDataPoint = {
-              timestamp,
-              label,
+              time: timeLabel,
               price: event.newPrice,
             }
 
@@ -192,11 +185,9 @@ export default function AuctionDetailPage() {
       })
       .then(() => {
         console.log('[AuctionDetailPage] SignalR connected successfully')
-        setSignalRConnected(true)
       })
       .catch(error => {
         console.error('[AuctionDetailPage] Failed to init realtime auction connection:', error)
-        setSignalRConnected(false)
       })
 
     return () => {
@@ -296,15 +287,32 @@ export default function AuctionDetailPage() {
 
           const mappedChartData = sortedLogs
             .map(log => {
-              const price = extractBidAmountFromLog(log)
-              if (price === null || Number.isNaN(price)) {
+              let price = 0
+
+              // Giá bid được lưu trong newEntity (string JSON hoặc object), cố gắng parse linh hoạt
+              if (log.newEntity) {
+                try {
+                  const parsed =
+                    typeof log.newEntity === 'string'
+                      ? (JSON.parse(log.newEntity as string) as any)
+                      : (log.newEntity as any)
+                  price =
+                    parsed.price ??
+                    parsed.bidAmount ??
+                    parsed.amount ??
+                    parsed.currentPrice ??
+                    0
+                } catch {
+                  // ignore parse error, fallback bên dưới
+                }
+              }
+
+              if (!price || Number.isNaN(price)) {
                 return null
               }
 
-              const timestamp = new Date(log.dateTimeUpdate).getTime()
-              if (Number.isNaN(timestamp)) return null
-
-              const label = new Date(timestamp).toLocaleTimeString('vi-VN', {
+              const date = new Date(log.dateTimeUpdate)
+              const timeLabel = date.toLocaleTimeString('vi-VN', {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
@@ -312,13 +320,12 @@ export default function AuctionDetailPage() {
               })
 
               return {
-                timestamp,
-                label,
+                time: timeLabel,
                 price,
               }
             })
             .filter(
-              (item): item is { timestamp: number; label: string; price: number } => item !== null
+              (item): item is { time: string; price: number } => item !== null
             )
 
           setPriceChartData(mappedChartData)
