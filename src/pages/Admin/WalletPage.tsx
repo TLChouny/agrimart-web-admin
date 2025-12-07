@@ -14,7 +14,7 @@ import type { ApiWallet, ApiLedger, WalletStatus, ApiWithdrawRequest, WithdrawRe
 import { formatCurrencyVND } from '../../utils/currency'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
-import { Wallet, RefreshCw, Search, Eye, CheckCircle2, XCircle, CircleCheck, Loader2 } from 'lucide-react'
+import { Wallet, RefreshCw, Search, Eye, CheckCircle2, XCircle, CircleCheck, Loader2, X } from 'lucide-react'
 
 const WALLET_STATUS_LABELS: Record<WalletStatus, string> = {
   0: 'Hoạt động',
@@ -28,6 +28,20 @@ const WITHDRAW_REQUEST_STATUS_LABELS: Record<WithdrawRequestStatus, string> = {
   2: 'Đã từ chối',
   3: 'Đã hoàn thành',
   4: 'Đã hủy',
+}
+
+const PAYMENT_TYPE_LABELS: Record<number, string> = {
+  0: 'PayOS',
+  1: 'Wallet',
+}
+
+const TRANSACTION_TYPE_LABELS: Record<number, string> = {
+  1: 'Thanh toán Escrow',
+  2: 'Giải phóng Escrow',
+  3: 'Hoàn tiền Escrow',
+  4: 'Nạp tiền',
+  5: 'Rút tiền',
+  6: 'Thanh toán phần còn lại Escrow',
 }
 
 const getWalletStatusBadge = (status: WalletStatus) => {
@@ -76,6 +90,9 @@ export default function WalletPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [ledgersLoading, setLedgersLoading] = useState<boolean>(false)
   const [searchValue, setSearchValue] = useState<string>('')
+  const [directionFilter, setDirectionFilter] = useState<1 | 2 | 'all'>('all')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
   
 
   // Withdraw requests state
@@ -103,10 +120,6 @@ export default function WalletPage() {
   const [transactionDetail, setTransactionDetail] = useState<ApiTransaction | null>(null)
   const [transactionDetailLoading, setTransactionDetailLoading] = useState<boolean>(false)
   const [showTransactionDetailModal, setShowTransactionDetailModal] = useState<boolean>(false)
-  const [fromWalletInfo, setFromWalletInfo] = useState<ApiWallet | null>(null)
-  const [fromWalletLoading, setFromWalletLoading] = useState<boolean>(false)
-  const [toWalletInfo, setToWalletInfo] = useState<ApiWallet | null>(null)
-  const [toWalletLoading, setToWalletLoading] = useState<boolean>(false)
 
   // Fetch system wallet
   const fetchSystemWallet = useCallback(async () => {
@@ -414,15 +427,48 @@ export default function WalletPage() {
   }
 
   const filteredLedgers = useMemo(() => {
-    if (!searchValue) return ledgers
-    const searchLower = searchValue.toLowerCase()
-    return ledgers.filter(
-      (ledger) =>
-        ledger.description.toLowerCase().includes(searchLower) ||
-        ledger.transactionId.toLowerCase().includes(searchLower) ||
-        ledger.walletId.toLowerCase().includes(searchLower)
-    )
-  }, [ledgers, searchValue])
+    let filtered = ledgers
+
+    // Filter by search value
+    if (searchValue) {
+      const searchLower = searchValue.toLowerCase()
+      filtered = filtered.filter(
+        (ledger) =>
+          ledger.description.toLowerCase().includes(searchLower) ||
+          ledger.transactionId.toLowerCase().includes(searchLower) ||
+          ledger.walletId.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Filter by direction (1 = vào, 2 = ra)
+    if (directionFilter !== 'all') {
+      filtered = filtered.filter((ledger) => ledger.direction === Number(directionFilter))
+    }
+
+    // Filter by date range
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom)
+      fromDate.setHours(0, 0, 0, 0)
+      filtered = filtered.filter((ledger) => {
+        if (!ledger.createdAt) return false
+        const ledgerDate = new Date(ledger.createdAt)
+        ledgerDate.setHours(0, 0, 0, 0)
+        return ledgerDate >= fromDate
+      })
+    }
+
+    if (dateTo) {
+      const toDate = new Date(dateTo)
+      toDate.setHours(23, 59, 59, 999)
+      filtered = filtered.filter((ledger) => {
+        if (!ledger.createdAt) return false
+        const ledgerDate = new Date(ledger.createdAt)
+        return ledgerDate <= toDate
+      })
+    }
+
+    return filtered
+  }, [ledgers, searchValue, directionFilter, dateFrom, dateTo])
 
   const filteredWithdrawRequests = useMemo(() => {
     let filtered = withdrawRequests
@@ -510,21 +556,82 @@ export default function WalletPage() {
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Lịch sử giao dịch</h3>
             <p className="text-sm text-gray-600">
-              {ledgersLoading ? 'Đang tải...' : `Tổng ${ledgers.length} giao dịch`}
+              {ledgersLoading ? 'Đang tải...' : (
+                <>
+                  Hiển thị {filteredLedgers.length} / {ledgers.length} giao dịch
+                </>
+              )}
             </p>
           </div>
 
-          {/* Search */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Tìm kiếm theo mô tả, mã giao dịch..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="pl-10"
-              />
+          {/* Search and Filters */}
+          <div className="mb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Tìm kiếm theo mô tả, mã giao dịch..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div>
+                <select
+                  value={directionFilter}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === 'all') {
+                      setDirectionFilter('all')
+                    } else {
+                      setDirectionFilter(Number(value) as 1 | 2)
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">Tất cả giao dịch</option>
+                  <option value="1">Tiền vào</option>
+                  <option value="2">Tiền ra</option>
+                </select>
+              </div>
+              <div>
+                <Input
+                  type="date"
+                  placeholder="Từ ngày"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <Input
+                  type="date"
+                  placeholder="Đến ngày"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full"
+                  min={dateFrom || undefined}
+                />
+              </div>
             </div>
+            {(searchValue || directionFilter !== 'all' || dateFrom || dateTo) && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchValue('')
+                    setDirectionFilter('all')
+                    setDateFrom('')
+                    setDateTo('')
+                  }}
+                  className="h-8 px-3 text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Xóa bộ lọc
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Ledgers Table */}
@@ -545,8 +652,8 @@ export default function WalletPage() {
                     <TableHead className="w-[15%]">Số tiền</TableHead>
                     <TableHead className="w-[15%]">Số dư sau</TableHead>
                     <TableHead className="w-[30%]">Mô tả</TableHead>
-                    <TableHead className="w-[20%]">Mã giao dịch</TableHead>
                     <TableHead className="w-[20%]">Thời gian</TableHead>
+                    <TableHead className="w-[20%] text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -573,49 +680,26 @@ export default function WalletPage() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {ledger.createdAt ? (
+                          <span className="text-sm text-gray-600">
+                            {formatDateTime(ledger.createdAt)}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={async () => {
                             setSelectedTransactionId(ledger.transactionId)
                             setShowTransactionDetailModal(true)
                             setTransactionDetailLoading(true)
-                            setFromWalletInfo(null)
-                            setToWalletInfo(null)
                             try {
                               const res = await walletApi.getTransactionById(ledger.transactionId)
                               if (res.isSuccess && res.data) {
                                 setTransactionDetail(res.data)
-                                
-                                // Fetch from wallet info
-                                if (res.data.fromWalletId) {
-                                  try {
-                                    setFromWalletLoading(true)
-                                    const fromWalletRes = await walletApi.getWalletById(res.data.fromWalletId)
-                                    if (fromWalletRes.isSuccess && fromWalletRes.data) {
-                                      setFromWalletInfo(fromWalletRes.data)
-                                    }
-                                  } catch (err) {
-                                    console.error('Error fetching from wallet:', err)
-                                  } finally {
-                                    setFromWalletLoading(false)
-                                  }
-                                }
-                                
-                                // Fetch to wallet info
-                                if (res.data.toWalletId) {
-                                  try {
-                                    setToWalletLoading(true)
-                                    const toWalletRes = await walletApi.getWalletById(res.data.toWalletId)
-                                    if (toWalletRes.isSuccess && toWalletRes.data) {
-                                      setToWalletInfo(toWalletRes.data)
-                                    }
-                                  } catch (err) {
-                                    console.error('Error fetching to wallet:', err)
-                                  } finally {
-                                    setToWalletLoading(false)
-                                  }
-                                }
                               }
                             } catch (err) {
                               toast({
@@ -627,19 +711,11 @@ export default function WalletPage() {
                               setTransactionDetailLoading(false)
                             }
                           }}
-                          className="h-auto p-0 text-xs font-mono text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          className="h-8 px-3 text-xs"
                         >
-                          {ledger.transactionId.slice(0, 8)}...
+                          <Eye className="w-3 h-3 mr-1" />
+                          Xem chi tiết
                         </Button>
-                      </TableCell>
-                      <TableCell>
-                        {ledger.createdAt ? (
-                          <span className="text-sm text-gray-600">
-                            {formatDateTime(ledger.createdAt)}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-400">—</span>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -669,7 +745,7 @@ export default function WalletPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                    placeholder="Tìm kiếm theo ID, User ID, Wallet ID..."
+                    placeholder="Tìm kiếm theo số tiền, lý do..."
                     value={withdrawRequestsSearchValue}
                     onChange={(e) => setWithdrawRequestsSearchValue(e.target.value)}
                 className="pl-10"
@@ -707,34 +783,16 @@ export default function WalletPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                        <TableHead className="w-[10%]">ID</TableHead>
-                    <TableHead className="w-[12%]">User ID</TableHead>
-                        <TableHead className="w-[12%]">Wallet ID</TableHead>
-                        <TableHead className="w-[10%]">Số tiền</TableHead>
-                        <TableHead className="w-[10%]">Trạng thái</TableHead>
-                    <TableHead className="w-[12%]">Ngày tạo</TableHead>
-                        <TableHead className="w-[12%]">Lý do</TableHead>
-                        <TableHead className="w-[12%] text-right">Thao tác</TableHead>
+                        <TableHead className="w-[15%]">Số tiền</TableHead>
+                        <TableHead className="w-[15%]">Trạng thái</TableHead>
+                    <TableHead className="w-[18%]">Ngày tạo</TableHead>
+                        <TableHead className="w-[20%]">Lý do</TableHead>
+                        <TableHead className="w-[32%] text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                       {filteredWithdrawRequests.map((request) => (
                         <TableRow key={request.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <span className="text-xs font-mono text-gray-600">
-                              {request.id.slice(0, 8)}...
-                            </span>
-                          </TableCell>
-                      <TableCell>
-                        <span className="text-xs font-mono text-gray-600">
-                              {request.userId.slice(0, 8)}...
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs font-mono text-gray-600">
-                              {request.walletId.slice(0, 8)}...
-                        </span>
-                      </TableCell>
                       <TableCell>
                         <span className="font-semibold text-gray-900">
                               {formatCurrencyVND(request.amount)}
@@ -1079,8 +1137,6 @@ export default function WalletPage() {
             setShowTransactionDetailModal(false)
             setSelectedTransactionId(null)
             setTransactionDetail(null)
-            setFromWalletInfo(null)
-            setToWalletInfo(null)
           }} />
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
@@ -1102,8 +1158,6 @@ export default function WalletPage() {
                   setShowTransactionDetailModal(false)
                   setSelectedTransactionId(null)
                   setTransactionDetail(null)
-                  setFromWalletInfo(null)
-                  setToWalletInfo(null)
                 }}
                 className="h-8"
               >
@@ -1157,71 +1211,17 @@ export default function WalletPage() {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700">Loại giao dịch</Label>
-                      <p className="text-sm text-gray-900 mt-1">Type {transactionDetail.transactionType}</p>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {TRANSACTION_TYPE_LABELS[transactionDetail.transactionType] || `Type ${transactionDetail.transactionType}`}
+                      </p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-700">Payment Type</Label>
-                      <p className="text-sm text-gray-900 mt-1">Type {transactionDetail.paymentType}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Ví gửi (From Wallet)</Label>
-                      {fromWalletLoading ? (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                          <p className="text-xs text-gray-500">Đang tải...</p>
-                        </div>
-                      ) : fromWalletInfo ? (
-                        <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-gray-900">
-                              Số dư: {formatCurrencyVND(fromWalletInfo.balance)}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs text-gray-600">Loại tiền: {fromWalletInfo.currency}</p>
-                              {getWalletStatusBadge(fromWalletInfo.walletStatus)}
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              {fromWalletInfo.isSystemWallet ? 'Ví hệ thống' : 'Ví người dùng'}
-                            </p>
-                          </div>
-                        </div>
-                      ) : transactionDetail.fromWalletId ? (
-                        <p className="text-xs font-mono text-gray-500 mt-1">
-                          {transactionDetail.fromWalletId}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-gray-500 mt-1">—</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Ví nhận (To Wallet)</Label>
-                      {toWalletLoading ? (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                          <p className="text-xs text-gray-500">Đang tải...</p>
-                        </div>
-                      ) : toWalletInfo ? (
-                        <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-gray-900">
-                              Số dư: {formatCurrencyVND(toWalletInfo.balance)}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs text-gray-600">Loại tiền: {toWalletInfo.currency}</p>
-                              {getWalletStatusBadge(toWalletInfo.walletStatus)}
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              {toWalletInfo.isSystemWallet ? 'Ví hệ thống' : 'Ví người dùng'}
-                            </p>
-                          </div>
-                        </div>
-                      ) : transactionDetail.toWalletId ? (
-                        <p className="text-xs font-mono text-gray-500 mt-1">
-                          {transactionDetail.toWalletId}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-gray-500 mt-1">—</p>
-                      )}
+                      <Label className="text-sm font-medium text-gray-700">Loại thanh toán</Label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {PAYMENT_TYPE_LABELS[transactionDetail.paymentType] !== undefined 
+                          ? PAYMENT_TYPE_LABELS[transactionDetail.paymentType]
+                          : `Type ${transactionDetail.paymentType}`}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700">Escrow ID</Label>
@@ -1229,12 +1229,6 @@ export default function WalletPage() {
                         {transactionDetail.escrowId !== '00000000-0000-0000-0000-000000000000' 
                           ? transactionDetail.escrowId 
                           : '—'}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Payment Link ID</Label>
-                      <p className="text-xs font-mono text-gray-600 mt-1">
-                        {transactionDetail.paymentLinkId || '—'}
                       </p>
                     </div>
                   </div>
