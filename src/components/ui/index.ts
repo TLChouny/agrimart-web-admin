@@ -9,5 +9,6 @@ export * from "./dialog"
 export * from "./alert-dialog"
 export * from "./simple-table"
 export * from "./avatar"
+export * from "./select"
 export { ToastContainer } from "./ToastContainer"
 

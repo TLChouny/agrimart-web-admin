@@ -1,7 +1,7 @@
 function cn(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" ") }
 import type { LucideIcon } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, ShoppingCart, Truck, Settings, HelpCircle, LogOut, Scissors, FileWarning, ShoppingBag, Wallet } from "lucide-react"
+import { LayoutDashboard, Users, Wheat, Sprout, Tags, Truck, Settings, LogOut, Scissors, FileWarning, Wallet } from "lucide-react"
 import { adminAuthService } from "../../services/adminAuthService"
 import { useAuth } from "../../contexts/AuthContext"
 import { ROUTES } from "../../constants"
@@ -13,22 +13,22 @@ type MenuItem = { icon: LucideIcon; label: string; path: string; badge?: string 
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Bảng điều khiển", path: "/admin" },
   { icon: Users, label: "Người dùng", path: "/admin/users" },
-  { icon: CheckCircle, label: "Xét duyệt", path: "/admin/approval" },
+  // { icon: CheckCircle, label: "Xét duyệt", path: "/admin/approval" },
   { icon: Tags, label: "Phân loại", path: "/admin/categories" },
   { icon: Wheat, label: "Nông trại", path: "/admin/farms" },
   { icon: Sprout, label: "Lô trồng", path: "/admin/crops" },
   { icon: Scissors, label: "Vụ trồng", path: "/admin/harvests" },
-  { icon: ShoppingBag, label: "Yêu cầu mua hàng", path: "/admin/buy-requests" },
+  // { icon: ShoppingBag, label: "Yêu cầu mua hàng", path: "/admin/buy-requests" },
   { icon: Truck, label: "Phiên đấu giá", path: "/admin/auctions" },
   { icon: FileWarning, label: "Báo cáo", path: "/admin/reports" },
-  { icon: ShoppingCart, label: "Đơn hàng", path: "/admin/orders" },
+  // { icon: ShoppingCart, label: "Đơn hàng", path: "/admin/orders" },
   { icon: Wallet, label: "Ví của tôi", path: "/admin/wallet" },
 
 ]
 
 const generalItems = [
   { icon: Settings, label: "Cài đặt", path: "/admin/settings" },
-  { icon: HelpCircle, label: "Hỗ trợ", path: "/admin/help" },
+  // { icon: HelpCircle, label: "Hỗ trợ", path: "/admin/help" },
 ]
 
 export function DashboardSidebar() {
