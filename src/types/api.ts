@@ -64,6 +64,14 @@ export interface ApiHarvest {
   harvestGradeDetailDTOs: HarvestGradeDetailDTO[]
 }
 
+export interface ApiHarvestImage {
+  id: string
+  harvestID: string
+  imageUrl: string
+  createdAt: string
+  updatedAt: string | null
+}
+
 // Order related types
 export type OrderParty = 'farmer' | 'buyer'
 export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled'

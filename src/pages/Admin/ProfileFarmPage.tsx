@@ -6,12 +6,13 @@ import { Button } from '../../components/ui/button'
 import { farmApi } from '../../services/api/farmApi'
 import { auctionApi } from '../../services/api/auctionApi'
 import { reportApi } from '../../services/api/reportApi'
-import type { ApiFarm, ApiCrop, ApiHarvest, ApiEnglishAuction, AuctionStatus, ReportItem, ApiHarvestGradeDetail } from '../../types/api'
+import type { ApiFarm, ApiCrop, ApiHarvest, ApiEnglishAuction, AuctionStatus, ReportItem, ApiHarvestGradeDetail, ApiHarvestImage } from '../../types/api'
 import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
-import { ArrowLeft, LandPlot, Sprout, Scissors, Gavel, Calendar, User, Package, FileWarning, TrendingUp, DollarSign } from 'lucide-react'
+import { ArrowLeft, LandPlot, Sprout, Scissors, Gavel, Calendar, User, Package, FileWarning, DollarSign, Image as ImageIcon, Eye, X } from 'lucide-react'
 import { formatCurrencyVND } from '../../utils/currency'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 
 interface CropWithHarvests extends ApiCrop {
   harvests: ApiHarvest[]
@@ -72,6 +73,9 @@ export default function ProfileFarmPage() {
   const [crops, setCrops] = useState<CropWithHarvests[]>([])
   const [auctions, setAuctions] = useState<AuctionWithReports[]>([])
   const [loading, setLoading] = useState(true)
+  const [harvestImagesMap, setHarvestImagesMap] = useState<Map<string, ApiHarvestImage[]>>(new Map())
+  const [selectedHarvestForImages, setSelectedHarvestForImages] = useState<ApiHarvest | null>(null)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,30 +113,50 @@ export default function ProfileFarmPage() {
                   console.log(`Crop ${crop.id} không có current harvest`)
                 }
 
-                // Lấy grade details cho mỗi harvest
+                // Lấy grade details và images cho mỗi harvest
                 const harvestsWithGrades: ApiHarvest[] = []
+                const imagesMap = new Map<string, ApiHarvestImage[]>()
+                
                 for (const harvest of allHarvests) {
                   try {
                     const gradeRes = await farmApi.getHarvestGradeDetailsByHarvestId(harvest.id)
-                    if (gradeRes.isSuccess && gradeRes.data) {
-                      const gradeDetails = gradeRes.data.map((detail: ApiHarvestGradeDetail) => ({
-                        id: detail.id,
-                        grade: detail.grade?.toString(),
-                        quantity: detail.quantity,
-                        unit: detail.unit,
-                      }))
-                      harvestsWithGrades.push({
-                        ...harvest,
-                        harvestGradeDetailDTOs: gradeDetails,
-                      })
-                    } else {
-                      harvestsWithGrades.push(harvest)
+                    const gradeDetails = gradeRes.isSuccess && gradeRes.data
+                      ? gradeRes.data.map((detail: ApiHarvestGradeDetail) => ({
+                          id: detail.id,
+                          grade: detail.grade?.toString(),
+                          quantity: detail.quantity,
+                          unit: detail.unit,
+                        }))
+                      : []
+
+                    // Lấy hình ảnh của harvest
+                    try {
+                      const imagesRes = await farmApi.getHarvestImagesByHarvestId(harvest.id)
+                      if (imagesRes.isSuccess && imagesRes.data) {
+                        imagesMap.set(harvest.id, imagesRes.data)
+                      }
+                    } catch (err) {
+                      console.error(`Lỗi lấy images cho harvest ${harvest.id}:`, err)
                     }
+
+                    harvestsWithGrades.push({
+                      ...harvest,
+                      harvestGradeDetailDTOs: gradeDetails,
+                    })
                   } catch (err) {
                     console.error(`Lỗi lấy grade detail cho harvest ${harvest.id}:`, err)
                     harvestsWithGrades.push(harvest)
                   }
                 }
+                
+                // Cập nhật images map
+                setHarvestImagesMap(prev => {
+                  const newMap = new Map(prev)
+                  imagesMap.forEach((images, harvestId) => {
+                    newMap.set(harvestId, images)
+                  })
+                  return newMap
+                })
 
                 // Sắp xếp harvests: current harvest trước (nếu có), sau đó là các harvest khác theo thời gian
                 const sortedHarvests = harvestsWithGrades.sort((a, b) => {
@@ -266,7 +290,7 @@ export default function ProfileFarmPage() {
                 {farm.isActive ? 'Hoạt động' : 'Không hoạt động'}
               </Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
               <div className="flex items-center gap-2 text-gray-600">
                 <User className="w-4 h-4" />
                 <span>User ID: {farm.userId}</span>
@@ -280,6 +304,23 @@ export default function ProfileFarmPage() {
                 <span>Cập nhật: {farm.updatedAt ? formatDate(farm.updatedAt) : 'Chưa cập nhật'}</span>
               </div>
             </div>
+            {/* Farmer Revenue */}
+            {(() => {
+              const completedAuctions = auctions.filter(a => a.status === 'Completed' && (a.winningPrice || a.currentPrice))
+              const totalRevenue = completedAuctions.reduce((sum, a) => sum + (a.winningPrice ?? a.currentPrice ?? 0), 0)
+              return (
+                <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="w-5 h-5 text-emerald-600" />
+                    <span className="font-semibold text-gray-900">Tổng doanh thu từ đấu giá</span>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-700">{formatCurrencyVND(totalRevenue)}</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Từ {completedAuctions.length} phiên đấu giá đã hoàn tất
+                  </p>
+                </div>
+              )
+            })()}
           </div>
         </div>
       </Card>
@@ -430,6 +471,61 @@ export default function ProfileFarmPage() {
                                 </div>
                               </div>
                             )}
+
+                            {/* Harvest Images */}
+                            {(() => {
+                              const images = harvestImagesMap.get(harvest.id) || []
+                              if (images.length === 0) return null
+                              
+                              return (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <span className="text-base font-semibold text-gray-900">Hình ảnh ({images.length}):</span>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedHarvestForImages(harvest)
+                                        setIsImageModalOpen(true)
+                                      }}
+                                      className="text-sm"
+                                    >
+                                      <ImageIcon className="w-4 h-4 mr-2" />
+                                      Xem tất cả
+                                    </Button>
+                                  </div>
+                                  <div className="flex gap-4 overflow-x-auto pb-2">
+                                    {images.slice(0, 3).map(image => (
+                                      <div key={image.id} className="relative group flex-shrink-0">
+                                        <img
+                                          src={image.imageUrl}
+                                          alt={`Harvest ${harvest.id}`}
+                                          className="w-64 h-48 object-cover rounded-xl border-2 border-gray-200 hover:border-emerald-400 hover:shadow-xl transition-all cursor-pointer"
+                                          onClick={() => {
+                                            setSelectedHarvestForImages(harvest)
+                                            setIsImageModalOpen(true)
+                                          }}
+                                        />
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-opacity rounded-xl" />
+                                      </div>
+                                    ))}
+                                    {images.length > 3 && (
+                                      <div
+                                        className="w-64 h-48 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-400 hover:bg-gray-50 transition-all flex-shrink-0"
+                                        onClick={() => {
+                                          setSelectedHarvestForImages(harvest)
+                                          setIsImageModalOpen(true)
+                                        }}
+                                      >
+                                        <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                                        <span className="text-base font-semibold text-gray-600">+{images.length - 3}</span>
+                                        <span className="text-sm text-gray-500">ảnh khác</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })()}
                           </div>
                         )
                       })}
@@ -444,158 +540,168 @@ export default function ProfileFarmPage() {
 
       {/* Auctions Section */}
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Gavel className="w-6 h-6 text-emerald-600" />
-          <h2 className="text-xl font-bold text-gray-900">Phiên Đấu Giá ({auctions.length})</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Gavel className="w-6 h-6 text-emerald-600" />
+            <h2 className="text-xl font-bold text-gray-900">Phiên Đấu Giá ({auctions.length})</h2>
+          </div>
+          {(() => {
+            const completedAuctions = auctions.filter(a => a.status === 'Completed' && (a.winningPrice || a.currentPrice))
+            const totalRevenue = completedAuctions.reduce((sum, a) => sum + (a.winningPrice ?? a.currentPrice ?? 0), 0)
+            if (totalRevenue > 0) {
+              return (
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Tổng doanh thu</p>
+                  <p className="text-xl font-bold text-emerald-600">{formatCurrencyVND(totalRevenue)}</p>
+                </div>
+              )
+            }
+            return null
+          })()}
         </div>
 
         {auctions.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Chưa có phiên đấu giá nào</p>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {auctions.map((auction) => (
-              <div key={auction.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Gavel className="w-5 h-5 text-emerald-600" />
-                      <h3 className="text-lg font-semibold text-gray-900">{auction.sessionCode}</h3>
-                      {getAuctionStatusBadge(auction.status)}
-                      {auction.reports.length > 0 && (
-                        <Badge variant="outline" className="text-orange-600 border-orange-600">
-                          <FileWarning className="w-3 h-3 mr-1" />
-                          {auction.reports.length} báo cáo
-                        </Badge>
-                      )}
+              <Card key={auction.id} className="p-4 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-emerald-300" onClick={() => navigate(ROUTES.ADMIN_AUCTIONS_BY_ID.replace(':id', auction.id))}>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-gray-900 truncate mb-1">{auction.sessionCode}</h3>
+                      <p className="text-xs text-gray-500 truncate">{auction.note || 'Không có ghi chú'}</p>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
-                      <div>
-                        <span className="font-medium">Ngày tạo:</span>
-                        <span className="ml-2 text-xs">{formatDateTime(auction.createdAt)}</span>
-                      </div>
-                      {auction.updatedAt && (
-                        <div>
-                          <span className="font-medium">Cập nhật:</span>
-                          <span className="ml-2 text-xs">{formatDateTime(auction.updatedAt)}</span>
-                        </div>
-                      )}
+                    {getAuctionStatusBadge(auction.status)}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                      <span className="text-xs font-medium text-gray-600">Giá khởi điểm</span>
+                      <span className="text-sm font-bold text-blue-700">{formatCurrencyVND(auction.startingPrice)}</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingUp className="w-4 h-4 text-blue-600" />
-                          <span className="font-medium text-gray-600">Giá khởi điểm</span>
-                        </div>
-                        <p className="text-lg font-bold text-blue-700">{formatCurrencyVND(auction.startingPrice)}</p>
+                    {auction.currentPrice && (
+                      <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                        <span className="text-xs font-medium text-gray-600">Giá hiện tại</span>
+                        <span className="text-sm font-bold text-green-700">{formatCurrencyVND(auction.currentPrice)}</span>
                       </div>
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <DollarSign className="w-4 h-4 text-green-600" />
-                          <span className="font-medium text-gray-600">Giá hiện tại</span>
-                        </div>
-                        <p className="text-lg font-bold text-green-700">
-                          {auction.currentPrice ? formatCurrencyVND(auction.currentPrice) : '—'}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Gavel className="w-4 h-4 text-amber-600" />
-                          <span className="font-medium text-gray-600">Giá thắng</span>
-                        </div>
-                        <p className="text-lg font-bold text-amber-700">
-                          {auction.winningPrice ? formatCurrencyVND(auction.winningPrice) : '—'}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <span className="font-medium text-gray-600 text-xs block mb-1">Bước giá tối thiểu</span>
-                        <p className="text-lg font-bold text-gray-700">{formatCurrencyVND(auction.minBidIncrement)}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600 mt-3">
-                      <div>
-                        <span className="font-medium">Ngày bắt đầu:</span>
-                        <span className="ml-2">{formatDateTime(auction.publishDate)}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Ngày kết thúc:</span>
-                        <span className="ml-2">{formatDateTime(auction.endDate)}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Dự kiến thu hoạch:</span>
-                        <span className="ml-2">{formatDate(auction.expectedHarvestDate)}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Số lượng dự kiến:</span>
-                        <span className="ml-2">{auction.expectedTotalQuantity}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Mua ngay:</span>
-                        <span className="ml-2">{auction.enableBuyNow ? 'Có' : 'Không'}</span>
-                        {auction.enableBuyNow && auction.buyNowPrice && (
-                          <span className="ml-2 font-semibold">({formatCurrencyVND(auction.buyNowPrice)})</span>
-                        )}
-                      </div>
-                      <div>
-                        <span className="font-medium">Chống snipe:</span>
-                        <span className="ml-2">{auction.enableAntiSniping ? 'Có' : 'Không'}</span>
-                      </div>
-                    </div>
-                    {auction.note && (
-                      <div className="mt-3 p-3 bg-gray-50 rounded border border-gray-200">
-                        <span className="text-sm font-medium text-gray-600">Ghi chú:</span>
-                        <p className="text-sm text-gray-700 mt-1">{auction.note}</p>
+                    )}
+                    {auction.winningPrice && (
+                      <div className="flex items-center justify-between p-2 bg-amber-50 rounded">
+                        <span className="text-xs font-medium text-gray-600">Giá thắng</span>
+                        <span className="text-sm font-bold text-amber-700">{formatCurrencyVND(auction.winningPrice)}</span>
                       </div>
                     )}
                   </div>
-                  <div className="ml-4">
+
+                  <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-gray-600">
+                    <div className="flex items-center justify-between">
+                      <span>Ngày bắt đầu:</span>
+                      <span className="font-medium">{formatDate(auction.publishDate)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Ngày kết thúc:</span>
+                      <span className="font-medium">{formatDate(auction.endDate)}</span>
+                    </div>
+                    {auction.reports.length > 0 && (
+                      <div className="flex items-center gap-1 pt-1">
+                        <FileWarning className="w-3 h-3 text-orange-600" />
+                        <span className="text-orange-600 font-medium">{auction.reports.length} báo cáo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => navigate(ROUTES.ADMIN_AUCTIONS_BY_ID.replace(':id', auction.id))}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(ROUTES.ADMIN_AUCTIONS_BY_ID.replace(':id', auction.id))
+                      }}
+                      className="text-xs"
                     >
+                      <Eye className="w-3 h-3 mr-1" />
                       Xem chi tiết
                     </Button>
+                    {auction.status === 'Completed' && (auction.winningPrice || auction.currentPrice) && (
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Doanh thu</p>
+                        <p className="text-sm font-bold text-emerald-600">
+                          {formatCurrencyVND(auction.winningPrice ?? auction.currentPrice ?? 0)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Reports Section */}
-                {auction.reports.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <FileWarning className="w-4 h-4 text-orange-600" />
-                      <h4 className="font-semibold text-gray-900">Báo cáo ({auction.reports.length})</h4>
-                    </div>
-                    <div className="space-y-2">
-                      {auction.reports.map((report) => (
-                        <div key={report.id} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {report.reportType}
-                              </Badge>
-                              <Badge variant="outline" className={`text-xs ${
-                                report.reportStatus === 'Pending' ? 'text-yellow-600 border-yellow-600' :
-                                report.reportStatus === 'Resolved' ? 'text-green-600 border-green-600' :
-                                report.reportStatus === 'Rejected' ? 'text-red-600 border-red-600' :
-                                'text-gray-600 border-gray-600'
-                              }`}>
-                                {report.reportStatus}
-                              </Badge>
-                            </div>
-                            <span className="text-xs text-gray-500">{formatDateTime(report.createdAt)}</span>
-                          </div>
-                          <p className="text-sm text-gray-700">{report.note}</p>
-                          <p className="text-xs text-gray-500 mt-1">Reporter ID: {report.reporterId.slice(0, 8)}...</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              </Card>
             ))}
           </div>
         )}
       </Card>
+
+      {/* Harvest Images Modal */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-6xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <DialogHeader className="mb-4 pb-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                Hình ảnh thu hoạch
+                {selectedHarvestForImages && (
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    (Ngày bắt đầu: {formatDate(selectedHarvestForImages.startDate)})
+                  </span>
+                )}
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsImageModalOpen(false)}
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {selectedHarvestForImages ? (() => {
+              const images = harvestImagesMap.get(selectedHarvestForImages.id) || []
+              return images.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {images.map((image, index) => (
+                    <div key={image.id} className="relative group">
+                      <div className="aspect-[4/3] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-emerald-400 transition-all shadow-sm hover:shadow-lg">
+                        <img
+                          src={image.imageUrl}
+                          alt={`Harvest image ${index + 1}`}
+                          className="w-full h-full object-contain p-2"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-opacity rounded-lg pointer-events-none" />
+                      <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+                          {formatDateTime(image.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <ImageIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-sm text-gray-500">Chưa có hình ảnh nào cho vụ thu hoạch này.</p>
+                </div>
+              )
+            })() : (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+                <p className="text-sm text-gray-500">Đang tải...</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

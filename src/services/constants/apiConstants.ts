@@ -52,6 +52,7 @@ export const ENDPOINTS = {
       detail: (id: string) => `/api/farm-service/harvest/${encodeURIComponent(id)}`,
       byCrop: (cropId: string) => `/api/farm-service/crop/${encodeURIComponent(cropId)}/harvest`,
       currentByCrop: (cropId: string) => `/api/farm-service/crop/${encodeURIComponent(cropId)}/currentharvest`,
+      images: (harvestId: string) => `/api/farm-service/harvestimage/harvest/${encodeURIComponent(harvestId)}/images`,
       gradeDetail: {
         list: '/api/farm-service/harvestgradedetail',
         detail: (id: string) => `/api/farm-service/harvestgradedetail/${encodeURIComponent(id)}`,

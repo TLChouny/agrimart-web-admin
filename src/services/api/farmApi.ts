@@ -1,7 +1,7 @@
 import { HttpClient } from './httpClient'
 import { ENDPOINTS } from '../constants/apiConstants'
 import type { APIResponse } from '../../types/api'
-import type { CustardAppleType, CreateCustardAppleTypeDTO, UpdateCustardAppleTypeDTO, ApiFarm, ApiCrop, ApiHarvest, ApiHarvestGradeDetail } from '../../types/api'
+import type { CustardAppleType, CreateCustardAppleTypeDTO, UpdateCustardAppleTypeDTO, ApiFarm, ApiCrop, ApiHarvest, ApiHarvestGradeDetail, ApiHarvestImage } from '../../types/api'
 
 const GATEWAY_BASE_URL = import.meta.env.VITE_GATEWAY_URL ?? 'https://gateway.a-379.store'
 const farmHttpClient = new HttpClient(GATEWAY_BASE_URL)
@@ -43,6 +43,10 @@ export const farmApi = {
   },
   async getCurrentHarvestByCropId(cropId: string): Promise<APIResponse<ApiHarvest>> {
     return farmHttpClient.get<ApiHarvest>(ENDPOINTS.farm.harvest.currentByCrop(cropId), { cache: false })
+  },
+  // HarvestImage APIs
+  async getHarvestImagesByHarvestId(harvestId: string): Promise<APIResponse<ApiHarvestImage[]>> {
+    return farmHttpClient.get<ApiHarvestImage[]>(ENDPOINTS.farm.harvest.images(harvestId), { cache: false })
   },
   // HarvestGradeDetail APIs
   async getHarvestGradeDetails(): Promise<APIResponse<ApiHarvestGradeDetail[]>> {
