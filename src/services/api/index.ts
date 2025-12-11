@@ -4,4 +4,5 @@ export { requestCache, RequestCache } from './requestCache'
 export { reportApi } from './reportApi'
 export { postApi } from './postApi'
 export { walletApi } from './walletApi'
+export { certificationApi } from './certificationApi'
 

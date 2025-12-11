@@ -6,10 +6,11 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { userApi } from '../../services/api/userApi'
-import type { User as ApiUser, UserListItem } from '../../types/api'
+import { certificationApi } from '../../services/api/certificationApi'
+import type { User as ApiUser, UserListItem, ApiCertification } from '../../types/api'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES, USER_MESSAGES } from '../../services/constants/messages'
-import { Search, Users as UsersIcon, Filter, ChevronDown, Eye } from 'lucide-react'
+import { Search, Users as UsersIcon, Filter, ChevronDown, Eye, Award } from 'lucide-react'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserListItem[]>([])
@@ -25,6 +26,8 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [userCertifications, setUserCertifications] = useState<ApiCertification[]>([])
+  const [isLoadingCertifications, setIsLoadingCertifications] = useState(false)
 
   // API functions
   const fetchUsers = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -166,12 +169,39 @@ export default function UsersPage() {
     if (user) {
       setSelectedUser(user)
       setIsDetailModalOpen(true)
+      // Load certifications for this user
+      setIsLoadingCertifications(true)
+      certificationApi.getByUserId(userId)
+        .then(res => {
+          if (res.isSuccess && res.data) {
+            setUserCertifications(Array.isArray(res.data) ? res.data : [])
+          } else {
+            setUserCertifications([])
+          }
+        })
+        .catch(() => setUserCertifications([]))
+        .finally(() => setIsLoadingCertifications(false))
     } else {
       toast({
         title: TOAST_TITLES.ERROR,
         description: 'Không tìm thấy thông tin chi tiết người dùng',
         variant: 'destructive',
       })
+    }
+  }
+
+  const getCertificationStatusBadge = (status: number) => {
+    switch (status) {
+      case 0:
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600">Chờ duyệt</Badge>
+      case 1:
+        return <Badge variant="outline" className="text-green-600 border-green-600">Đã duyệt</Badge>
+      case 2:
+        return <Badge variant="outline" className="text-red-600 border-red-600">Đã từ chối</Badge>
+      case 3:
+        return <Badge variant="outline" className="text-gray-600 border-gray-600">Hết hạn</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
     }
   }
 
@@ -300,7 +330,7 @@ export default function UsersPage() {
                   <TableHead className="w-[20%]">Email</TableHead>
                   <TableHead className="w-[12%]">Vai trò</TableHead>
                   <TableHead className="w-[12%]">Trạng thái</TableHead>
-                  <TableHead className="w-[10%] text-right">Khóa</TableHead>
+                  {/* <TableHead className="w-[10%] text-right">Khóa</TableHead> */}
                   <TableHead className="w-[16%] text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -326,7 +356,7 @@ export default function UsersPage() {
                       <TableHead className="w-[20%] text-left">Email</TableHead>
                       <TableHead className="w-[12%] text-left">Vai trò</TableHead>
                       <TableHead className="w-[12%] text-left">Trạng thái</TableHead>
-                      <TableHead className="w-[10%] text-right">Khóa</TableHead>
+                      {/* <TableHead className="w-[10%] text-right">Khóa</TableHead> */}
                       <TableHead className="w-[16%] text-center">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -342,7 +372,7 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
-                        <TableCell className="text-right">
+                        {/* <TableCell className="text-right">
                           <label className="inline-flex items-center gap-2 cursor-pointer select-none justify-end">
                             <input
                               type="checkbox"
@@ -355,7 +385,7 @@ export default function UsersPage() {
                             </span>
                             <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Blocked' : 'Active'}</span>
                           </label>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-center">
                           <Button
                             variant="outline"
@@ -507,87 +537,87 @@ export default function UsersPage() {
                 </div>
               </div>
 
-              {/* Trạng thái tài khoản */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <h3 className="text-sm font-semibold text-slate-700 mb-4">Trạng thái tài khoản</h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xác nhận email</p>
-                    <div className="mt-1">
-                      {selectedUser.emailConfirmed ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600">Đã xác nhận</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-red-600 border-red-600">Chưa xác nhận</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xác nhận số điện thoại</p>
-                    <div className="mt-1">
-                      {selectedUser.phoneNumberConfirmed ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600">Đã xác nhận</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-red-600 border-red-600">Chưa xác nhận</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Xác thực 2 yếu tố</p>
-                    <div className="mt-1">
-                      {selectedUser.twoFactorEnabled ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600">Đã bật</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-gray-600 border-gray-600">Chưa bật</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Khóa tài khoản</p>
-                    <div className="mt-1">
-                      {selectedUser.lockoutEnabled ? (
-                        <Badge variant="outline" className="text-red-600 border-red-600">Đã bật</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-gray-600 border-gray-600">Chưa bật</Badge>
-                      )}
-                    </div>
-                  </div>
-                  {selectedUser.lockoutEnd && (
-                    <div className="rounded-2xl bg-white p-4 sm:col-span-2">
-                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Ngày hết hạn khóa</p>
-                      <p className="text-sm font-semibold text-slate-900">{formatDate(selectedUser.lockoutEnd)}</p>
-                    </div>
-                  )}
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Số lần đăng nhập sai</p>
-                    <p className="text-sm font-semibold text-slate-900">{selectedUser.accessFailedCount || 0}</p>
+              {/* Trạng thái và Reputation */}
+              {(selectedUser.status !== undefined || selectedUser.reputationScore !== undefined) && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-4">Trạng thái & Uy tín</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {selectedUser.status !== undefined && (
+                      <div className="rounded-2xl bg-white p-4">
+                        <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Trạng thái</p>
+                        <div className="mt-1">
+                          {selectedUser.status === 0 && <Badge variant="outline" className="text-yellow-600 border-yellow-600">Chờ duyệt</Badge>}
+                          {selectedUser.status === 1 && <Badge variant="outline" className="text-green-600 border-green-600">Hoạt động</Badge>}
+                          {selectedUser.status === 2 && <Badge variant="outline" className="text-red-600 border-red-600">Bị cấm</Badge>}
+                        </div>
+                      </div>
+                    )}
+                    {selectedUser.reputationScore !== undefined && (
+                      <div className="rounded-2xl bg-white p-4">
+                        <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Điểm uy tín</p>
+                        <p className="text-sm font-semibold text-slate-900">{selectedUser.reputationScore}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
+              )}
+
+              {/* Chứng chỉ */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                  <Award className="h-4 w-4" />
+                  Chứng chỉ đã duyệt
+                </h3>
+                {isLoadingCertifications ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
+                    <p className="mt-2 text-xs text-slate-500">Đang tải chứng chỉ...</p>
+                  </div>
+                ) : userCertifications.length > 0 ? (
+                  <div className="space-y-3">
+                    {userCertifications.map((cert) => (
+                      <div key={cert.id} className="rounded-2xl bg-white p-4 border border-slate-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-slate-900 mb-1">{cert.certificationName}</p>
+                            <p className="text-xs text-slate-600">{cert.issuingOrganization}</p>
+                          </div>
+                          {getCertificationStatusBadge(cert.status)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                          <div>
+                            <p className="text-slate-500 mb-0.5">Ngày cấp</p>
+                            <p className="text-slate-900 font-medium">{formatDate(cert.issueDate)}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500 mb-0.5">Ngày hết hạn</p>
+                            <p className="text-slate-900 font-medium">{formatDate(cert.expiryDate)}</p>
+                          </div>
+                        </div>
+                        {cert.certificateUrl && (
+                          <div className="mt-3">
+                            <img
+                              src={cert.certificateUrl}
+                              alt={cert.certificationName}
+                              className="w-full max-w-xs rounded-lg border border-slate-200 shadow-sm"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Award className="h-10 w-10 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500">Chưa có chứng chỉ nào được duyệt</p>
+                  </div>
+                )}
               </div>
 
-              {/* Thông tin hệ thống */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <h3 className="text-sm font-semibold text-slate-700 mb-4">Thông tin hệ thống</h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Ngày tạo</p>
-                    <p className="text-sm font-semibold text-slate-900">{formatDate(selectedUser.createdAt)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Ngày cập nhật</p>
-                    <p className="text-sm font-semibold text-slate-900">{formatDate(selectedUser.updatedAt)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Role ID</p>
-                    <p className="text-sm font-semibold text-slate-900 font-mono text-xs break-all">{selectedUser.roleId}</p>
-                  </div>
-                  {selectedUser.role && (
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Tên vai trò</p>
-                      <p className="text-sm font-semibold text-slate-900">{selectedUser.role.name || selectedUser.role.fullName || '—'}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           ) : (
             <div className="text-center py-12">

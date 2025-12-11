@@ -1,8 +1,12 @@
 import type React from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Label } from "../ui/label"
-import { Mail, User, Calendar, MapPin } from "lucide-react"
+import { Mail, User, Calendar, MapPin, Award } from "lucide-react"
 import type { PendingAccount } from "../../types/approval"
+import { certificationApi } from "../../services/api/certificationApi"
+import type { ApiCertification } from "../../types/api"
+import { Badge } from "../ui/badge"
 
 interface AccountDetailModalProps {
   account: PendingAccount | null
@@ -12,6 +16,40 @@ interface AccountDetailModalProps {
 }
 
 const AccountDetailModal: React.FC<AccountDetailModalProps> = ({ account, isOpen, onClose, formatDate }) => {
+  const [certifications, setCertifications] = useState<ApiCertification[]>([])
+  const [isLoadingCertifications, setIsLoadingCertifications] = useState(false)
+
+  useEffect(() => {
+    if (account && isOpen) {
+      setIsLoadingCertifications(true)
+      certificationApi.getByUserId(account.id)
+        .then(res => {
+          if (res.isSuccess && res.data) {
+            setCertifications(Array.isArray(res.data) ? res.data : [])
+          }
+        })
+        .catch(() => setCertifications([]))
+        .finally(() => setIsLoadingCertifications(false))
+    } else {
+      setCertifications([])
+    }
+  }, [account, isOpen])
+
+  const getCertificationStatusBadge = (status: number) => {
+    switch (status) {
+      case 0:
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600">Chờ duyệt</Badge>
+      case 1:
+        return <Badge variant="outline" className="text-green-600 border-green-600">Đã duyệt</Badge>
+      case 2:
+        return <Badge variant="outline" className="text-red-600 border-red-600">Đã từ chối</Badge>
+      case 3:
+        return <Badge variant="outline" className="text-gray-600 border-gray-600">Hết hạn</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
+    }
+  }
+
   if (!account) return null
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -67,6 +105,62 @@ const AccountDetailModal: React.FC<AccountDetailModalProps> = ({ account, isOpen
               Thông tin nộp đơn
             </h3>
             <div className="bg-gray-50 rounded-lg p-6"><p className="text-gray-900"><span className="font-medium">Ngày nộp:</span> {formatDate(account.submittedAt)}</p></div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3"><Award className="h-4 w-4 text-emerald-600" /></div>
+              Chứng chỉ đã duyệt
+            </h3>
+            <div className="bg-gray-50 rounded-lg p-6">
+              {isLoadingCertifications ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
+                  <p className="mt-2 text-sm text-gray-600">Đang tải chứng chỉ...</p>
+                </div>
+              ) : certifications.length > 0 ? (
+                <div className="space-y-4">
+                  {certifications.map((cert) => (
+                    <div key={cert.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-1">{cert.certificationName}</h4>
+                          <p className="text-sm text-gray-600">{cert.issuingOrganization}</p>
+                        </div>
+                        {getCertificationStatusBadge(cert.status)}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-gray-500">Ngày cấp:</span>
+                          <p className="text-gray-900 font-medium">{formatDate(cert.issueDate)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Ngày hết hạn:</span>
+                          <p className="text-gray-900 font-medium">{formatDate(cert.expiryDate)}</p>
+                        </div>
+                      </div>
+                      {cert.certificateUrl && (
+                        <div className="mt-3">
+                          <img
+                            src={cert.certificateUrl}
+                            alt={cert.certificationName}
+                            className="w-full max-w-md rounded-lg border border-gray-200 shadow-sm"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Award className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600">Chưa có chứng chỉ nào được duyệt</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>

@@ -21,10 +21,11 @@ export const ENDPOINTS = {
     detail: (id: string) => `/api/roleclaim/${id}`,
   },
   users: {
-    list: '/api/identity/users',
+    list: '/api/users',
     detail: (id: string) => `/api/users/${id}`,
     lock: (id: string) => `/api/users/${id}/lock`,
     unlock: (id: string) => `/api/users/${id}/unlock`,
+    updateStatus: (id: string) => `/api/users/${id}/status`,
   },
   orders: { list: '/orders' },
   products: { list: '/products' },
@@ -131,6 +132,12 @@ export const ENDPOINTS = {
   },
   bank: {
     list: '/api/payment-service/bank',
+  },
+  certification: {
+    pending: '/api/certification/pending',
+    detail: (id: string) => `/api/certification/${id}`,
+    approve: (id: string) => `/api/certification/${id}/approve`,
+    byUser: (userId: string) => `/api/certification/user/${userId}`,
   },
 } as const
 

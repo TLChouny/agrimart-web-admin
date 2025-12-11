@@ -17,7 +17,7 @@ import { useToastContext } from "../../contexts/ToastContext"
 import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES } from "../../services/constants/messages"
 import { ROUTES } from "../../constants"
 import { ArrowLeft } from "lucide-react"
-import { signalRService, type BidPlacedEvent } from "../../services/signalrService"
+import { signalRService, type BidPlacedEvent, type BuyNowEvent } from "../../services/signalrService"
 
 const reportStatuses: ReportStatus[] = ["Pending", "InReview", "Resolved", "ActionTaken", "Rejected"]
 const reportTypes: ReportType[] = ["Fraud", "FalseInformation", "TechnicalIssue", "PolicyViolated", "Other"]
@@ -52,7 +52,7 @@ export default function AuctionReportsPage() {
   const [, setNotifiedBids] = useState<Set<string>>(new Set())
   const { toast } = useToastContext()
 
-  const fetchAuctionData = async () => {
+  const fetchAuctionData = useCallback(async () => {
     if (!id) return
     try {
       const auctionRes = await auctionApi.getEnglishAuctionById(id)
@@ -72,56 +72,152 @@ export default function AuctionReportsPage() {
     } catch (error) {
       console.error('Error fetching auction data:', error)
     }
-  }
+  }, [id])
 
-  // SignalR real-time updates - refresh auction data on new bid
+  const fetchReports = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!id) return
+    const { silent = false } = options
+    try {
+      // Only show loading indicator for manual refreshes, not auto-refresh
+      if (!silent) {
+        setReportsLoading(true)
+      }
+      setError(null)
+      const response = await reportApi.getReportsByAuctionId(id)
+      if (response.data) {
+        setReports(response.data)
+        if (!silent) {
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: REPORT_MESSAGES.FETCH_SUCCESS,
+          })
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : REPORT_MESSAGES.FETCH_ERROR
+      setError(message)
+      if (!silent) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: "destructive",
+        })
+      }
+    } finally {
+      if (!silent) {
+        setReportsLoading(false)
+      }
+    }
+  }, [id, toast])
+
+  // SignalR real-time updates - refresh auction data on new bid/buy now
   useEffect(() => {
     if (!id) return
 
-    signalRService
-      .connect(id, {
-        bidPlaced: (event: BidPlacedEvent) => {
-          if (event.auctionId !== id) return
+    let isMounted = true
+    let retryCount = 0
+    const maxRetries = 3
+
+    const setupSignalR = async () => {
+      try {
+        console.log('[AuctionReportsPage] 🔌 Setting up SignalR connection for auction:', id)
+
+        await signalRService.connect(id, {
+          bidPlaced: (event: BidPlacedEvent) => {
+            if (!isMounted || event.auctionId !== id) return
           
-          // Update auction current price immediately for real-time header update
-          setAuction(prev => {
-            if (!prev) return prev
-            return {
-              ...prev,
-              currentPrice: event.newPrice,
-            }
-          })
-          
-          // Trigger price animation
-          setPriceChanged(true)
-          setTimeout(() => setPriceChanged(false), 1000)
-          
-          // Show toast notification only once per bid
-          setNotifiedBids(prev => {
-            if (prev.has(event.bidId)) {
-              return prev
-            }
-            const newSet = new Set(prev)
-            newSet.add(event.bidId)
-            toast({
-              title: 'Có lượt đặt giá mới',
-              description: `${event.userName} đã đặt giá ${event.newPrice.toLocaleString('vi-VN')} VNĐ`,
+            // Update auction current price immediately for real-time header update
+            setAuction(prev => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                currentPrice: event.newPrice,
+              }
             })
-            return newSet
-          })
-          
-          // Refresh auction data when new bid is placed (async, may take time)
-          fetchAuctionData()
-        },
-      })
-      .catch(error => {
-        console.error('[AuctionReportsPage] Failed to init realtime connection:', error)
-      })
+            
+            // Trigger price animation
+            setPriceChanged(true)
+            setTimeout(() => setPriceChanged(false), 1000)
+            
+            // Show toast notification only once per bid
+            setNotifiedBids(prev => {
+              if (prev.has(event.bidId)) {
+                return prev
+              }
+              const newSet = new Set(prev)
+              newSet.add(event.bidId)
+              toast({
+                title: 'Có lượt đặt giá mới',
+                description: `${event.userName} đã đặt giá ${event.newPrice.toLocaleString('vi-VN')} VNĐ`,
+              })
+              return newSet
+            })
+            
+            // Refresh auction data when new bid is placed
+            fetchAuctionData()
+            // Refresh reports after a delay to ensure server has processed
+            // First attempt after 1.5s, then retry once more after 1s if needed
+            setTimeout(() => {
+              if (isMounted) {
+                fetchReports({ silent: true })
+                // Retry once more after additional delay to catch any late updates
+                setTimeout(() => {
+                  if (isMounted) {
+                    fetchReports({ silent: true })
+                  }
+                }, 1000)
+              }
+            }, 1500)
+          },
+          buyNow: (event: BuyNowEvent) => {
+            if (!isMounted || event.auctionId !== id) return
+            // Khi mua ngay, cần cập nhật lại auction + header
+            fetchAuctionData()
+            // Refresh reports after buy now with retry logic
+            setTimeout(() => {
+              if (isMounted) {
+                fetchReports({ silent: true })
+                // Retry once more after additional delay to catch any late updates
+                setTimeout(() => {
+                  if (isMounted) {
+                    fetchReports({ silent: true })
+                  }
+                }, 1000)
+              }
+            }, 1500)
+          },
+        })
+
+        if (isMounted) {
+          console.log('[AuctionReportsPage] ✅ SignalR connected successfully for auction:', id)
+          retryCount = 0 // Reset retry count on success
+        }
+      } catch (error) {
+        console.error('[AuctionReportsPage] ❌ Failed to init realtime connection:', error)
+        
+        // Retry connection with exponential backoff
+        if (isMounted && retryCount < maxRetries) {
+          retryCount++
+          const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 5000) // 1s, 2s, 4s
+          console.log(`[AuctionReportsPage] 🔄 Retrying SignalR connection (${retryCount}/${maxRetries}) in ${delay}ms...`)
+          setTimeout(() => {
+            if (isMounted) {
+              setupSignalR()
+            }
+          }, delay)
+        }
+      }
+    }
+
+    // Setup SignalR connection
+    setupSignalR()
 
     return () => {
+      isMounted = false
+      console.log('[AuctionReportsPage] 🧹 Cleaning up SignalR connection for auction:', id)
       signalRService.disconnect().catch(console.error)
     }
-  }, [id])
+  }, [id, fetchAuctionData, fetchReports, toast])
 
   // Fetch auction data
   useEffect(() => {
@@ -136,7 +232,7 @@ export default function AuctionReportsPage() {
     }
 
     loadData()
-  }, [id])
+  }, [id, fetchAuctionData])
 
   const fetchAuctionExtends = async (auctionId: string) => {
     try {
@@ -153,35 +249,6 @@ export default function AuctionReportsPage() {
     setFilters(prev => ({ ...prev, [key]: value || undefined }))
     setPageNumber(1)
   }
-
-  const fetchReports = useCallback(async (options: { silent?: boolean } = {}) => {
-    if (!id) return
-    const { silent = false } = options
-    try {
-      setReportsLoading(true)
-      setError(null)
-      const response = await reportApi.getReportsByAuctionId(id)
-      if (response.data) {
-        setReports(response.data)
-        if (!silent) {
-          toast({
-            title: TOAST_TITLES.SUCCESS,
-            description: REPORT_MESSAGES.FETCH_SUCCESS,
-          })
-        }
-      }
-    } catch (err) {
-      const message = err instanceof Error && err.message ? err.message : REPORT_MESSAGES.FETCH_ERROR
-      setError(message)
-      toast({
-        title: TOAST_TITLES.ERROR,
-        description: message,
-        variant: "destructive",
-      })
-    } finally {
-      setReportsLoading(false)
-    }
-  }, [id, toast])
 
   useEffect(() => {
     if (id) {

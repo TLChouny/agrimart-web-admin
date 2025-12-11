@@ -25,6 +25,46 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { AUCTION_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, CheckCircle2, XCircle, PauseCircle, Ban, PlayCircle } from 'lucide-react'
 import { signalRService, type BidPlacedEvent, type BuyNowEvent } from '../../services/signalrService'
+import { extractBidAmountFromLog } from '../../utils/bidLog'
+
+const formatBidAxisDate = (date: Date) =>
+  date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+
+const formatBidTooltipTime = (date: Date) => {
+  // Format manually to ensure consistency: "HH:mm:ss dd/MM/yyyy"
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`
+}
+
+const formatBidTooltipDateOnly = (date: Date) => {
+  // Format only date: "dd/MM/yyyy" (for latest bid)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+const formatDurationLabel = (ms: number): string => {
+  if (ms <= 0 || Number.isNaN(ms)) return '< 1 giây'
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const parts: string[] = []
+  if (hours) parts.push(`${hours} giờ`)
+  if (minutes) parts.push(`${minutes} phút`)
+  if (seconds || parts.length === 0) parts.push(`${seconds} giây`)
+  return parts.join(' ')
+}
 
 export default function AuctionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -51,7 +91,14 @@ export default function AuctionDetailPage() {
   const [pauseReasonSpecific, setPauseReasonSpecific] = useState<string>('')
   const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
   const [auctionExtends, setAuctionExtends] = useState<ApiAuctionExtend[]>([])
-  const [priceChartData, setPriceChartData] = useState<{ time: string; price: number }[]>([])
+  const [priceChartData, setPriceChartData] = useState<Array<{
+    time: number
+    label?: string
+    price: number
+    fullTime?: string
+    durationMs?: number
+    durationLabel?: string
+  }>>([])
   const [priceChanged, setPriceChanged] = useState(false)
   const [, setRefreshTrigger] = useState(0)
   // Track notified bids to prevent duplicate notifications
@@ -69,6 +116,102 @@ export default function AuctionDetailPage() {
       console.error('Error fetching auction extends:', err)
     }
   }, [])
+
+  // Fetch bid logs and map to chart data (shared for initial load + polling + realtime sync)
+  const fetchBidLogsForChart = useCallback(
+    async (auctionId: string, publishDate?: string, createdAt?: string, endDate?: string) => {
+      const bidLogsRes = await auctionApi.getBidLogsByAuctionId(auctionId)
+      if (bidLogsRes.isSuccess && bidLogsRes.data) {
+        const existingBidIds = new Set(bidLogsRes.data.map(log => log.bidId || log.id).filter(Boolean))
+        setNotifiedBids(existingBidIds)
+        const logs = bidLogsRes.data
+
+        // Sắp xếp theo thời gian tăng dần và ánh xạ đầy đủ giá bid từ log (giống trang lịch sử đấu giá)
+        const sortedLogs = [...logs].sort(
+          (a, b) =>
+            new Date(a.dateTimeUpdate).getTime() - new Date(b.dateTimeUpdate).getTime()
+        )
+
+        const mappedChartData = sortedLogs
+          .map(log => {
+            const price = extractBidAmountFromLog(log)
+            if (!price || Number.isNaN(price)) {
+              return null
+            }
+
+            // Parse date with validation
+            let date: Date
+            if (log.dateTimeUpdate) {
+              date = new Date(log.dateTimeUpdate)
+              // Validate date
+              if (isNaN(date.getTime())) {
+                console.warn('[AuctionDetailPage] Invalid dateTimeUpdate, using current time:', log.dateTimeUpdate)
+                date = new Date()
+              }
+            } else {
+              console.warn('[AuctionDetailPage] Missing dateTimeUpdate, using current time')
+              date = new Date()
+            }
+            
+            const timeLabel = formatBidAxisDate(date)
+            const fullTimeFormatted = formatBidTooltipTime(date)
+
+            return {
+              time: date.getTime(),
+              label: timeLabel,
+              price,
+              fullTime: fullTimeFormatted,
+              durationMs: 0,
+              durationLabel: '',
+            }
+          })
+          .filter((item): item is NonNullable<typeof item> => item !== null)
+
+        // Gán duration cho từng điểm dựa trên mốc kế tiếp (thể hiện thời gian giữ giá)
+        for (let i = 0; i < mappedChartData.length; i++) {
+          const current = mappedChartData[i]
+          const next = mappedChartData[i + 1]
+          const endTime = next
+            ? next.time
+            : endDate
+            ? new Date(endDate).getTime()
+            : Date.now()
+          const durationMs = endTime - current.time
+          current.durationMs = durationMs
+          current.durationLabel = formatDurationLabel(durationMs)
+        }
+
+        // For the latest bid (last point), only show date (no time)
+        if (mappedChartData.length > 0) {
+          const lastPoint = mappedChartData[mappedChartData.length - 1]
+          const lastDate = new Date(lastPoint.time)
+          lastPoint.fullTime = formatBidTooltipDateOnly(lastDate)
+        }
+
+        // Thêm điểm giá khởi điểm để biểu đồ thể hiện đầy đủ hành trình giá
+        const initialBaseTime = publishDate || createdAt || endDate
+        const initialTimestamp = initialBaseTime ? new Date(initialBaseTime).getTime() : Date.now()
+        const initialPoint =
+          auction?.startingPrice && initialTimestamp
+            ? [{
+                time: initialTimestamp,
+                label: 'Bắt đầu',
+                price: auction.startingPrice,
+                fullTime: 'Bắt đầu',
+                durationMs: mappedChartData[0]
+                  ? mappedChartData[0].time - initialTimestamp
+                  : 0,
+                durationLabel: mappedChartData[0]
+                  ? formatDurationLabel(mappedChartData[0].time - initialTimestamp)
+                  : '',
+              }]
+            : []
+
+        setPriceChartData([...initialPoint, ...mappedChartData])
+      }
+    },
+    [auction?.startingPrice]
+  )
 
   // SignalR real-time updates
   useEffect(() => {
@@ -110,28 +253,62 @@ export default function AuctionDetailPage() {
 
           // Update price chart data
           setPriceChartData(prev => {
-            const timeLabel = new Date(event.placedAt).toLocaleTimeString('vi-VN', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })
+            // Parse placedAt date - handle both ISO string and timestamp
+            let placedAtDate: Date
+            if (typeof event.placedAt === 'string') {
+              placedAtDate = new Date(event.placedAt)
+              // Validate date
+              if (isNaN(placedAtDate.getTime())) {
+                console.warn('[AuctionDetailPage] Invalid placedAt date, using current time:', event.placedAt)
+                placedAtDate = new Date()
+              }
+            } else if (typeof event.placedAt === 'number') {
+              placedAtDate = new Date(event.placedAt)
+            } else {
+              console.warn('[AuctionDetailPage] Unknown placedAt format, using current time')
+              placedAtDate = new Date()
+            }
+            
+            const timeValue = placedAtDate.getTime()
+            const timeLabel = formatBidAxisDate(placedAtDate)
+            // For latest bid, only show date (no time)
+            const fullTimeFormatted = formatBidTooltipDateOnly(placedAtDate)
+
+            // Update duration for previous last point
+            const prevUpdated = [...prev]
+            if (prevUpdated.length > 0) {
+              const lastIndex = prevUpdated.length - 1
+              const lastPoint = { ...prevUpdated[lastIndex] }
+              lastPoint.durationMs = timeValue - lastPoint.time
+              lastPoint.durationLabel = formatDurationLabel(lastPoint.durationMs || 0)
+              prevUpdated[lastIndex] = lastPoint
+            }
 
             const newDataPoint = {
-              time: timeLabel,
+              time: timeValue,
+              label: timeLabel,
               price: event.newPrice,
+              fullTime: fullTimeFormatted,
+              durationMs: 0,
+              durationLabel: 'Đang giữ',
             }
 
             console.log('[AuctionDetailPage] Adding new chart data point:', newDataPoint)
             console.log('[AuctionDetailPage] Previous chart data length:', prev.length)
-            
+
             const updatedData = [
-              ...prev,
+              ...prevUpdated,
               newDataPoint,
             ]
 
             console.log('[AuctionDetailPage] Updated chart data length:', updatedData.length)
             return updatedData
           })
+
+          // Sau khi cập nhật local state, đồng bộ lại dữ liệu chart & log từ backend (đảm bảo đủ bid)
+          fetchBidLogsForChart(event.auctionId, auction?.publishDate, auction?.createdAt, auction?.endDate).catch(err =>
+            console.error('[AuctionDetailPage] Failed to refresh bid logs after BidPlaced:', err)
+          )
 
           // Trigger refresh for other tabs
           setRefreshTrigger(prev => {
@@ -181,6 +358,16 @@ export default function AuctionDetailPage() {
             description: `${event.userName} đã mua ngay với giá ${event.buyNowPrice.toLocaleString('vi-VN')} VNĐ`,
             variant: 'default',
           })
+
+          // Đồng bộ lại auction + bid chart để phản ánh trạng thái mới
+          if (event.auctionId) {
+            auctionApi.getEnglishAuctionById(event.auctionId).then(res => {
+              if (res.isSuccess && res.data) {
+                setAuction(res.data)
+                fetchBidLogsForChart(event.auctionId, res.data.publishDate, res.data.createdAt, res.data.endDate).catch(console.error)
+              }
+            })
+          }
         },
       })
       .then(() => {
@@ -272,64 +459,7 @@ export default function AuctionDetailPage() {
         await fetchAuctionExtends(auctionData.id)
 
         // Fetch bid logs for this auction (dùng cho biểu đồ giá)
-        const bidLogsRes = await auctionApi.getBidLogsByAuctionId(auctionData.id)
-        // Initialize notified bids set with existing bids to prevent duplicate notifications
-        if (bidLogsRes.isSuccess && bidLogsRes.data) {
-          const existingBidIds = new Set(bidLogsRes.data.map(log => log.bidId || log.id).filter(Boolean))
-          setNotifiedBids(existingBidIds)
-          const logs = bidLogsRes.data
-
-          // Sắp xếp theo thời gian tăng dần
-          const sortedLogs = [...logs].sort(
-            (a, b) =>
-              new Date(a.dateTimeUpdate).getTime() - new Date(b.dateTimeUpdate).getTime()
-          )
-
-          const mappedChartData = sortedLogs
-            .map(log => {
-              let price = 0
-
-              // Giá bid được lưu trong newEntity (string JSON hoặc object), cố gắng parse linh hoạt
-              if (log.newEntity) {
-                try {
-                  const parsed =
-                    typeof log.newEntity === 'string'
-                      ? (JSON.parse(log.newEntity as string) as any)
-                      : (log.newEntity as any)
-                  price =
-                    parsed.price ??
-                    parsed.bidAmount ??
-                    parsed.amount ??
-                    parsed.currentPrice ??
-                    0
-                } catch {
-                  // ignore parse error, fallback bên dưới
-                }
-              }
-
-              if (!price || Number.isNaN(price)) {
-                return null
-              }
-
-              const date = new Date(log.dateTimeUpdate)
-              const timeLabel = date.toLocaleTimeString('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-              })
-
-              return {
-                time: timeLabel,
-                price,
-              }
-            })
-            .filter(
-              (item): item is { time: string; price: number } => item !== null
-            )
-
-          setPriceChartData(mappedChartData)
-        }
+        await fetchBidLogsForChart(auctionData.id, auctionData.publishDate, auctionData.createdAt, auctionData.endDate)
 
       } finally {
         setLoading(false)
@@ -337,7 +467,21 @@ export default function AuctionDetailPage() {
     }
 
     fetchData()
-  }, [id])
+  }, [fetchBidLogsForChart, fetchAuctionExtends, id])
+
+  // Poll bid logs to keep chart synced while phiên đang diễn ra (giống client)
+  useEffect(() => {
+    if (!id) return
+    if (auction?.status !== 'OnGoing') return
+
+    const intervalId = setInterval(() => {
+      fetchBidLogsForChart(id, auction.publishDate, auction.createdAt, auction.endDate).catch(err =>
+        console.error('[AuctionDetailPage] Poll refresh bid logs failed:', err)
+      )
+    }, 5000)
+
+    return () => clearInterval(intervalId)
+  }, [auction?.createdAt, auction?.endDate, auction?.publishDate, auction?.status, fetchBidLogsForChart, id])
 
   // Calculate total extend minutes for this auction
   const getTotalExtendMinutes = useCallback((): number => {

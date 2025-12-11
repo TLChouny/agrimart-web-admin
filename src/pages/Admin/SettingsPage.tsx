@@ -20,7 +20,7 @@ export default function AdminSettingsPage() {
 
   const apiUser = getApiUser()
 
-  const formatDate = (dateString: string | undefined) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '—'
     return new Date(dateString).toLocaleString('vi-VN', {
       year: 'numeric',
@@ -94,12 +94,23 @@ export default function AdminSettingsPage() {
                 <label className="text-sm font-medium text-gray-700">Vai trò ID</label>
                 <p className="text-sm text-gray-900 mt-1 font-mono">{apiUser.roleId || '—'}</p>
               </div>
-              {apiUser.role && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Vai trò</label>
+                <p className="text-sm text-gray-900 mt-1">
+                  {typeof apiUser.role === 'string' 
+                    ? apiUser.role 
+                    : apiUser.roleObject?.name || apiUser.roleObject?.fullName || apiUser.roleId || '—'}
+                </p>
+              </div>
+              {apiUser.roleObject && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Vai trò</label>
+                  <label className="text-sm font-medium text-gray-700">Chi tiết vai trò</label>
                   <div className="mt-1">
                     <Badge variant="outline" className="text-blue-600 border-blue-600">
-                      {typeof apiUser.role === 'string' ? apiUser.role : apiUser.role.name || '—'}
+                      {apiUser.roleObject?.name 
+                        || apiUser.roleObject?.fullName 
+                        || apiUser.roleId 
+                        || (typeof apiUser.role === 'string' ? apiUser.role : '—')}
                     </Badge>
                   </div>
                 </div>

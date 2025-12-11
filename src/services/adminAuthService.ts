@@ -82,7 +82,7 @@ export class AdminAuthService {
       id: apiUser.id,
       name: `${apiUser.firstName} ${apiUser.lastName}`.trim(),
       email: apiUser.email,
-      phone: apiUser.phoneNumber,
+      phone: apiUser.phoneNumber ?? undefined,
       role: 'admin',
       address: { provinceId: '', provinceName: apiUser.province, districtId: '', districtName: apiUser.communes, detailAddress: apiUser.address },
       createdAt: new Date(apiUser.createdAt)

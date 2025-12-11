@@ -5,7 +5,35 @@ export interface RegisterRequestDTO { Email: string; Password: string; FirstName
 export interface CreateUserVerificationDTO { document?: File | null; documentType: DocumentType }
 export const DocumentType = { IdentityCard: 0, DrivingLicense: 1 } as const
 export type DocumentType = typeof DocumentType[keyof typeof DocumentType]
-export interface User { id: string; email: string; firstName: string; lastName: string; address: string; communes: string; province: string; phoneNumber: string; roleId: string; role?: Role; emailConfirmed: boolean; phoneNumberConfirmed: boolean; twoFactorEnabled: boolean; lockoutEnabled: boolean; lockoutEnd?: string; accessFailedCount: number; createdAt: string; updatedAt: string }
+export interface User { 
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  address: string
+  communes: string
+  province: string
+  phoneNumber: string | null
+  role: string // "farmer" | "wholesaler" | "admin"
+  createdAt: string
+  updatedAt: string | null
+  // Optional fields that may exist in some API responses
+  status?: number // 0: Pending, 1: Active, 2: Banned
+  reputationScore?: number
+  reputation?: {
+    trustScore: number
+    history: unknown[]
+  }
+  certifications?: ApiCertification[] | null
+  roleId?: string
+  roleObject?: Role
+  emailConfirmed?: boolean
+  phoneNumberConfirmed?: boolean
+  twoFactorEnabled?: boolean
+  lockoutEnabled?: boolean
+  lockoutEnd?: string
+  accessFailedCount?: number
+}
 export interface AuthUser { token: string; user: User; expiresAt: string }
 export interface Role { id: string; name: string; fullName: string; normalizedName: string; concurrencyStamp: string; createdAt: string; updatedAt: string }
 export interface CreateRoleDTO { name?: string; fullName?: string }
@@ -13,6 +41,7 @@ export interface UpdateRoleDTO { id?: string; name?: string; fullName?: string }
 export interface RoleClaim { id: string; roleId: string; claimType: string; claimValue: string; role?: Role }
 export interface CreateRoleClaimDTO { roleId?: string; claimType?: string; claimValue?: string }
 export interface UpdateRoleClaimDTO { roleClaimId?: string; roleId?: string; claimType?: string; claimValue?: string }
+export interface UpdateUserStatusDTO { status: 0 | 1 | 2; reason: string } // 0: Pending, 1: Active, 2: Banned
 export interface ListResponse<T> { items: T[]; totalCount: number; currentPage: number; pageSize: number; totalPages: number; hasNextPage: boolean; hasPreviousPage: boolean }
 export interface ApiError { message: string; status: number; errors?: string[] }
 export interface CustardAppleType { id: string; name: string; description?: string; createdAt?: string; updatedAt?: string | null }
@@ -473,4 +502,29 @@ export interface ApiUserBankAccount {
   isPrimary: boolean
   createdAt: string
   updatedAt: string | null
+}
+
+// Certification related types
+export type CertificationStatus = 0 | 1 | 2 | 3 // 0: Pending, 1: Active, 2: Reject, 3: Expired
+export type CertificationType = 0 | 1 // Add more types as needed
+
+export interface ApiCertification {
+  id: string
+  userId: string
+  type: CertificationType
+  certificationName: string
+  issuingOrganization: string
+  issueDate: string
+  expiryDate: string
+  certificateUrl: string
+  status: CertificationStatus
+  rejectionReason: string | null
+  reviewedAt: string | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface ApproveCertificationDTO {
+  status: 1 | 2 // 1: Active, 2: Reject
+  rejectionReason?: string // Required when status is 2 (Reject)
 }

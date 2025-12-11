@@ -1,7 +1,7 @@
 import { httpClient } from './httpClient'
 import { ENDPOINTS } from '../constants/apiConstants'
 import type { APIResponse } from '../../types/api'
-import type { User as ApiUser, ListResponse } from '../../types/api'
+import type { User as ApiUser, ListResponse, UpdateUserStatusDTO } from '../../types/api'
 
 export const userApi = {
   async list(): Promise<APIResponse<ListResponse<ApiUser> | ApiUser[]>> {
@@ -12,6 +12,14 @@ export const userApi = {
 
   async getById(userId: string): Promise<APIResponse<ApiUser>> {
     return httpClient.get<ApiUser>(ENDPOINTS.users.detail(userId), { cache: false })
+  },
+
+  async updateStatus(userId: string, data: UpdateUserStatusDTO): Promise<APIResponse<ApiUser>> {
+    return httpClient.put<ApiUser>(
+      ENDPOINTS.users.updateStatus(userId),
+      data,
+      { invalidateCache: ENDPOINTS.users.list }
+    )
   },
 }
 

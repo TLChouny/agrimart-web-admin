@@ -23,6 +23,15 @@ function formatDateTime(iso: string | null) {
   })
 }
 
+function formatDate(iso: string | null) {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleDateString('vi-VN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit'
+  })
+}
+
 function getStatusBadge(status: AuctionStatus) {
   switch (status) {
     case 'Draft': return <Badge className="bg-gray-100 text-gray-700">Bản nháp</Badge>
@@ -199,7 +208,7 @@ export function AuctionHeaderCard({ auction, farmName, totalExtendMinutes = 0, p
           <div className="bg-white rounded-2xl p-4 border border-blue-100">
             <p className="whitespace-nowrap">
               <span className="text-gray-600 font-medium">Dự thu hoạch: </span>
-              <span className="font-semibold text-gray-900">{formatDateTime(auction.expectedHarvestDate)}</span>
+              <span className="font-semibold text-gray-900">{formatDate(auction.expectedHarvestDate)}</span>
             </p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-blue-100">

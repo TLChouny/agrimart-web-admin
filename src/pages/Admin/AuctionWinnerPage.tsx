@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { AuctionHeaderCard } from '../../components/auction/auction-header-card'
 import { WinnerSection } from '../../components/auction/winner-section'
@@ -35,7 +35,18 @@ export default function AuctionWinnerPage() {
     winTime: Date
   } | undefined>(undefined)
 
-  const fetchWinnerData = async () => {
+  const fetchAuctionExtends = useCallback(async (auctionId: string) => {
+    try {
+      const res = await auctionApi.getAuctionExtendsByAuctionId(auctionId)
+      if (res.isSuccess && res.data) {
+        setAuctionExtends(res.data)
+      }
+    } catch (err) {
+      console.error('Error fetching auction extends:', err)
+    }
+  }, [])
+
+  const fetchWinnerData = useCallback(async () => {
     if (!id) return
     try {
       // Lấy auction
@@ -104,7 +115,7 @@ export default function AuctionWinnerPage() {
     } catch (error) {
       console.error('Error fetching winner data:', error)
     }
-  }
+  }, [id, fetchAuctionExtends])
 
   // SignalR real-time updates - auto refresh on new bid or buy now
   useEffect(() => {
@@ -142,12 +153,14 @@ export default function AuctionWinnerPage() {
             return newSet
           })
           
-          // Refresh winner data when new bid is placed
-          fetchWinnerData()
+          // Refresh winner data when new bid is placed (with delay to ensure server has processed)
+          setTimeout(() => {
+            fetchWinnerData()
+          }, 500)
         },
         buyNow: (event: BuyNowEvent) => {
           if (event.auctionId !== id) return
-          // Refresh winner data when buy now happens
+          // Refresh winner data immediately when buy now happens
           fetchWinnerData()
         },
       })
@@ -158,7 +171,7 @@ export default function AuctionWinnerPage() {
     return () => {
       signalRService.disconnect().catch(console.error)
     }
-  }, [id])
+  }, [id, fetchWinnerData])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -172,18 +185,7 @@ export default function AuctionWinnerPage() {
     }
 
     fetchData()
-  }, [id])
-
-  const fetchAuctionExtends = async (auctionId: string) => {
-    try {
-      const res = await auctionApi.getAuctionExtendsByAuctionId(auctionId)
-      if (res.isSuccess && res.data) {
-        setAuctionExtends(res.data)
-      }
-    } catch (err) {
-      console.error('Error fetching auction extends:', err)
-    }
-  }
+  }, [id, fetchWinnerData])
 
   const totalExtendMinutes = auctionExtends.reduce((acc, extend) => acc + extend.extendDurationInMinutes, 0)
 

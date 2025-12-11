@@ -1,9 +1,10 @@
 import * as signalR from '@microsoft/signalr'
 import { API_BASE_URL } from './constants/apiConstants'
 
+// Hub path align với client web: sử dụng messaging-service thay vì auction-service
 const SIGNALR_HUB_URL =
   import.meta.env.VITE_SIGNALR_HUB_URL ??
-  `${API_BASE_URL.replace(/\/+$/, '')}/api/auction-service/hubs/global`
+  `${API_BASE_URL.replace(/\/+$/, '')}/api/messaging-service/hubs/global`
 
 export type BidPlacedEvent = {
   auctionId: string
@@ -92,6 +93,8 @@ class SignalRService {
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(SIGNALR_HUB_URL, {
+        // Dùng LongPolling cho chắc chắn qua gateway/proxy (trùng cách triển khai agrimart-web)
+        transport: signalR.HttpTransportType.LongPolling,
         accessTokenFactory: () => token ?? '',
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000])

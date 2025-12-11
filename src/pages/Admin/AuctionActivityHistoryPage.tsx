@@ -11,7 +11,7 @@ import { ROUTES } from '../../constants'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
 import { ArrowLeft, FileText, Clock, Play, Ban, Edit, Filter, PauseCircle, PlayCircle, TrendingUp } from 'lucide-react'
-import { signalRService, type BidPlacedEvent } from '../../services/signalrService'
+import { signalRService, type BidPlacedEvent, type BuyNowEvent } from '../../services/signalrService'
 
 export default function AuctionActivityHistoryPage() {
   const { id } = useParams<{ id: string }>()
@@ -78,7 +78,7 @@ export default function AuctionActivityHistoryPage() {
     }
   }, [toast])
 
-  // SignalR real-time updates - auto refresh on new bid
+  // SignalR real-time updates - auto refresh on new bid / buy now
   useEffect(() => {
     if (!id) return
 
@@ -116,6 +116,19 @@ export default function AuctionActivityHistoryPage() {
           
           // Auto refresh auction logs when new bid is placed
           fetchAuctionLogs(id, logTypeFilter === 'all' ? undefined : logTypeFilter)
+        },
+        buyNow: (event: BuyNowEvent) => {
+          if (event.auctionId !== id) return
+          // Buy now cũng là một hoạt động, cần refresh log + header giá
+          fetchAuctionLogs(id, logTypeFilter === 'all' ? undefined : logTypeFilter)
+          setAuction(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              currentPrice: event.buyNowPrice,
+              status: 'Completed',
+            }
+          })
         },
       })
       .catch(error => {

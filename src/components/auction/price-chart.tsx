@@ -15,8 +15,11 @@ import { formatCurrencyVND } from '../../utils/currency'
 import { useEffect, useState } from 'react'
 
 interface PriceDataPoint {
-  time: string
+  time: number // timestamp (ms) for proper time scale
   price: number
+  label?: string // short label for axis (e.g., dd/MM)
+  fullTime?: string // full datetime for tooltip
+  durationLabel?: string // human readable duration until next bid
 }
 
 interface PriceChartProps {
@@ -37,13 +40,19 @@ export function PriceChart({
   }, [])
 
   // Nếu có data từ bid log thì dùng, nếu không thì dùng dữ liệu mẫu dựa trên giá khởi điểm / hiện tại
+  const now = Date.now()
   const chartData: PriceDataPoint[] =
     data.length > 0
       ? data
       : [
-          { time: 'Bắt đầu', price: startingPrice },
-          { time: 'Hiện tại', price: currentPrice || startingPrice },
+          { time: now - 1, price: startingPrice, label: 'Bắt đầu', fullTime: 'Bắt đầu' },
+          { time: now, price: currentPrice || startingPrice, label: 'Hiện tại', fullTime: 'Hiện tại' },
         ]
+
+  // Find the latest bid (highest time value)
+  const latestBidTime = chartData.length > 0 
+    ? Math.max(...chartData.map(d => d.time))
+    : null
 
   // Debug: Log chart data changes
   useEffect(() => {
@@ -51,10 +60,39 @@ export function PriceChart({
     console.log('[PriceChart] Current price:', currentPrice, 'Starting price:', startingPrice)
   }, [chartData.length, currentPrice, startingPrice, data.length])
 
-  const prices = chartData.map(d => d.price)
-  const minPrice = prices.length ? Math.min(...prices) : 0
-  const maxPrice = prices.length ? Math.max(...prices) : 0
-  const priceChange = currentPrice - startingPrice
+  // Tính mức giá đã tăng trong ngày: Giá cao nhất trong ngày - Giá bid đầu tiên trong ngày
+  const calculateDailyPriceIncrease = () => {
+    if (chartData.length === 0) {
+      // Nếu không có data, dùng startingPrice và currentPrice
+      return currentPrice - startingPrice
+    }
+
+    // Nếu có data từ bid log (data.length > 0), sử dụng data thực tế
+    if (data.length > 0) {
+      // Giá bid đầu tiên trong ngày là giá của bid đầu tiên
+      const firstBidPrice = data[0]?.price ?? startingPrice
+      
+      // Tìm giá cao nhất trong ngày từ tất cả các bid
+      const prices = data.map(d => d.price)
+      const maxPrice = prices.length > 0 ? Math.max(...prices) : currentPrice
+
+      return maxPrice - firstBidPrice
+    }
+
+    // Nếu không có data từ bid log, dùng chartData (có thể là mock data)
+    // Tìm giá bid đầu tiên (bỏ qua điểm "Bắt đầu" nếu có)
+    const bidPoints = chartData.filter(d => d.label !== 'Bắt đầu')
+    const firstBidPrice = bidPoints.length > 0 ? bidPoints[0]?.price : startingPrice
+    
+    // Tìm giá cao nhất trong ngày
+    const prices = chartData.map(d => d.price)
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : currentPrice
+
+    return maxPrice - firstBidPrice
+  }
+
+  const dailyPriceIncrease = calculateDailyPriceIncrease()
+  const priceChange = currentPrice - startingPrice // Vẫn dùng cho phần "Thay đổi" ở trên
   const percentChange =
     startingPrice !== 0 ? ((priceChange / startingPrice) * 100).toFixed(1) : '0.0'
   const formattedPriceChange = formatCurrencyVND(Math.abs(priceChange))
@@ -112,8 +150,15 @@ export function PriceChart({
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="time"
+                type="number"
+                scale="time"
                 stroke="#9ca3af"
                 style={{ fontSize: '12px' }}
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={(value) => {
+                  const d = new Date(value)
+                  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                }}
               />
               <YAxis
                 stroke="#9ca3af"
@@ -126,7 +171,53 @@ export function PriceChart({
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                 }}
-                formatter={(value: number) => [formatCurrencyVND(value), 'Giá']}
+                labelFormatter={(label, payload) => {
+                  const dataPoint = payload && payload[0]?.payload as PriceDataPoint | undefined
+                  
+                  // Check if this is the latest bid (highest time)
+                  const isLatestBid = latestBidTime !== null && dataPoint?.time === latestBidTime
+                  
+                  // Prefer fullTime if available, but for latest bid, override to show only date
+                  const full = payload && payload[0]?.payload?.fullTime
+                  if (full && !isLatestBid) return full
+                  
+                  // Format date
+                  let date: Date | null = null
+                  if (dataPoint?.time) {
+                    date = new Date(dataPoint.time)
+                  } else {
+                    // Fallback: try to parse label as timestamp
+                    const timestamp = typeof label === 'number' ? label : Number(label)
+                    if (!isNaN(timestamp) && timestamp > 0) {
+                      date = new Date(timestamp)
+                    }
+                  }
+                  
+                  if (date && !isNaN(date.getTime())) {
+                    const day = String(date.getDate()).padStart(2, '0')
+                    const month = String(date.getMonth() + 1).padStart(2, '0')
+                    const year = date.getFullYear()
+                    
+                    // For latest bid, only show date (no time)
+                    if (isLatestBid) {
+                      return `${day}/${month}/${year}`
+                    }
+                    
+                    // For other bids, show full time and date
+                    const hours = String(date.getHours()).padStart(2, '0')
+                    const minutes = String(date.getMinutes()).padStart(2, '0')
+                    const seconds = String(date.getSeconds()).padStart(2, '0')
+                    return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`
+                  }
+                  
+                  return String(label || '')
+                }}
+                formatter={(value, _name, payload) => {
+                  const numValue = typeof value === 'number' ? value : Number(value) || 0
+                  const duration = (payload?.payload as PriceDataPoint)?.durationLabel
+                  const extra = duration ? ` (${duration})` : ''
+                  return [`${formatCurrencyVND(numValue)}${extra}`, 'Giá']
+                }}
                 labelStyle={{ color: '#1f2937' }}
               />
               <Line
@@ -149,9 +240,9 @@ export function PriceChart({
 
         <div className="grid grid-cols-3 gap-4 mt-6">
           <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
-            <p className="text-xs text-gray-600 mb-1">Giá Thấp Nhất</p>
+            <p className="text-xs text-gray-600 mb-1">Giá Khởi Điểm</p>
             <p className="text-lg font-bold text-blue-700">
-              {formatCurrencyVND(minPrice)}
+              {formatCurrencyVND(startingPrice)}
             </p>
           </div>
           <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
@@ -160,10 +251,16 @@ export function PriceChart({
               {formatCurrencyVND(currentPrice)}
             </p>
           </div>
-          <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-200">
-            <p className="text-xs text-gray-600 mb-1">Giá Cao Nhất</p>
-            <p className="text-lg font-bold text-purple-700">
-              {formatCurrencyVND(maxPrice)}
+          <div className={`rounded-lg p-3 text-center border ${
+            dailyPriceIncrease >= 0 
+              ? 'bg-orange-50 border-orange-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className="text-xs text-gray-600 mb-1">Mức Giá Đã Tăng Trong Ngày</p>
+            <p className={`text-lg font-bold ${
+              dailyPriceIncrease >= 0 ? 'text-orange-700' : 'text-red-700'
+            }`}>
+              {dailyPriceIncrease > 0 ? '+' : ''}{formatCurrencyVND(dailyPriceIncrease)}
             </p>
           </div>
         </div>

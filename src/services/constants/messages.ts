@@ -149,6 +149,26 @@ export const USER_MESSAGES = {
   BLOCK_PLACEHOLDER: 'Tạm thời chỉ đổi trạng thái hiển thị, chức năng khóa tài khoản sẽ sớm hoàn tất.',
 } as const
 
+export const APPROVAL_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách tài khoản thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách tài khoản. Vui lòng thử lại.',
+  APPROVE_SUCCESS: 'Duyệt tài khoản thành công.',
+  APPROVE_ERROR: 'Không thể duyệt tài khoản. Vui lòng thử lại.',
+  REJECT_SUCCESS: 'Từ chối tài khoản thành công.',
+  REJECT_ERROR: 'Không thể từ chối tài khoản. Vui lòng thử lại.',
+  STATUS_UPDATE_SUCCESS: 'Cập nhật trạng thái tài khoản thành công.',
+  STATUS_UPDATE_ERROR: 'Không thể cập nhật trạng thái tài khoản. Vui lòng thử lại.',
+} as const
+
+export const CERTIFICATION_MESSAGES = {
+  FETCH_SUCCESS: 'Tải danh sách chứng chỉ thành công.',
+  FETCH_ERROR: 'Không thể tải danh sách chứng chỉ. Vui lòng thử lại.',
+  APPROVE_SUCCESS: 'Duyệt chứng chỉ thành công.',
+  APPROVE_ERROR: 'Không thể duyệt chứng chỉ. Vui lòng thử lại.',
+  REJECT_SUCCESS: 'Từ chối chứng chỉ thành công.',
+  REJECT_ERROR: 'Không thể từ chối chứng chỉ. Vui lòng thử lại.',
+} as const
+
 export const FARM_MESSAGES = {
   FETCH_SUCCESS: 'Tải danh sách nông trại thành công.',
   FETCH_ERROR: 'Không thể tải danh sách nông trại. Vui lòng thử lại.',
