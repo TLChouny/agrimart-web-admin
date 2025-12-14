@@ -5,18 +5,20 @@ import { SimpleTable, TableBody, TableCell, TableHead, TableHeader, TableRow } f
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
-import { Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
+import { Textarea } from "../../components/ui/textarea"
+import { Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle, PauseCircle, PlayCircle, Ban, ArrowLeft } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { AuctionHeaderCard } from "../../components/auction/auction-header-card"
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs"
 import { reportApi } from "../../services/api"
 import { auctionApi } from "../../services/api/auctionApi"
 import { farmApi } from "../../services/api/farmApi"
-import type { PaginatedReports, ReportStatus, ReportType } from "../../types"
-import type { ApiEnglishAuction, ApiAuctionExtend } from "../../types/api"
+import { userApi } from "../../services/api/userApi"
+import type { PaginatedReports, ReportStatus, ReportType, ReportItem } from "../../types"
+import type { ApiEnglishAuction, ApiAuctionExtend, User as ApiUser, ListResponse } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
-import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES } from "../../services/constants/messages"
+import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES, AUCTION_MESSAGES } from "../../services/constants/messages"
 import { ROUTES } from "../../constants"
-import { ArrowLeft } from "lucide-react"
 import { signalRService, type BidPlacedEvent, type BuyNowEvent } from "../../services/signalrService"
 
 const reportStatuses: ReportStatus[] = ["Pending", "InReview", "Resolved", "ActionTaken", "Rejected"]
@@ -50,6 +52,22 @@ export default function AuctionReportsPage() {
   const [priceChanged, setPriceChanged] = useState(false)
   // Track notified bids to prevent duplicate notifications
   const [, setNotifiedBids] = useState<Set<string>>(new Set())
+  const [userMap, setUserMap] = useState<Record<string, string>>({})
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
+  const [reportToUpdate, setReportToUpdate] = useState<ReportItem | null>(null)
+  const [pendingStatus, setPendingStatus] = useState<ReportStatus | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean
+    actionType: 'pause' | 'resume' | null
+  }>({
+    isOpen: false,
+    actionType: null,
+  })
+  const [pauseReason, setPauseReason] = useState('')
+  const [pauseReasonCategory, setPauseReasonCategory] = useState<'fraud' | 'wrongInfo' | 'technical' | 'policy' | 'other' | null>(null)
+  const [pauseReasonSpecific, setPauseReasonSpecific] = useState<string>('')
+  const [resumeExtendMinute, setResumeExtendMinute] = useState('0')
   const { toast } = useToastContext()
 
   const fetchAuctionData = useCallback(async () => {
@@ -219,6 +237,27 @@ export default function AuctionReportsPage() {
     }
   }, [id, fetchAuctionData, fetchReports, toast])
 
+  // Fetch users for reporter names
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersRes = await userApi.list()
+        if (usersRes.isSuccess && usersRes.data) {
+          const payload = usersRes.data as ApiUser[] | ListResponse<ApiUser>
+          const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
+          const newUserMap: Record<string, string> = {}
+          apiUsers.forEach(user => {
+            newUserMap[user.id] = `${user.firstName} ${user.lastName}`.trim() || user.email
+          })
+          setUserMap(newUserMap)
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err)
+      }
+    }
+    fetchUsers()
+  }, [])
+
   // Fetch auction data
   useEffect(() => {
     const loadData = async () => {
@@ -265,15 +304,26 @@ export default function AuctionReportsPage() {
     setPageNumber(1)
   }
 
-  const handleUpdateStatus = async (reportId: string, status: ReportStatus) => {
+  const handleUpdateStatusClick = (report: ReportItem, status: ReportStatus) => {
+    setReportToUpdate(report)
+    setPendingStatus(status)
+    setConfirmModalOpen(true)
+  }
+
+  const handleConfirmUpdateStatus = async () => {
+    if (!reportToUpdate || !pendingStatus) return
+    
     try {
-      setUpdatingId(reportId)
+      setUpdatingId(reportToUpdate.id)
       setError(null)
-      await reportApi.updateReportStatus(reportId, status)
+      await reportApi.updateReportStatus(reportToUpdate.id, pendingStatus)
       toast({
         title: TOAST_TITLES.SUCCESS,
         description: REPORT_MESSAGES.UPDATE_SUCCESS,
       })
+      setConfirmModalOpen(false)
+      setReportToUpdate(null)
+      setPendingStatus(null)
       await fetchReports({ silent: true })
     } catch (err) {
       const message = err instanceof Error && err.message ? err.message : REPORT_MESSAGES.UPDATE_ERROR
@@ -287,6 +337,296 @@ export default function AuctionReportsPage() {
       setUpdatingId(null)
     }
   }
+
+  const handleActionClick = (actionType: 'pause' | 'resume') => {
+    if (actionType === 'pause') {
+      setPauseReason('')
+      setPauseReasonCategory(null)
+      setPauseReasonSpecific('')
+    }
+    if (actionType === 'resume') {
+      setResumeExtendMinute('0')
+    }
+    setDialogState({
+      isOpen: true,
+      actionType,
+    })
+  }
+
+  const handleConfirmAction = async () => {
+    if (!id || !dialogState.actionType) return
+
+    if (dialogState.actionType === 'pause') {
+      if (!pauseReasonCategory) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: 'Vui lòng chọn loại báo cáo.',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (pauseReasonCategory !== 'other' && !pauseReasonSpecific) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: 'Vui lòng chọn lý do tạm dừng.',
+          variant: 'destructive',
+        })
+        return
+      }
+      const reason = pauseReason.trim()
+      if (!reason) {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: 'Vui lòng nhập lý do tạm dừng.',
+          variant: 'destructive',
+        })
+        return
+      }
+      try {
+        setActionLoading(true)
+        const res = await auctionApi.pauseEnglishAuction({ auctionId: id, reason })
+        if (res.isSuccess) {
+          const auctionRes = await auctionApi.getEnglishAuctionById(id)
+          if (auctionRes.isSuccess && auctionRes.data) {
+            setAuction(auctionRes.data)
+          }
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: AUCTION_MESSAGES.PAUSE_SUCCESS,
+          })
+          setDialogState({ isOpen: false, actionType: null })
+          setPauseReason('')
+          setPauseReasonCategory(null)
+          setPauseReasonSpecific('')
+        } else {
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: res.message || AUCTION_MESSAGES.PAUSE_ERROR,
+            variant: 'destructive',
+          })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : AUCTION_MESSAGES.PAUSE_ERROR
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+      } finally {
+        setActionLoading(false)
+      }
+      return
+    }
+
+    if (dialogState.actionType === 'resume') {
+      const extendMinute = Math.max(0, Number(resumeExtendMinute) || 0)
+      try {
+        setActionLoading(true)
+        const res = await auctionApi.resumeEnglishAuction({ auctionId: id, extendMinute })
+        if (res.isSuccess) {
+          const auctionRes = await auctionApi.getEnglishAuctionById(id)
+          if (auctionRes.isSuccess && auctionRes.data) {
+            setAuction(auctionRes.data)
+          }
+          await fetchAuctionExtends(id)
+          toast({
+            title: TOAST_TITLES.SUCCESS,
+            description: AUCTION_MESSAGES.RESUME_SUCCESS,
+          })
+          setDialogState({ isOpen: false, actionType: null })
+          setResumeExtendMinute('0')
+        } else {
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: res.message || AUCTION_MESSAGES.RESUME_ERROR,
+            variant: 'destructive',
+          })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : AUCTION_MESSAGES.RESUME_ERROR
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+      } finally {
+        setActionLoading(false)
+      }
+      return
+    }
+  }
+
+  const pauseReasonOptions = {
+    fraud: {
+      title: 'Gian lận',
+      reasons: [
+        'Sử dụng tài khoản giả mạo',
+        'Lợi dụng lỗi hệ thống để trục lợi',
+        'Gửi nội dung lặp hoặc spam',
+        'Mạo danh người khác',
+        'Thao túng đánh giá / bình chọn',
+        'Các hành vi gian lận khác',
+      ],
+    },
+    wrongInfo: {
+      title: 'Thông tin sai lệch',
+      reasons: [
+        'Cung cấp thông tin không chính xác',
+        'Thông tin cũ, lỗi thời',
+        'Sai địa chỉ, số điện thoại, email',
+        'Tin giả / tin không kiểm chứng',
+        'Các trường hợp thông tin gây hiểu lầm khác',
+      ],
+    },
+    technical: {
+      title: 'Vấn đề kỹ thuật',
+      reasons: [
+        'Lỗi hiển thị / giao diện',
+        'Lỗi chức năng (không click được, không gửi được)',
+        'Trang tải chậm / crash',
+        'Lỗi khi upload file / ảnh',
+        'Lỗi liên quan đến đăng nhập / đăng ký',
+        'Các lỗi kỹ thuật khác',
+      ],
+    },
+    policy: {
+      title: 'Vi phạm chính sách',
+      reasons: [
+        'Nội dung phản cảm / nhạy cảm',
+        'Quấy rối, đe dọa người khác',
+        'Spam / quảng cáo không đúng quy định',
+        'Vi phạm bản quyền / thương hiệu',
+        'Các hành vi trái pháp luật hoặc chính sách khác',
+      ],
+    },
+  }
+
+  const dialogFields = (() => {
+    if (dialogState.actionType === 'pause') {
+      const selectedCategory = pauseReasonCategory
+      const selectedReasons = selectedCategory && selectedCategory !== 'other' ? pauseReasonOptions[selectedCategory].reasons : []
+
+      return (
+        <div className="space-y-4 text-left">
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Loại báo cáo<span className="text-red-500">*</span>
+            </p>
+            <div className="space-y-2 mb-4">
+              {Object.entries(pauseReasonOptions).map(([key, option], index) => (
+                <div key={key} className="border border-gray-200 rounded-lg p-3">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="reports-pause-reason-category"
+                      value={key}
+                      checked={pauseReasonCategory === key}
+                      onChange={() => {
+                        setPauseReasonCategory(key as typeof pauseReasonCategory)
+                        setPauseReasonSpecific('')
+                        setPauseReason('')
+                      }}
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {index + 1}. {option.title}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              ))}
+              
+              <div className="border border-gray-200 rounded-lg p-3">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    name="reports-pause-reason-category"
+                    value="other"
+                    checked={pauseReasonCategory === 'other'}
+                    onChange={() => {
+                      setPauseReasonCategory('other')
+                      setPauseReasonSpecific('')
+                      setPauseReason('')
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">5. Khác</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {selectedCategory && selectedCategory !== 'other' && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">
+                  Lý do tạm dừng<span className="text-red-500">*</span>
+                </p>
+                <div className="space-y-2">
+                  {selectedReasons.map((reason, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-3">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          className="mt-1"
+                          name="reports-pause-reason-specific"
+                          value={reason}
+                          checked={pauseReasonSpecific === reason}
+                          onChange={() => {
+                            setPauseReasonSpecific(reason)
+                            const categoryTitle = pauseReasonOptions[selectedCategory].title
+                            setPauseReason(`${categoryTitle}: ${reason}`)
+                          }}
+                        />
+                        <div>
+                          <p className="text-sm text-gray-800">{reason}</p>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedCategory === 'other' && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Lý do tạm dừng<span className="text-red-500">*</span>
+                </p>
+                <Textarea
+                  rows={3}
+                  value={pauseReason}
+                  onChange={(e) => setPauseReason(e.target.value)}
+                  placeholder="Nhập lý do tạm dừng phiên đấu giá..."
+                />
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500">Lý do sẽ xuất hiện trong lịch sử hoạt động.</p>
+        </div>
+      )
+    }
+    if (dialogState.actionType === 'resume') {
+      return (
+        <div className="space-y-2 text-left">
+          <label className="text-sm font-medium text-gray-700" htmlFor="reports-resume-extend">
+            Gia hạn thêm (phút)
+          </label>
+          <input
+            id="reports-resume-extend"
+            type="number"
+            min={0}
+            value={resumeExtendMinute}
+            onChange={(e) => setResumeExtendMinute(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+          <p className="text-xs text-gray-500">Nhập 0 nếu không cần gia hạn.</p>
+        </div>
+      )
+    }
+    return null
+  })()
 
   // Filter reports by search term and status/type filters
   const filteredReports = useMemo(() => {
@@ -407,6 +747,51 @@ export default function AuctionReportsPage() {
             </button>
             <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Chi Tiết Phiên Đấu Giá</h1>
           </div>
+          
+          {/* Action Buttons */}
+          {auction.status === 'OnGoing' && (
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => handleActionClick('pause')}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                disabled={actionLoading}
+              >
+                <PauseCircle className="w-4 h-4 mr-2" />
+                Tạm dừng
+              </Button>
+              <Button
+                onClick={() => handleActionClick('resume')}
+                variant="outline"
+                className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
+                disabled={actionLoading}
+              >
+                <Ban className="w-4 h-4 mr-2" />
+                Hủy
+              </Button>
+            </div>
+          )}
+
+          {auction.status === 'Pause' && (
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => handleActionClick('resume')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={actionLoading}
+              >
+                <PlayCircle className="w-4 h-4 mr-2" />
+                Tiếp tục
+              </Button>
+              <Button
+                onClick={() => handleActionClick('pause')}
+                variant="outline"
+                className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
+                disabled={actionLoading}
+              >
+                <Ban className="w-4 h-4 mr-2" />
+                Hủy
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation - Below Title */}
@@ -515,12 +900,13 @@ export default function AuctionReportsPage() {
               <SimpleTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-left w-[14%] min-w-[130px]">Loại báo cáo</TableHead>
-                    <TableHead className="text-left w-[28%] min-w-[220px]">Nội dung</TableHead>
-                    <TableHead className="text-left w-[18%] min-w-[160px]">Người báo cáo</TableHead>
-                    <TableHead className="text-left w-[10%] min-w-[120px]">Trạng thái</TableHead>
-                    <TableHead className="text-left w-[13%] min-w-[140px]">Ngày tạo</TableHead>
-                    <TableHead className="text-right w-[17%] min-w-[180px]">Thao tác</TableHead>
+                    <TableHead className="text-left w-[12%] min-w-[110px]">Loại báo cáo</TableHead>
+                    <TableHead className="text-left w-[20%] min-w-[180px]">Nội dung</TableHead>
+                    <TableHead className="text-left w-[15%] min-w-[140px]">Mã phiên đấu giá</TableHead>
+                    <TableHead className="text-left w-[15%] min-w-[140px]">Người báo cáo</TableHead>
+                    <TableHead className="text-left w-[10%] min-w-[110px]">Trạng thái</TableHead>
+                    <TableHead className="text-left w-[13%] min-w-[130px]">Ngày tạo</TableHead>
+                    <TableHead className="text-right w-[15%] min-w-[150px]">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -552,61 +938,43 @@ export default function AuctionReportsPage() {
                   <TableBody>
                     {paginatedReports.map(report => (
                       <TableRow key={report.id} className="hover:bg-gray-50">
-                        <TableCell className="min-h-[48px] w-[14%]">
+                        <TableCell className="min-h-[48px] w-[12%]">
                           <div className="font-medium text-gray-900">{REPORT_TYPE_LABELS[report.reportType]}</div>
                         </TableCell>
-                        <TableCell className="min-h-[48px] w-[28%]">
+                        <TableCell className="min-h-[48px] w-[20%]">
                           <div className="text-sm text-gray-700 line-clamp-2" title={report.note}>
                             {report.note}
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm min-h-[48px] w-[18%]">
-                          <div className="truncate max-w-[220px]" title={report.reporterId}>
-                            {report.reporterId}
+                        <TableCell className="text-sm min-h-[48px] w-[15%]">
+                          <div className="truncate max-w-[200px]" title={userMap[report.reporterId] || report.reporterId}>
+                            {userMap[report.reporterId] || report.reporterId}
                           </div>
                         </TableCell>
                         <TableCell className="min-h-[48px] w-[10%]">{getStatusBadge(report.reportStatus)}</TableCell>
                         <TableCell className="text-sm min-h-[48px] w-[13%]">{formatDate(report.createdAt)}</TableCell>
-                        <TableCell className="text-right min-h-[48px] w-[17%]">
+                        <TableCell className="text-right min-h-[48px] w-[15%]">
                           {report.reportStatus === "Pending" ? (
                             <div className="flex items-center justify-end gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleUpdateStatus(report.id, "InReview")}
+                                onClick={() => handleUpdateStatusClick(report, "InReview")}
                                 disabled={Boolean(updatingId)}
                                 className="text-emerald-600 border-emerald-600 hover:bg-emerald-50"
                               >
-                                {updatingId === report.id ? (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                    Đang cập nhật...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                    Xem xét
-                                  </>
-                                )}
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Xem xét
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleUpdateStatus(report.id, "Rejected")}
+                                onClick={() => handleUpdateStatusClick(report, "Rejected")}
                                 disabled={Boolean(updatingId)}
                                 className="text-red-600 border-red-600 hover:bg-red-50"
                               >
-                                {updatingId === report.id ? (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                    Đang cập nhật...
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Từ chối
-                                  </>
-                                )}
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Từ chối
                               </Button>
                             </div>
                           ) : (
@@ -664,6 +1032,148 @@ export default function AuctionReportsPage() {
           </div>
         </Card>
       </div>
+
+      {/* Confirmation Modal for Report Status Update */}
+      <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={pendingStatus === "InReview" ? "text-emerald-600" : "text-red-600"}>
+              {pendingStatus === "InReview" ? "Xác nhận xem xét báo cáo" : "Xác nhận từ chối báo cáo"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">
+              {pendingStatus === "InReview" 
+                ? "Bạn có chắc chắn muốn chuyển báo cáo này sang trạng thái 'Đang xem xét'?"
+                : "Bạn có chắc chắn muốn từ chối báo cáo này? Hành động này không thể hoàn tác."}
+            </p>
+            {reportToUpdate && (
+              <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                <p className="text-sm font-medium text-gray-900">Loại: {REPORT_TYPE_LABELS[reportToUpdate.reportType]}</p>
+                <p className="text-xs text-gray-600 line-clamp-2" title={reportToUpdate.note}>
+                  {reportToUpdate.note}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Người báo cáo: {userMap[reportToUpdate.reporterId] || reportToUpdate.reporterId}
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirmModalOpen(false)
+                  setReportToUpdate(null)
+                  setPendingStatus(null)
+                }}
+                disabled={Boolean(updatingId)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleConfirmUpdateStatus}
+                disabled={Boolean(updatingId)}
+                className={pendingStatus === "InReview" 
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"}
+              >
+                {updatingId ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    {pendingStatus === "InReview" ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Xác nhận xem xét
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Xác nhận từ chối
+                      </>
+                    )}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pause/Resume Dialog */}
+      {dialogState.actionType && (
+        <Dialog open={dialogState.isOpen} onOpenChange={(open) => {
+          if (!open) {
+            setDialogState({ isOpen: false, actionType: null })
+            setPauseReason('')
+            setPauseReasonCategory(null)
+            setPauseReasonSpecific('')
+            setResumeExtendMinute('0')
+          }
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className={dialogState.actionType === 'pause' ? "text-amber-600" : "text-emerald-600"}>
+                {dialogState.actionType === 'pause' ? 'Tạm dừng phiên đấu giá' : 'Tiếp tục phiên đấu giá'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-700">
+                {dialogState.actionType === 'pause'
+                  ? 'Nhập lý do tạm dừng, phiên sẽ bị khóa với người tham gia.'
+                  : 'Thiết lập thời gian gia hạn (nếu cần) rồi mở lại phiên.'}
+              </p>
+              {dialogFields}
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDialogState({ isOpen: false, actionType: null })
+                    setPauseReason('')
+                    setPauseReasonCategory(null)
+                    setPauseReasonSpecific('')
+                    setResumeExtendMinute('0')
+                  }}
+                  disabled={actionLoading}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleConfirmAction}
+                  disabled={actionLoading}
+                  className={dialogState.actionType === 'pause'
+                    ? "bg-amber-500 hover:bg-amber-600 text-white"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"}
+                >
+                  {actionLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      {dialogState.actionType === 'pause' ? (
+                        <>
+                          <PauseCircle className="h-4 w-4 mr-2" />
+                          Tạm dừng
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                          Tiếp tục
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

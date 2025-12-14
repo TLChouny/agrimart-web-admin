@@ -7,6 +7,8 @@ import { ERROR_MESSAGES, translateApiError } from './constants/messages'
 export interface AdminLoginRequest { email: string; password: string }
 export interface AdminLoginResponse { user: User; token: string }
 export interface AdminAuthData { user: ApiUser; token: { accessToken: string; refreshToken: string } }
+export interface RefreshTokenRequest { refreshToken: string }
+export interface RefreshTokenResponse { accessToken: string; refreshToken: string }
 
 export class AdminAuthService {
   async login(credentials: AdminLoginRequest): Promise<AdminLoginResponse> {
@@ -62,6 +64,34 @@ export class AdminAuthService {
         throw new Error(translatedMessage)
       }
       throw new Error(ERROR_MESSAGES.LOGIN_FAILED)
+    }
+  }
+
+  async refreshToken(): Promise<string | null> {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (!refreshToken) {
+        this.clearLocalStorage()
+        return null
+      }
+
+      const response = await httpClient.post<RefreshTokenResponse>(ENDPOINTS.auth.refresh, {
+        refreshToken,
+      } as RefreshTokenRequest)
+
+      if (response.isSuccess && response.data) {
+        localStorage.setItem('authToken', response.data.accessToken)
+        localStorage.setItem('refreshToken', response.data.refreshToken)
+        return response.data.accessToken
+      }
+
+      // Refresh token không hợp lệ, clear và logout
+      this.clearLocalStorage()
+      return null
+    } catch (error) {
+      console.error('Error refreshing token:', error)
+      this.clearLocalStorage()
+      return null
     }
   }
 

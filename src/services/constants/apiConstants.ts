@@ -5,6 +5,7 @@ export const ENDPOINTS = {
     login: '/api/auth/login',
     register: '/api/auth/register',
     me: '/api/auth/me',
+    refresh: '/api/auth/refresh',
   },
   role: {
     list: '/api/role',
@@ -23,8 +24,8 @@ export const ENDPOINTS = {
   users: {
     list: '/api/users',
     detail: (id: string) => `/api/users/${id}`,
-    lock: (id: string) => `/api/users/${id}/lock`,
-    unlock: (id: string) => `/api/users/${id}/unlock`,
+    // lock: (id: string) => `/api/users/${id}/lock`,
+    // unlock: (id: string) => `/api/users/${id}/unlock`,
     updateStatus: (id: string) => `/api/users/${id}/status`,
   },
   orders: { list: '/orders' },

@@ -11,6 +11,14 @@ export interface PendingAccount {
   submittedAt: string
   status: 'pending' | 'approved' | 'rejected'
   documents: string[]
+  verifications?: Array<{
+    id: string
+    url: string
+    documentType: number
+    createdAt: string
+    updatedAt: string | null
+    userId: string
+  }>
 }
 
 export interface ApproveAccountRequest { accountId: string }

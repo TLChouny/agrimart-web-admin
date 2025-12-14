@@ -5,10 +5,11 @@ import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle, Filter, ChevronDown } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { reportApi } from "../../services/api"
 import { userApi } from "../../services/api/userApi"
 import { auctionApi } from "../../services/api/auctionApi"
-import type { PaginatedReports, ReportListParams, ReportStatus, ReportType } from "../../types"
+import type { PaginatedReports, ReportListParams, ReportStatus, ReportType, ReportItem } from "../../types"
 import type { User as ApiUser, ListResponse } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
 import { REPORT_MESSAGES, REPORT_STATUS_LABELS, TOAST_TITLES } from "../../services/constants/messages"
@@ -36,6 +37,9 @@ export default function ReportsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [auctionMap, setAuctionMap] = useState<Record<string, string>>({})
   const [userMap, setUserMap] = useState<Record<string, string>>({})
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
+  const [reportToUpdate, setReportToUpdate] = useState<ReportItem | null>(null)
+  const [pendingStatus, setPendingStatus] = useState<ReportStatus | null>(null)
   const { toast } = useToastContext()
 
   const handleFilterChange = (key: keyof ReportListParams, value?: string) => {
@@ -129,15 +133,26 @@ export default function ReportsPage() {
   }
 
 
-  const handleUpdateStatus = async (reportId: string, status: ReportStatus) => {
+  const handleUpdateStatusClick = (report: ReportItem, status: ReportStatus) => {
+    setReportToUpdate(report)
+    setPendingStatus(status)
+    setConfirmModalOpen(true)
+  }
+
+  const handleConfirmUpdateStatus = async () => {
+    if (!reportToUpdate || !pendingStatus) return
+    
     try {
-      setUpdatingId(reportId)
+      setUpdatingId(reportToUpdate.id)
       setError(null)
-      await reportApi.updateReportStatus(reportId, status)
+      await reportApi.updateReportStatus(reportToUpdate.id, pendingStatus)
       toast({
         title: TOAST_TITLES.SUCCESS,
         description: REPORT_MESSAGES.UPDATE_SUCCESS,
       })
+      setConfirmModalOpen(false)
+      setReportToUpdate(null)
+      setPendingStatus(null)
       await fetchReports({ silent: true })
     } catch (err) {
       const message = err instanceof Error && err.message ? err.message : REPORT_MESSAGES.UPDATE_ERROR
@@ -393,40 +408,22 @@ export default function ReportsPage() {
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleUpdateStatus(report.id, "InReview")}
+                              onClick={() => handleUpdateStatusClick(report, "InReview")}
                               disabled={Boolean(updatingId)}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
-                              {updatingId === report.id ? (
-                                <>
-                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                  Đang cập nhật...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Xem xét
-                                </>
-                              )}
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Xem xét
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleUpdateStatus(report.id, "Rejected")}
+                              onClick={() => handleUpdateStatusClick(report, "Rejected")}
                               disabled={Boolean(updatingId)}
                               className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600"
                             >
-                              {updatingId === report.id ? (
-                                <>
-                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                  Đang cập nhật...
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Từ chối
-                                </>
-                              )}
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Từ chối
                             </Button>
                           </div>
                         ) : (
@@ -483,6 +480,76 @@ export default function ReportsPage() {
           )}
         </div>
       </Card>
+
+      {/* Confirmation Modal */}
+      <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={pendingStatus === "InReview" ? "text-emerald-600" : "text-red-600"}>
+              {pendingStatus === "InReview" ? "Xác nhận xem xét báo cáo" : "Xác nhận từ chối báo cáo"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">
+              {pendingStatus === "InReview" 
+                ? "Bạn có chắc chắn muốn chuyển báo cáo này sang trạng thái 'Đang xem xét'?"
+                : "Bạn có chắc chắn muốn từ chối báo cáo này? Hành động này không thể hoàn tác."}
+            </p>
+            {reportToUpdate && (
+              <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                <p className="text-sm font-medium text-gray-900">Loại: {REPORT_TYPE_LABELS[reportToUpdate.reportType]}</p>
+                <p className="text-xs text-gray-600 line-clamp-2" title={reportToUpdate.note}>
+                  {reportToUpdate.note}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Mã phiên: {getAuctionName(reportToUpdate.auctionId)}
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirmModalOpen(false)
+                  setReportToUpdate(null)
+                  setPendingStatus(null)
+                }}
+                disabled={Boolean(updatingId)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleConfirmUpdateStatus}
+                disabled={Boolean(updatingId)}
+                className={pendingStatus === "InReview" 
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"}
+              >
+                {updatingId ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    {pendingStatus === "InReview" ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Xác nhận xem xét
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Xác nhận từ chối
+                      </>
+                    )}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

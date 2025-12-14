@@ -101,6 +101,8 @@ export default function WalletPage() {
   const [withdrawRequestsSearchValue, setWithdrawRequestsSearchValue] = useState<string>('')
   const [withdrawRequestsStatusFilter, setWithdrawRequestsStatusFilter] = useState<WithdrawRequestStatus | 'all'>('all')
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false)
+  const [showApproveModal, setShowApproveModal] = useState<boolean>(false)
+  const [showCompleteModal, setShowCompleteModal] = useState<boolean>(false)
   const [selectedWithdrawRequest, setSelectedWithdrawRequest] = useState<ApiWithdrawRequest | null>(null)
   const [rejectReason, setRejectReason] = useState<string>('')
   const [processingRequest, setProcessingRequest] = useState<string | null>(null)
@@ -112,11 +114,12 @@ export default function WalletPage() {
   const [bankAccountLoading, setBankAccountLoading] = useState<boolean>(false)
   const [userInfo, setUserInfo] = useState<User | null>(null)
   const [userInfoLoading, setUserInfoLoading] = useState<boolean>(false)
-  const [walletInfo, setWalletInfo] = useState<ApiWallet | null>(null)
-  const [walletInfoLoading, setWalletInfoLoading] = useState<boolean>(false)
+  // Wallet info is fetched but not currently displayed in the modal
+  const [_walletInfo, setWalletInfo] = useState<ApiWallet | null>(null)
+  const [_walletInfoLoading, setWalletInfoLoading] = useState<boolean>(false)
 
   // Transaction detail state for ledger
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
+  const [_selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const [transactionDetail, setTransactionDetail] = useState<ApiTransaction | null>(null)
   const [transactionDetailLoading, setTransactionDetailLoading] = useState<boolean>(false)
   const [showTransactionDetailModal, setShowTransactionDetailModal] = useState<boolean>(false)
@@ -226,11 +229,19 @@ export default function WalletPage() {
     }
   }, [toast])
 
+  // Handle approve withdraw request click
+  const handleApproveWithdrawRequestClick = useCallback((request: ApiWithdrawRequest) => {
+    setSelectedWithdrawRequest(request)
+    setShowApproveModal(true)
+  }, [])
+
   // Handle approve withdraw request
-  const handleApproveWithdrawRequest = useCallback(async (id: string) => {
+  const handleApproveWithdrawRequest = useCallback(async () => {
+    if (!selectedWithdrawRequest) return
+    
     try {
-      setProcessingRequest(id)
-      const res = await walletApi.approveWithdrawRequest(id)
+      setProcessingRequest(selectedWithdrawRequest.id)
+      const res = await walletApi.approveWithdrawRequest(selectedWithdrawRequest.id)
       
       if (res.isSuccess && res.data) {
         toast({
@@ -238,6 +249,8 @@ export default function WalletPage() {
           description: 'Duyệt yêu cầu rút tiền thành công',
           variant: 'default',
         })
+        setShowApproveModal(false)
+        setSelectedWithdrawRequest(null)
         await fetchWithdrawRequests()
       } else {
         toast({
@@ -256,7 +269,7 @@ export default function WalletPage() {
     } finally {
       setProcessingRequest(null)
     }
-  }, [toast, fetchWithdrawRequests])
+  }, [toast, fetchWithdrawRequests, selectedWithdrawRequest])
 
   // Handle reject withdraw request
   const handleRejectWithdrawRequest = useCallback(async (id: string, reason?: string) => {
@@ -293,11 +306,19 @@ export default function WalletPage() {
     }
   }, [toast, fetchWithdrawRequests])
 
+  // Handle complete withdraw request click
+  const handleCompleteWithdrawRequestClick = useCallback((request: ApiWithdrawRequest) => {
+    setSelectedWithdrawRequest(request)
+    setShowCompleteModal(true)
+  }, [])
+
   // Handle complete withdraw request
-  const handleCompleteWithdrawRequest = useCallback(async (id: string) => {
+  const handleCompleteWithdrawRequest = useCallback(async () => {
+    if (!selectedWithdrawRequest) return
+    
     try {
-      setProcessingRequest(id)
-      const res = await walletApi.completeWithdrawRequest(id)
+      setProcessingRequest(selectedWithdrawRequest.id)
+      const res = await walletApi.completeWithdrawRequest(selectedWithdrawRequest.id)
       
       if (res.isSuccess && res.data) {
         toast({
@@ -305,6 +326,8 @@ export default function WalletPage() {
           description: 'Hoàn thành yêu cầu rút tiền thành công',
           variant: 'default',
         })
+        setShowCompleteModal(false)
+        setSelectedWithdrawRequest(null)
         await fetchWithdrawRequests()
       } else {
         toast({
@@ -323,7 +346,7 @@ export default function WalletPage() {
     } finally {
       setProcessingRequest(null)
     }
-  }, [toast, fetchWithdrawRequests])
+  }, [toast, fetchWithdrawRequests, selectedWithdrawRequest])
 
 
   useEffect(() => {
@@ -821,46 +844,34 @@ export default function WalletPage() {
                                 Chi tiết
                               </Button>
                               {request.status === 0 && (
-                                <>
+                                <div className="flex gap-1.5">
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    onClick={() => handleApproveWithdrawRequest(request.id)}
-                                    disabled={processingRequest === request.id}
-                                    className="h-8 px-3 text-xs text-green-600 border-green-600 hover:bg-green-50"
+                                    onClick={() => handleApproveWithdrawRequestClick(request)}
+                                    disabled={Boolean(processingRequest)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 min-w-[90px] text-xs"
                                   >
-                                    {processingRequest === request.id ? (
-                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                    ) : (
-                                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                                    )}
-                                    Duyệt
+                                    ✓ Duyệt
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleOpenRejectModal(request)}
-                                    disabled={processingRequest === request.id}
-                                    className="h-8 px-3 text-xs text-red-600 border-red-600 hover:bg-red-50"
+                                    disabled={Boolean(processingRequest)}
+                                    className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600 flex-1 min-w-[90px] text-xs"
                                   >
-                                    <XCircle className="w-3 h-3 mr-1" />
-                                    Từ chối
+                                    ✕ Từ chối
                                   </Button>
-                                </>
+                                </div>
                               )}
                               {request.status === 1 && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => handleCompleteWithdrawRequest(request.id)}
-                                  disabled={processingRequest === request.id}
-                                  className="h-8 px-3 text-xs text-blue-600 border-blue-600 hover:bg-blue-50"
+                                  onClick={() => handleCompleteWithdrawRequestClick(request)}
+                                  disabled={Boolean(processingRequest)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
                                 >
-                                  {processingRequest === request.id ? (
-                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                  ) : (
-                                    <CircleCheck className="w-3 h-3 mr-1" />
-                                  )}
+                                  <CircleCheck className="w-3 h-3 mr-1" />
                                   Hoàn thành
                         </Button>
                               )}
@@ -877,23 +888,138 @@ export default function WalletPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Approve Confirmation Modal */}
+      <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-emerald-600">Xác nhận duyệt yêu cầu rút tiền</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">
+              Bạn có chắc chắn muốn duyệt yêu cầu rút tiền này? Yêu cầu sẽ được chuyển sang trạng thái "Đã duyệt".
+            </p>
+            {selectedWithdrawRequest && (
+              <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                <p className="text-sm font-medium text-gray-900">
+                  Số tiền: {formatCurrencyVND(selectedWithdrawRequest.amount)}
+                </p>
+                {selectedWithdrawRequest.reason && (
+                  <p className="text-xs text-gray-600 line-clamp-2" title={selectedWithdrawRequest.reason}>
+                    Lý do: {selectedWithdrawRequest.reason}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowApproveModal(false)
+                  setSelectedWithdrawRequest(null)
+                }}
+                disabled={Boolean(processingRequest)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleApproveWithdrawRequest}
+                disabled={Boolean(processingRequest)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {processingRequest === selectedWithdrawRequest?.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang duyệt...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Xác nhận duyệt
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Complete Confirmation Modal */}
+      <Dialog open={showCompleteModal} onOpenChange={setShowCompleteModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-blue-600">Xác nhận hoàn thành yêu cầu rút tiền</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">
+              Bạn có chắc chắn muốn hoàn thành yêu cầu rút tiền này? Yêu cầu sẽ được chuyển sang trạng thái "Đã hoàn thành" và tiền sẽ được chuyển vào tài khoản ngân hàng.
+            </p>
+            {selectedWithdrawRequest && (
+              <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                <p className="text-sm font-medium text-gray-900">
+                  Số tiền: {formatCurrencyVND(selectedWithdrawRequest.amount)}
+                </p>
+                {selectedWithdrawRequest.reason && (
+                  <p className="text-xs text-gray-600 line-clamp-2" title={selectedWithdrawRequest.reason}>
+                    Lý do: {selectedWithdrawRequest.reason}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCompleteModal(false)
+                  setSelectedWithdrawRequest(null)
+                }}
+                disabled={Boolean(processingRequest)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleCompleteWithdrawRequest}
+                disabled={Boolean(processingRequest)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {processingRequest === selectedWithdrawRequest?.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang hoàn thành...
+                  </>
+                ) : (
+                  <>
+                    <CircleCheck className="w-4 h-4 mr-2" />
+                    Xác nhận hoàn thành
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reject Modal */}
       <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-red-600">Từ chối yêu cầu rút tiền</DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-red-600">Xác nhận từ chối yêu cầu rút tiền</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Yêu cầu ID: {selectedWithdrawRequest?.id.slice(0, 8)}...
-              </Label>
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Số tiền: {selectedWithdrawRequest ? formatCurrencyVND(selectedWithdrawRequest.amount) : '—'}
-              </Label>
-            </div>
+            <p className="text-sm text-gray-700">
+              Bạn có chắc chắn muốn từ chối yêu cầu rút tiền này? Hành động này không thể hoàn tác.
+            </p>
+            {selectedWithdrawRequest && (
+              <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                <p className="text-sm font-medium text-gray-900">
+                  Số tiền: {formatCurrencyVND(selectedWithdrawRequest.amount)}
+                </p>
+                {selectedWithdrawRequest.reason && (
+                  <p className="text-xs text-gray-600 line-clamp-2" title={selectedWithdrawRequest.reason}>
+                    Lý do: {selectedWithdrawRequest.reason}
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <Label htmlFor="rejectReason" className="text-sm font-medium text-gray-700">
                 Lý do từ chối (tùy chọn)
@@ -907,14 +1033,22 @@ export default function WalletPage() {
                 rows={4}
               />
             </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowRejectModal(false)} disabled={processingRequest === selectedWithdrawRequest?.id}>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectModal(false)
+                  setRejectReason('')
+                  setSelectedWithdrawRequest(null)
+                }}
+                disabled={Boolean(processingRequest)}
+              >
                 Hủy
               </Button>
               <Button
                 variant="outline"
                 onClick={handleConfirmReject}
-                disabled={processingRequest === selectedWithdrawRequest?.id}
+                disabled={Boolean(processingRequest)}
                 className="text-red-600 border-red-600 hover:bg-red-50"
               >
                 {processingRequest === selectedWithdrawRequest?.id ? (
@@ -923,7 +1057,10 @@ export default function WalletPage() {
                     Đang từ chối...
                   </>
                 ) : (
-                  'Từ chối'
+                  <>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Xác nhận từ chối
+                  </>
                 )}
               </Button>
             </div>
@@ -932,31 +1069,16 @@ export default function WalletPage() {
       </Dialog>
 
       {/* Withdraw Request Detail Modal */}
-      {showWithdrawRequestDetailModal && selectedWithdrawRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowWithdrawRequestDetailModal(false)} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Chi tiết yêu cầu rút tiền - {selectedWithdrawRequest.id.slice(0, 8)}...
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Số tiền: {formatCurrencyVND(selectedWithdrawRequest.amount)} | 
-                  {' '}Trạng thái: {getWithdrawRequestStatusBadge(selectedWithdrawRequest.status)}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowWithdrawRequestDetailModal(false)}
-                className="h-8"
-              >
-                Đóng
-              </Button>
-            </div>
-            <div className="p-6 overflow-auto flex-1">
-              <div className="space-y-4">
+      <Dialog open={showWithdrawRequestDetailModal} onOpenChange={setShowWithdrawRequestDetailModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedWithdrawRequest && (
+            <>
+              <DialogHeader className="pb-4 border-b border-gray-200">
+                <DialogTitle className="text-2xl font-semibold text-gray-900">
+                  Chi tiết yêu cầu rút tiền
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6">
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Thông tin người dùng</Label>
                   {userInfoLoading ? (
@@ -993,44 +1115,6 @@ export default function WalletPage() {
                   ) : (
                     <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
                       <p className="text-sm text-gray-500">Không thể tải thông tin người dùng</p>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Thông tin ví</Label>
-                  {walletInfoLoading ? (
-                    <div className="mt-2 flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                      <p className="text-sm text-gray-500">Đang tải thông tin ví...</p>
-                    </div>
-                  ) : walletInfo ? (
-                    <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              Số dư: {formatCurrencyVND(walletInfo.balance)}
-                            </p>
-                          </div>
-                          {getWalletStatusBadge(walletInfo.walletStatus)}
-                        </div>
-                        <div className="pt-2 border-t border-gray-200 grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs text-gray-600">Loại tiền</Label>
-                            <p className="text-sm text-gray-900 mt-1">{walletInfo.currency}</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-gray-600">Loại ví</Label>
-                            <p className="text-sm text-gray-900 mt-1">
-                              {walletInfo.isSystemWallet ? 'Hệ thống' : 'Người dùng'}
-                            </p>
-                          </div>
-                        </div>
-                </div>
-                </div>
-              ) : (
-                    <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-sm text-gray-500">Không thể tải thông tin ví</p>
                     </div>
                   )}
                 </div>
@@ -1123,48 +1207,34 @@ export default function WalletPage() {
                       {formatDateTime(withdrawRequestDetail.updatedAt)}
                     </p>
                 </div>
-              )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transaction Detail Modal */}
-      {showTransactionDetailModal && selectedTransactionId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => {
-            setShowTransactionDetailModal(false)
-            setSelectedTransactionId(null)
-            setTransactionDetail(null)
-          }} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Chi tiết giao dịch - {selectedTransactionId.slice(0, 8)}...
-                </h3>
-                {transactionDetail && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Số tiền: {formatCurrencyVND(transactionDetail.amount)} | 
-                    {' '}Loại tiền: {transactionDetail.currency}
-                  </p>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowTransactionDetailModal(false)
-                  setSelectedTransactionId(null)
-                  setTransactionDetail(null)
-                }}
-                className="h-8"
-              >
-                Đóng
-              </Button>
-            </div>
-            <div className="p-6 overflow-auto flex-1">
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Transaction Detail Modal */}
+      <Dialog open={showTransactionDetailModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowTransactionDetailModal(false)
+          setSelectedTransactionId(null)
+          setTransactionDetail(null)
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b border-gray-200">
+            <DialogTitle className="text-2xl font-semibold text-gray-900">
+              Chi tiết giao dịch
+            </DialogTitle>
+            {transactionDetail && (
+              <p className="text-sm text-gray-600 mt-1">
+                Số tiền: {formatCurrencyVND(transactionDetail.amount)} | 
+                {' '}Loại tiền: {transactionDetail.currency}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="space-y-6">
               {transactionDetailLoading ? (
                 <div className="text-center py-12">
                   <Loader2 className="w-8 h-8 text-gray-400 mx-auto mb-4 animate-spin" />
@@ -1260,10 +1330,9 @@ export default function WalletPage() {
                   <p className="text-gray-500">Không thể tải thông tin giao dịch</p>
                 </div>
               )}
-            </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -25,9 +25,39 @@ class HttpClient {
   private defaultTimeout = 30000
   private defaultRetries = 2
   private defaultRetryDelay = 1000
+  private isRefreshing = false
+  private refreshPromise: Promise<string | null> | null = null
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
+  }
+
+  private async refreshTokenIfNeeded(): Promise<string | null> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise
+    }
+
+    this.isRefreshing = true
+    this.refreshPromise = this.performRefresh()
+    
+    try {
+      const newToken = await this.refreshPromise
+      return newToken
+    } finally {
+      this.isRefreshing = false
+      this.refreshPromise = null
+    }
+  }
+
+  private async performRefresh(): Promise<string | null> {
+    try {
+      // Dynamic import để tránh circular dependency
+      const { adminAuthService } = await import('../adminAuthService')
+      return await adminAuthService.refreshToken()
+    } catch (error) {
+      console.error('Error in performRefresh:', error)
+      return null
+    }
   }
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
@@ -109,6 +139,7 @@ class HttpClient {
     }
 
     let lastError: ApiError | null = null
+    let hasRefreshed = false
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await this.fetchWithTimeout(url, init, timeout)
@@ -122,7 +153,17 @@ class HttpClient {
         }
 
         if (!response.ok) {
-          if (response.status === 401) {
+          if (response.status === 401 && !hasRefreshed) {
+            // Thử refresh token trước khi logout (chỉ 1 lần)
+            hasRefreshed = true
+            const newToken = await this.refreshTokenIfNeeded()
+            if (newToken) {
+              // Retry request với token mới
+              requestHeaders['Authorization'] = `Bearer ${newToken}`
+              init.headers = requestHeaders
+              continue
+            }
+            // Refresh thất bại, logout
             try {
               localStorage.removeItem('authToken')
               localStorage.removeItem('refreshToken')
@@ -147,7 +188,17 @@ class HttpClient {
       } catch (error) {
         if (error && typeof error === 'object' && 'status' in error) {
           const apiError = error as ApiError
-          if (apiError.status === 401) {
+          if (apiError.status === 401 && !hasRefreshed) {
+            // Thử refresh token trước khi logout (chỉ 1 lần)
+            hasRefreshed = true
+            const newToken = await this.refreshTokenIfNeeded()
+            if (newToken) {
+              // Retry request với token mới
+              requestHeaders['Authorization'] = `Bearer ${newToken}`
+              init.headers = requestHeaders
+              continue
+            }
+            // Refresh thất bại, logout
             try {
               localStorage.removeItem('authToken')
               localStorage.removeItem('refreshToken')
@@ -178,19 +229,34 @@ class HttpClient {
     const { cache = true, cacheTTL, params } = options
 
     if (cache) {
-      const cacheKey = requestCache.generateKey(endpoint + JSON.stringify(params || {}), 'GET')
+      // Tạo cache key từ endpoint và params
+      const paramsStr = params ? JSON.stringify(params, Object.keys(params).sort()) : ''
+      const cacheKey = requestCache.generateKey(`${endpoint}${paramsStr}`, 'GET')
+      
+      // Kiểm tra cache
       const cachedData = requestCache.get<T>(cacheKey)
-      if (cachedData) return cachedData
+      if (cachedData) {
+        return cachedData
+      }
 
+      // Kiểm tra pending request để tránh duplicate requests
       const pendingRequest = requestCache.getPending<T>(cacheKey)
-      if (pendingRequest) return pendingRequest
+      if (pendingRequest) {
+        return pendingRequest
+      }
 
+      // Tạo request mới và cache
       const requestPromise = this.request<T>(endpoint, { method: 'GET', params })
       requestCache.setPending(cacheKey, requestPromise)
-      const response = await requestPromise
-      requestCache.set(cacheKey, response, cacheTTL)
-
-      return response
+      
+      try {
+        const response = await requestPromise
+        requestCache.set(cacheKey, response, cacheTTL)
+        return response
+      } catch (error) {
+        // Không cache error responses
+        throw error
+      }
     }
 
     return this.request<T>(endpoint, { method: 'GET', params })
@@ -216,86 +282,9 @@ class HttpClient {
   }
 
   async delete<T>(endpoint: string, options: { invalidateCache?: string } = {}): Promise<APIResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`
-    const token = localStorage.getItem('authToken')
-    const requestHeaders: Record<string, string> = {}
-    if (token) requestHeaders['Authorization'] = `Bearer ${token}`
-
-    console.log('DELETE Request:', { url, method: 'DELETE', headers: requestHeaders })
-
-    const init: RequestInit = { method: 'DELETE', headers: requestHeaders }
-
-    let lastError: ApiError | null = null
-    for (let attempt = 0; attempt <= this.defaultRetries; attempt++) {
-      try {
-        const response = await this.fetchWithTimeout(url, init, this.defaultTimeout)
-        let data: any
-        const contentType = response.headers.get('content-type')
-        try {
-          if (contentType && contentType.includes('application/json')) data = await response.json()
-          else data = { isSuccess: response.ok, statusCode: response.status, message: response.ok ? 'Success' : 'Request failed', data: undefined }
-        } catch {
-          data = { isSuccess: response.ok, statusCode: response.status, message: response.ok ? 'Success' : 'Request failed', data: undefined }
-        }
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            try {
-              localStorage.removeItem('authToken')
-              localStorage.removeItem('refreshToken')
-              localStorage.removeItem('currentUser')
-              if (typeof window !== 'undefined') window.location.replace('/auth/login')
-            } catch {}
-          }
-          const error = this.parseErrorResponse(data, response.status)
-          console.error('DELETE request failed:', { url, status: response.status, data, error })
-          if (this.isRetryableError(response.status) && attempt < this.defaultRetries) {
-            lastError = error
-            await this.sleep(this.defaultRetryDelay * Math.pow(2, attempt))
-            continue
-          }
-          throw error
-        }
-
-        if (data.isSuccess !== undefined) {
-          if (!data.isSuccess) {
-            console.error('DELETE request returned isSuccess=false:', { url, data })
-            const error = this.parseErrorResponse(data, response.status)
-            throw error
-          }
-          if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
-          return data as APIResponse<T>
-        }
-        if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
-        return { isSuccess: true, statusCode: response.status, message: 'Success', data: data as T }
-      } catch (error) {
-        if (error && typeof error === 'object' && 'status' in error) {
-          const apiError = error as ApiError
-          if (apiError.status === 401) {
-            try {
-              localStorage.removeItem('authToken')
-              localStorage.removeItem('refreshToken')
-              localStorage.removeItem('currentUser')
-              if (typeof window !== 'undefined') window.location.replace('/auth/login')
-            } catch {}
-          }
-          if (this.isRetryableError(apiError.status) && attempt < this.defaultRetries) {
-            lastError = apiError
-            await this.sleep(this.defaultRetryDelay * Math.pow(2, attempt))
-            continue
-          }
-          throw apiError
-        }
-        const networkError: ApiError = { message: error instanceof Error ? error.message : 'Network error occurred', status: 0, errors: ['Unable to connect to server'] }
-        if (attempt < this.defaultRetries) {
-          lastError = networkError
-          await this.sleep(this.defaultRetryDelay * Math.pow(2, attempt))
-          continue
-        }
-        throw networkError
-      }
-    }
-    throw lastError || { message: 'Request failed after multiple attempts', status: 0, errors: ['Maximum retry attempts exceeded'] }
+    const response = await this.request<T>(endpoint, { method: 'DELETE' })
+    if (options.invalidateCache) requestCache.invalidate(options.invalidateCache)
+    return response
   }
 
   clearCache(pattern?: string): void {

@@ -1,11 +1,12 @@
 import type React from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Label } from "../ui/label"
-import { Award, FileText } from "lucide-react"
-import type { ApiCertification } from "../../types/api"
+import { Award, FileText, User, Mail, Phone } from "lucide-react"
+import type { ApiCertification, User as ApiUser } from "../../types/api"
 
 interface CertificationDetailModalProps {
   certification: ApiCertification | null
+  user?: ApiUser | null
   isOpen: boolean
   onClose: () => void
   formatDate: (dateString: string) => string
@@ -14,6 +15,7 @@ interface CertificationDetailModalProps {
 
 const CertificationDetailModal: React.FC<CertificationDetailModalProps> = ({
   certification,
+  user,
   isOpen,
   onClose,
   formatDate,
@@ -31,6 +33,54 @@ const CertificationDetailModal: React.FC<CertificationDetailModalProps> = ({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-8 py-6">
+          {/* Thông tin người gửi */}
+          {user && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                Thông tin người gửi
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 mb-1 block">Họ và tên</Label>
+                    <p className="text-gray-900 font-medium">
+                      {`${user.firstName} ${user.lastName}`.trim() || 'Chưa có thông tin'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 mb-1 block">Email</Label>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <p className="text-gray-900 break-all">{user.email}</p>
+                    </div>
+                  </div>
+                  {user.phoneNumber && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 mb-1 block">Số điện thoại</Label>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        <p className="text-gray-900">{user.phoneNumber}</p>
+                      </div>
+                    </div>
+                  )}
+                  {user.address && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 mb-1 block">Địa chỉ</Label>
+                      <p className="text-gray-900 break-words">
+                        {user.address}
+                        {user.communes && `, ${user.communes}`}
+                        {user.province && `, ${user.province}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3">

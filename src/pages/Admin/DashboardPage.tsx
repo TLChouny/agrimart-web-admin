@@ -1,23 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { StatsCards, type DashboardStatCard } from "../../components/admin/stats-cards"
-import { RevenueAnalytics } from "../../components/admin/revenue-analytics"
-import { ShippingInfo, type AuctionProgressItem, type AuctionStep } from "../../components/admin/shipping-info"
+import { 
+  SystemRevenueChart, 
+  UserGrowthChart, 
+  AuctionLifecycleChart, 
+  RiskMonitoringChart, 
+  RevenueSourceChart 
+} from "../../components/admin/dashboard-charts"
+import { ReputationRanking } from "../../components/admin/reputation-ranking"
+import { HotAuctions } from "../../components/admin/hot-auctions"
 import { Button } from "../../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
-import { RefreshCw, Gavel, User, Wallet } from "lucide-react"
+import { RefreshCw, BarChart3, Users, TrendingUp, AlertTriangle, Award, Flame } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { farmApi } from "../../services/api/farmApi"
 import { auctionApi } from "../../services/api/auctionApi"
 import { reportApi } from "../../services/api/reportApi"
 import { userApi } from "../../services/api/userApi"
 import { walletApi } from "../../services/api/walletApi"
+import { certificationApi } from "../../services/api/certificationApi"
 import type {
   ApiFarm,
   ApiEnglishAuction,
   ReportItem,
   ApiAuctionBidLog,
   User as ApiUser,
-  ApiWithdrawRequest,
   ApiWallet,
   ApiLedger,
 } from "../../types/api"
@@ -26,91 +32,7 @@ import { TOAST_TITLES } from "../../services/constants/messages"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { formatCurrencyVND } from "../../utils/currency"
 
-const BASE_AUCTION_STEPS: AuctionStep[] = ["Tạo phiên", "Xác thực", "Đang diễn ra", "Kết thúc"]
-
 const formatNumber = (value: number) => new Intl.NumberFormat("vi-VN").format(value)
-
-const formatTime = (iso?: string | null) => {
-  if (!iso) return undefined
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return undefined
-  return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
-}
-
-const getRelativeTime = (iso?: string | null) => {
-  if (!iso) return "Vừa cập nhật"
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "Vừa cập nhật"
-  const diffMs = Date.now() - date.getTime()
-  const diffMinutes = Math.floor(diffMs / 60000)
-  if (diffMinutes < 1) return "Vừa xong"
-  if (diffMinutes < 60) return `${diffMinutes} phút trước`
-  const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours} giờ trước`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays} ngày trước`
-}
-
-const AUCTION_STATUS_META: Record<
-  ApiEnglishAuction["status"],
-  { label: string; step: number; tone: AuctionProgressItem["badgeTone"] }
-> = {
-  Draft: { label: "Bản nháp", step: 0, tone: "yellow" },
-  Pending: { label: "Chờ duyệt", step: 1, tone: "yellow" },
-  Approved: { label: "Đã duyệt", step: 1, tone: "blue" },
-  OnGoing: { label: "Đang diễn ra", step: 2, tone: "blue" },
-  Pause: { label: "Tạm dừng", step: 2, tone: "yellow" },
-  Completed: { label: "Hoàn tất", step: 3, tone: "green" },
-  NoWinner: { label: "Không có người thắng", step: 3, tone: "red" },
-  Cancelled: { label: "Đã hủy", step: 3, tone: "red" },
-  Rejected: { label: "Bị từ chối", step: 1, tone: "red" },
-}
-
-interface WithdrawRequestItem {
-  id: string
-  userId: string
-  userName?: string
-  email?: string
-  amount: number
-  status: number // 0: Pending, 1: Approved, 2: Rejected, 3: Completed, 4: Cancelled
-  createdAt: string
-  reason?: string | null
-}
-
-const WITHDRAW_STATUS_LABELS: Record<number, { label: string; accent: "green" | "blue" | "yellow" | "red" }> = {
-  0: { label: "Chờ duyệt", accent: "yellow" },
-  1: { label: "Đã duyệt", accent: "blue" },
-  2: { label: "Đã từ chối", accent: "red" },
-  3: { label: "Đã hoàn tất", accent: "green" },
-  4: { label: "Đã hủy", accent: "red" },
-}
-
-const ACCENT_DOT_CLASS: Record<"green" | "blue" | "yellow" | "red", string> = {
-  green: "bg-green-500",
-  blue: "bg-blue-500",
-  yellow: "bg-yellow-500",
-  red: "bg-red-500",
-}
-
-
-interface TopAuctionItem {
-  id: string
-  sessionCode: string
-  title: string
-  revenue: number
-  bidCount: number
-  status: string
-  createdAt: string
-}
-
-interface RecentFarmerItem {
-  userId: string
-  farmName: string
-  farmCount: number
-  createdAt: string
-  userName?: string
-  email?: string
-}
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
@@ -123,30 +45,28 @@ export default function AdminDashboardPage() {
   const [auctions, setAuctions] = useState<ApiEnglishAuction[]>([])
   const [reports, setReports] = useState<ReportItem[]>([])
   const [users, setUsers] = useState<ApiUser[]>([])
-  const [withdrawRequests, setWithdrawRequests] = useState<ApiWithdrawRequest[]>([])
   const [systemWallet, setSystemWallet] = useState<ApiWallet | null>(null)
   const [systemLedgers, setSystemLedgers] = useState<ApiLedger[]>([])
   const [bidLogsMap, setBidLogsMap] = useState<Map<string, ApiAuctionBidLog[]>>(new Map())
-  const [revenueViewMode, setRevenueViewMode] = useState<"month" | "year">("month")
-  const [revenueOffset, setRevenueOffset] = useState(0) // 0 = current period, -1 = previous, etc.
+  const [pendingCertifications, setPendingCertifications] = useState<any[]>([])
 
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      const [farmRes, auctionRes, reportRes, userRes, withdrawRes, systemWalletRes] = await Promise.all([
+      const [farmRes, auctionRes, reportRes, userRes, systemWalletRes, certificationRes] = await Promise.all([
         farmApi.getFarms(),
-        auctionApi.getEnglishAuctions(undefined, 1, 200),
-        reportApi.getReports({ pageNumber: 1, pageSize: 50 }),
+        auctionApi.getEnglishAuctions(undefined, 1, 500), // Lấy nhiều hơn để tính toán charts
+        reportApi.getReports({ pageNumber: 1, pageSize: 100 }),
         userApi.list(),
-        walletApi.getWithdrawRequests(),
         walletApi.getSystemWallet(),
+        certificationApi.getPending(),
       ])
 
       setFarms(farmRes.data ?? [])
       setAuctions(auctionRes.data?.items ?? [])
       setReports(reportRes.data?.items ?? [])
-      setWithdrawRequests(withdrawRes.data ?? [])
+      setPendingCertifications(certificationRes.data ?? [])
       setSystemWallet(systemWalletRes.data ?? null)
       
       // Handle both ListResponse and array formats
@@ -213,7 +133,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (auctions.length > 0) {
       const topAuctionIds = auctions
-        .filter(a => a.status === "Completed" || a.status === "OnGoing")
+        .filter((a: ApiEnglishAuction) => a.status === "Completed" || a.status === "OnGoing")
         .slice(0, 10)
         .map(a => a.id)
       loadBidLogs(topAuctionIds)
@@ -223,480 +143,471 @@ export default function AdminDashboardPage() {
   // Tự động refresh data mỗi 30 giây
   useAutoRefresh(loadDashboardData, 30000, true, false)
 
-  const filteredAuctions = useMemo(() => {
-    return auctions
-  }, [auctions])
 
+  // Calculate all metrics for System Overview
   const statsCards = useMemo<DashboardStatCard[]>(() => {
     const totalFarms = farms.length
-    const activeFarms = farms.filter(farm => farm.isActive).length
-    const runningAuctions = filteredAuctions.filter(auction => auction.status === "OnGoing").length
-    const waitingAuctions = filteredAuctions.filter(auction => auction.status === "Pending").length
+    const totalUsers = users.length
+    const pendingAccounts = users.filter(u => u.status === 0).length
+    const pendingCertificationsCount = pendingCertifications.length
+    const pendingAuctions = auctions.filter(a => a.status === "Pending").length
+    const ongoingAuctions = auctions.filter(a => a.status === "OnGoing").length
     const totalRevenue = systemWallet?.balance ?? 0
-    const pendingReports = reports.filter(report => report.reportStatus === "Pending").length
-    const resolvedReports = reports.length - pendingReports
+    const pendingReports = reports.filter(r => r.reportStatus === "Pending").length
+    const pendingDisputes = reports.filter(r => r.reportStatus === "InReview").length
 
     return [
       {
-        title: "Tổng nông trại",
+        title: "Tổng số nông trại",
         value: formatNumber(totalFarms),
-        change: `${formatNumber(activeFarms)} đang hoạt động`,
+        change: `${formatNumber(farms.filter(f => f.isActive).length)} đang hoạt động`,
         trend: "up",
         highlight: true,
       },
       {
-        title: "Phiên đấu giá đang chạy",
-        value: formatNumber(runningAuctions),
-        change: `${formatNumber(waitingAuctions)} phiên chờ mở`,
+        title: "Tổng số tài khoản",
+        value: formatNumber(totalUsers),
+        change: `${formatNumber(pendingAccounts)} chờ xác thực`,
         trend: "up",
       },
       {
-        title: "Tổng doanh thu",
+        title: "Chờ xác thực",
+        value: formatNumber(pendingAccounts + pendingCertificationsCount),
+        change: `${formatNumber(pendingAccounts)} tài khoản, ${formatNumber(pendingCertificationsCount)} chứng chỉ`,
+        trend: "neutral",
+      },
+      {
+        title: "Đấu giá chờ duyệt",
+        value: formatNumber(pendingAuctions),
+        change: `${formatNumber(ongoingAuctions)} đang diễn ra`,
+        trend: "up",
+      },
+      {
+        title: "Tổng doanh thu hệ thống",
         value: formatCurrencyVND(totalRevenue, { fallback: "0 VND" }),
         change: "Số dư ví hệ thống",
         trend: "up",
       },
       {
-        title: "Báo cáo chờ xử lý",
+        title: "Báo cáo chờ xem xét",
         value: formatNumber(pendingReports),
-        change: `${formatNumber(Math.max(resolvedReports, 0))} đã xử lý`,
-        trend: pendingReports > resolvedReports ? "up" : "neutral",
+        change: `${formatNumber(pendingDisputes)} tranh chấp`,
+        trend: pendingReports > 0 ? "up" : "neutral",
       },
     ]
-  }, [farms, filteredAuctions, reports, systemWallet])
+  }, [farms, users, pendingCertifications, auctions, systemWallet, reports])
 
-  const revenueChartData = useMemo(() => {
-    if (!systemLedgers.length || !systemWallet) return { data: [], currentPeriod: "", canGoPrevious: false, canGoNext: false }
+
+  // System Revenue Analysis - Column Chart (profit over time)
+  const systemRevenueData = useMemo(() => {
+    if (!systemLedgers.length) return []
     
+    // Group by month for last 12 months
     const now = new Date()
-    let startDate: Date
-    let endDate: Date
-    let periodLabel: string
-
-    if (revenueViewMode === "month") {
-      // Calculate month based on offset
-      const targetMonth = new Date(now.getFullYear(), now.getMonth() + revenueOffset, 1)
-      startDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1)
-      endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59)
-      periodLabel = `T${targetMonth.getMonth() + 1}/${targetMonth.getFullYear()}`
-    } else {
-      // Calculate year based on offset
-      const targetYear = now.getFullYear() + revenueOffset
-      startDate = new Date(targetYear, 0, 1)
-      endDate = new Date(targetYear, 11, 31, 23, 59, 59)
-      periodLabel = `Năm ${targetYear}`
-    }
-
-    // Filter ledgers within the selected period
-    const filteredLedgers = systemLedgers.filter(ledger => {
+    const months: Array<{ time: string; profit: number }> = []
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthLabel = `T${date.getMonth() + 1}/${date.getFullYear()}`
+      
+      const monthLedgers = systemLedgers.filter(ledger => {
       if (!ledger.createdAt) return false
-      const date = new Date(ledger.createdAt)
-      return date >= startDate && date <= endDate
-    })
-
-    const buckets = new Map<
-      string,
-      {
-        label: string
-        credit: number
-        debit: number
-        order: number
-      }
-    >()
-
-    filteredLedgers.forEach(ledger => {
-      if (!ledger.createdAt) return
-      const date = new Date(ledger.createdAt)
-      if (Number.isNaN(date.getTime())) return
-
-      let key: string
-      let label: string
-      let order: number
-
-      if (revenueViewMode === "month") {
-        // Group by day within the month
-        const day = date.getDate()
-        key = `${date.getFullYear()}-${date.getMonth()}-${day}`
-        label = `Ngày ${day}`
-        order = day
-      } else {
-        // Group by month within the year
-        const monthIndex = date.getMonth()
-        key = `${date.getFullYear()}-${monthIndex}`
-        label = `T${monthIndex + 1}`
-        order = monthIndex
-      }
-
-      const existing = buckets.get(key)
-      if (ledger.direction === 1) {
-        // Credit - tiền vào
-        buckets.set(key, {
-          label,
-          order,
-          credit: (existing?.credit ?? 0) + ledger.amount,
-          debit: existing?.debit ?? 0,
-        })
-      } else {
-        // Debit - tiền ra
-        buckets.set(key, {
-          label,
-          order,
-          credit: existing?.credit ?? 0,
-          debit: (existing?.debit ?? 0) + ledger.amount,
-        })
-      }
-    })
-
-    const data = Array.from(buckets.values())
-      .sort((a, b) => a.order - b.order)
-      .map(({ label, credit, debit }) => ({ label, credit, debit }))
-
-    // Check if can navigate
-    const canGoPrevious = revenueViewMode === "month" 
-      ? revenueOffset > -12 // Allow up to 12 months back
-      : revenueOffset > -5 // Allow up to 5 years back
-    
-    const canGoNext = revenueOffset < 0 // Can only go forward if we're in the past
-
-    return {
-      data,
-      currentPeriod: periodLabel,
-      canGoPrevious,
-      canGoNext,
+        const ledgerDate = new Date(ledger.createdAt)
+        return ledgerDate.getFullYear() === date.getFullYear() && 
+               ledgerDate.getMonth() === date.getMonth()
+      })
+      
+      const profit = monthLedgers.reduce((sum, ledger) => {
+        return sum + (ledger.direction === 1 ? ledger.amount : -ledger.amount)
+      }, 0)
+      
+      months.push({ time: monthLabel, profit })
     }
-  }, [systemLedgers, systemWallet, revenueViewMode, revenueOffset])
-
-  const recentFarmers = useMemo<RecentFarmerItem[]>(() => {
-    if (!farms.length) return []
-
-    // Group farms by userId and get the earliest farm creation date for each farmer
-    const farmerMap = new Map<string, { farms: ApiFarm[]; earliestCreatedAt: string }>()
     
-    farms.forEach(farm => {
-      const existing = farmerMap.get(farm.userId)
-      if (!existing) {
-        farmerMap.set(farm.userId, {
-          farms: [farm],
-          earliestCreatedAt: farm.createdAt,
+    return months
+  }, [systemLedgers])
+
+  // User Growth Trend - Line Chart
+  const userGrowthData = useMemo(() => {
+    if (!users.length) return []
+    
+    // Group users by month
+    const monthMap = new Map<string, number>()
+    
+    users.forEach(user => {
+      const date = new Date(user.createdAt)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const currentCount = monthMap.get(monthKey) || 0
+      monthMap.set(monthKey, currentCount + 1)
+    })
+    
+    // Get last 12 months
+    const now = new Date()
+    const months: Array<{ month: string; accounts: number }> = []
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const monthLabel = `T${date.getMonth() + 1}/${date.getFullYear()}`
+      
+      months.push({ 
+        month: monthLabel, 
+        accounts: monthMap.get(monthKey) || 0 
+      })
+    }
+    
+    return months
+  }, [users])
+
+  // Auction Lifecycle Overview - Stacked Bar Chart
+  const auctionLifecycleData = useMemo(() => {
+    if (!auctions.length) return []
+    
+    // Group auctions by month and status
+    const monthMap = new Map<string, {
+      approved: number
+      rejected: number
+      ongoing: number
+      completed: number
+      failed: number
+    }>()
+    
+    auctions.forEach(auction => {
+      const date = new Date(auction.createdAt)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, {
+          approved: 0,
+          rejected: 0,
+          ongoing: 0,
+          completed: 0,
+          failed: 0,
         })
-      } else {
-        existing.farms.push(farm)
-        // Use the earliest farm creation date as the farmer registration date
-        if (new Date(farm.createdAt) < new Date(existing.earliestCreatedAt)) {
-          existing.earliestCreatedAt = farm.createdAt
+      }
+      
+      const data = monthMap.get(monthKey)!
+      if (auction.status === "Approved") data.approved++
+      else if (auction.status === "Rejected") data.rejected++
+      else if (auction.status === "OnGoing" || auction.status === "Pause") data.ongoing++
+      else if (auction.status === "Completed") data.completed++
+      else if (auction.status === "NoWinner" || auction.status === "Cancelled") data.failed++
+    })
+    
+    // Get last 12 months
+    const now = new Date()
+    const months: Array<{
+      month: string
+      approved: number
+      rejected: number
+      ongoing: number
+      completed: number
+      failed: number
+    }> = []
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const monthLabel = `T${date.getMonth() + 1}/${date.getFullYear()}`
+      
+      const data = monthMap.get(monthKey) || {
+        approved: 0,
+        rejected: 0,
+        ongoing: 0,
+        completed: 0,
+        failed: 0,
+      }
+      
+      months.push({ month: monthLabel, ...data })
+    }
+    
+    return months
+  }, [auctions])
+
+  // Risk Monitoring - Line Chart (reports & disputes)
+  const riskMonitoringData = useMemo(() => {
+    if (!reports.length) return []
+    
+    // Group reports by month
+    const monthMap = new Map<string, { reports: number; disputes: number }>()
+    
+    reports.forEach(report => {
+      const date = new Date(report.createdAt)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { reports: 0, disputes: 0 })
+      }
+      
+      const data = monthMap.get(monthKey)!
+      if (report.reportStatus === "Pending" || report.reportStatus === "InReview") {
+        data.reports++
+      }
+      if (report.reportStatus === "InReview") {
+        data.disputes++
+      }
+    })
+    
+    // Get last 12 months
+    const now = new Date()
+    const months: Array<{ time: string; reports: number; disputes: number }> = []
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const monthLabel = `T${date.getMonth() + 1}/${date.getFullYear()}`
+      
+      const data = monthMap.get(monthKey) || { reports: 0, disputes: 0 }
+      months.push({ time: monthLabel, ...data })
+    }
+    
+    return months
+  }, [reports])
+
+  // Biến động ví hệ thống - Donut Chart
+  const walletFluctuationData = useMemo(() => {
+    if (!systemLedgers.length) return []
+    
+    // Tính tổng tiền vào và tiền ra từ ledgers
+    let totalIn = 0  // direction = 1 (tiền vào)
+    let totalOut = 0 // direction = 2 (tiền ra)
+    
+    systemLedgers.forEach(ledger => {
+      if (ledger.direction === 1) {
+        totalIn += ledger.amount
+      } else if (ledger.direction === 2) {
+        totalOut += ledger.amount
+      }
+    })
+    
+    return [
+      { name: "Tiền vào", value: totalIn },
+      { name: "Tiền ra", value: totalOut },
+    ].filter(item => item.value > 0)
+  }, [systemLedgers])
+
+  // Reputation Ranking - Top 5 farmers and wholesalers
+  const reputationRanking = useMemo(() => {
+    // Calculate auction count for each user from bidLogs
+    // Count unique auctions per user
+    const userAuctionSet = new Map<string, Set<string>>()
+    bidLogsMap.forEach((logs, auctionId) => {
+      logs.forEach(log => {
+        if (!userAuctionSet.has(log.userId)) {
+          userAuctionSet.set(log.userId, new Set())
         }
-      }
+        userAuctionSet.get(log.userId)!.add(auctionId)
+      })
     })
-
-    // Convert to array and get user info
-    const farmerList: RecentFarmerItem[] = Array.from(farmerMap.entries()).map(([userId, data]) => {
-      const user = users.find(u => u.id === userId)
-      const firstFarm = data.farms[0]
-
-      return {
-        userId,
-        farmName: firstFarm.name,
-        farmCount: data.farms.length,
-        createdAt: data.earliestCreatedAt,
-        userName: user ? `${user.firstName} ${user.lastName}` : undefined,
-        email: user?.email,
-      }
+    
+    // Convert to count map
+    const userAuctionCounts = new Map<string, number>()
+    userAuctionSet.forEach((auctionSet, userId) => {
+      userAuctionCounts.set(userId, auctionSet.size)
     })
-
-    // Sort by creation date (newest first) and take top 5
-    return farmerList
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    
+    const farmers = users
+      .filter(u => {
+        const role = typeof u.role === 'string' ? u.role.toLowerCase() : 
+                    (u.roleObject?.name?.toLowerCase() || '')
+        return role === 'farmer' && (u.reputationScore ?? 0) > 0
+      })
+      .map(u => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+        email: u.email,
+        reputationScore: u.reputationScore ?? 0,
+        auctionCount: userAuctionCounts.get(u.id) || 0,
+        role: 'farmer' as const,
+      }))
+      .sort((a, b) => b.reputationScore - a.reputationScore)
       .slice(0, 5)
-  }, [farms, users])
+    
+    const wholesalers = users
+      .filter(u => {
+        const role = typeof u.role === 'string' ? u.role.toLowerCase() : 
+                    (u.roleObject?.name?.toLowerCase() || '')
+        return role === 'wholesaler' && (u.reputationScore ?? 0) > 0
+      })
+      .map(u => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+        email: u.email,
+        reputationScore: u.reputationScore ?? 0,
+        auctionCount: userAuctionCounts.get(u.id) || 0,
+        role: 'wholesaler' as const,
+      }))
+      .sort((a, b) => b.reputationScore - a.reputationScore)
+      .slice(0, 5)
+    
+    return { farmers, wholesalers }
+  }, [users, bidLogsMap])
 
-  const topBiddingAuctions = useMemo<TopAuctionItem[]>(() => {
-    return filteredAuctions
-      .filter(a => a.status === "Completed" || a.status === "OnGoing")
+  // Hot Ongoing Auctions - Top 5 by bids
+  const hotAuctions = useMemo(() => {
+    const ongoing = auctions
+      .filter(a => a.status === "OnGoing")
       .map(auction => {
         const bidLogs = bidLogsMap.get(auction.id) ?? []
-        return {
-          id: auction.id,
-          sessionCode: auction.sessionCode,
-          title: auction.note || `Phiên ${auction.sessionCode}`,
-          revenue: auction.winningPrice ?? auction.currentPrice ?? auction.startingPrice ?? 0,
-          bidCount: bidLogs.length,
-          status: auction.status,
-          createdAt: auction.createdAt,
-        }
-      })
-      .filter(a => a.bidCount > 0)
-      .sort((a, b) => b.bidCount - a.bidCount)
-      .slice(0, 5)
-  }, [filteredAuctions, bidLogsMap])
-
-
-  const auctionProgress = useMemo<AuctionProgressItem[]>(() => {
-    if (!filteredAuctions.length) return []
-    // Hiển thị các phiên đấu giá mới nhất (sắp xếp theo createdAt)
-    return filteredAuctions
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 4)
-      .map(auction => {
-        const meta = AUCTION_STATUS_META[auction.status] ?? AUCTION_STATUS_META.Draft
-        const steps = BASE_AUCTION_STEPS.map((label, index) => ({
-          label,
-          completed: index < meta.step,
-          current: index === meta.step,
-          time:
-            index === 0
-              ? formatTime(auction.createdAt)
-              : index === 2
-                ? formatTime(auction.publishDate)
-                : index === 3
-                  ? formatTime(auction.endDate)
-                  : undefined,
-        }))
-
-        return {
-          id: auction.sessionCode,
-          title: auction.note || `Phiên ${auction.sessionCode}`,
-          status: meta.label,
-          badgeTone: meta.tone,
-          steps,
-        }
-      })
-  }, [filteredAuctions])
-
-  const recentWithdrawRequests = useMemo<WithdrawRequestItem[]>(() => {
-    if (!withdrawRequests.length) return []
-
-    // Map withdraw requests with user info
-    const requests: WithdrawRequestItem[] = withdrawRequests.map(request => {
-      const user = users.find(u => u.id === request.userId)
+        const endDate = auction.endDate ? new Date(auction.endDate) : null
+        const now = new Date()
+        const remainingMs = endDate ? endDate.getTime() - now.getTime() : 0
+        const remainingHours = Math.max(0, Math.floor(remainingMs / (1000 * 60 * 60)))
+        const remainingDays = Math.floor(remainingHours / 24)
+        const remainingTime = remainingDays > 0 
+          ? `${remainingDays} ngày` 
+          : remainingHours > 0
+          ? `${remainingHours} giờ`
+          : 'Sắp kết thúc'
+        
+        // Find farmer name from farmerId
+        const farmer = users.find(u => u.id === auction.farmerId)
+        const farmerName = farmer 
+          ? `${farmer.firstName} ${farmer.lastName}`.trim() || farmer.email
+          : 'Chưa xác định'
+        
       return {
-        id: request.id,
-        userId: request.userId,
-        userName: user ? `${user.firstName} ${user.lastName}` : undefined,
-        email: user?.email,
-        amount: request.amount,
-        status: request.status,
-        createdAt: request.createdAt,
-        reason: request.reason,
-      }
-    })
-
-    // Sort by creation date (newest first) and take top 5
-    return requests
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          id: auction.id,
+          auctionName: auction.note || `Phiên ${auction.sessionCode}`,
+          farmerName,
+          currentHighestBid: auction.currentPrice ?? auction.startingPrice ?? 0,
+          totalBids: bidLogs.length,
+          remainingTime,
+          sessionCode: auction.sessionCode,
+        }
+      })
+      .filter(a => a.totalBids > 0)
+      .sort((a, b) => b.totalBids - a.totalBids)
       .slice(0, 5)
-  }, [withdrawRequests, users])
+    
+    return ongoing
+  }, [auctions, bidLogsMap, users])
 
-  const WithdrawSkeleton = () => (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <div key={`withdraw-skeleton-${index}`} className="flex items-center gap-3 animate-pulse">
-          <div className="w-2 h-2 bg-gray-200 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3 w-1/2 bg-gray-200 rounded" />
-            <div className="h-3 w-1/3 bg-gray-100 rounded" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
 
   return (
-    <>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bảng điều khiển</h1>
-          <p className="text-gray-600">Quản lý nông trại, phiên đấu giá và yêu cầu thu mua trong một nơi.</p>
-          {errorMessage && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
+              Bảng điều khiển
+            </h1>
+            <p className="text-gray-600 ml-[52px]">Tổng quan hệ thống và phân tích dữ liệu</p>
+            {errorMessage && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{errorMessage}</p>
+              </div>
+            )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <Select
-              value={timeFilter}
-              onChange={e => setTimeFilter(e.target.value as TimeFilter)}
-              options={TIME_FILTER_OPTIONS}
-              className="w-[140px]"
-            />
-          </div> */}
-          <Button onClick={() => navigate("/admin/reports")}>Quản lý báo cáo</Button>
-          <Button variant="outline" onClick={loadDashboardData} disabled={isLoading}>
+            <Button 
+              onClick={() => navigate("/admin/reports")}
+              className="shadow-sm hover:shadow-md transition-shadow"
+            >
+              Quản lý báo cáo
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={loadDashboardData} 
+              disabled={isLoading}
+              className="shadow-sm hover:shadow-md transition-shadow"
+            >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
         </div>
       </div>
-
-      <div className="mb-8">
-        <StatsCards stats={statsCards} isLoading={isLoading} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-3">
-          <RevenueAnalytics
-            data={revenueChartData.data}
-            isLoading={isLoading}
-            viewMode={revenueViewMode}
-            onViewModeChange={(mode) => {
-              setRevenueViewMode(mode)
-              setRevenueOffset(0) // Reset to current period when switching mode
-            }}
-            onPrevious={() => setRevenueOffset(prev => prev - 1)}
-            onNext={() => setRevenueOffset(prev => prev + 1)}
-            canGoPrevious={revenueChartData.canGoPrevious}
-            canGoNext={revenueChartData.canGoNext}
-            currentPeriod={revenueChartData.currentPeriod}
-          />
+      {/* 1.1 System Overview - Stats Cards */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full"></div>
+          <h2 className="text-xl font-semibold text-gray-900">Tổng quan hệ thống</h2>
         </div>
-      </div>
+        <StatsCards stats={statsCards} isLoading={isLoading} />
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <User className="w-5 h-5 text-emerald-600" />
-                Nông dân mới đăng ký
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            ) : recentFarmers.length > 0 ? (
-              <div className="space-y-3">
-                {recentFarmers.map((farmer, index) => (
-                  <div
-                    key={farmer.userId}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {farmer.userName || farmer.email || "Nông dân"}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {farmer.farmName} {farmer.farmCount > 1 && `(${farmer.farmCount} nông trại)`}
-                        </p>
+      {/* 1.2 System Revenue Analysis */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Phân tích doanh thu</h2>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400 whitespace-nowrap">
-                          {getRelativeTime(farmer.createdAt)}
-                        </p>
+        <SystemRevenueChart data={systemRevenueData} isLoading={isLoading} />
+      </section>
+
+      {/* Charts Grid - User Growth & Revenue Source */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-purple-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Tăng trưởng & Doanh thu</h2>
                       </div>
                     </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <UserGrowthChart data={userGrowthData} isLoading={isLoading} />
+          <RevenueSourceChart data={walletFluctuationData} isLoading={isLoading} />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-sm text-gray-500 py-8 border border-dashed rounded-lg">
-                Chưa có nông dân nào đăng ký gần đây.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      </section>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Gavel className="w-5 h-5 text-blue-600" />
-                Top đấu giá
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading || isLoadingBids ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                ))}
+      {/* 1.4 Auction Lifecycle Overview */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full"></div>
+          <h2 className="text-xl font-semibold text-gray-900">Vòng đời đấu giá</h2>
               </div>
-            ) : topBiddingAuctions.length > 0 ? (
-              <div className="space-y-3">
-                {topBiddingAuctions.map((auction, index) => (
-                  <div
-                    key={auction.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{auction.title}</p>
-                        <p className="text-xs text-gray-500">#{auction.sessionCode}</p>
+        <AuctionLifecycleChart data={auctionLifecycleData} isLoading={isLoading} />
+      </section>
+
+      {/* 1.5 Risk Monitoring */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-red-600 rounded-full"></div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Giám sát rủi ro</h2>
+            </div>
+              </div>
+        <RiskMonitoringChart data={riskMonitoringData} isLoading={isLoading} />
+      </section>
+
+      {/* 1.7 Reputation Ranking */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full"></div>
+          <div className="flex items-center gap-2">
+            <Award className="w-5 h-5 text-yellow-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Bảng xếp hạng uy tín</h2>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-blue-600">{auction.bidCount} lượt đấu giá</p>
-                        <p className="text-xs text-gray-500">{formatCurrencyVND(auction.revenue)}</p>
+        <ReputationRanking 
+          farmers={reputationRanking.farmers} 
+          wholesalers={reputationRanking.wholesalers}
+          isLoading={isLoading}
+        />
+      </section>
+
+      {/* 1.8 Hot Ongoing Auctions */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-pink-500 to-pink-600 rounded-full"></div>
+          <div className="flex items-center gap-2">
+            <Flame className="w-5 h-5 text-pink-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Đấu giá đang hot</h2>
                       </div>
           </div>
-        </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-sm text-gray-500 py-8 border border-dashed rounded-lg">
-                Chưa có dữ liệu đấu giá.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        <HotAuctions auctions={hotAuctions} isLoading={isLoading || isLoadingBids} />
+      </section>
 
-      <div className="grid grid-cols-1 gap-6 mb-6">
-        <ShippingInfo auctions={auctionProgress} isLoading={isLoading} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-emerald-600" />
-              Các yêu cầu rút tiền gần đây
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <WithdrawSkeleton />
-            ) : recentWithdrawRequests.length > 0 ? (
-              <div className="space-y-3">
-                {recentWithdrawRequests.map(request => {
-                  const statusInfo = WITHDRAW_STATUS_LABELS[request.status] ?? WITHDRAW_STATUS_LABELS[0]
-                  return (
-                    <div key={request.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className={`w-2 h-2 rounded-full ${ACCENT_DOT_CLASS[statusInfo.accent]}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {request.userName || request.email || `User ${request.userId.slice(0, 8)}`}
-                        </p>
-                        <p className="text-xs text-gray-500 line-clamp-1">
-                          {formatCurrencyVND(request.amount)} · {statusInfo.label}
-                        </p>
-                      </div>
-                      <span className="text-xs text-gray-400 whitespace-nowrap">{getRelativeTime(request.createdAt)}</span>
                     </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center text-sm text-gray-500 py-8 border border-dashed rounded-lg">
-                Không có yêu cầu rút tiền nào gần đây.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </>
   )
 }

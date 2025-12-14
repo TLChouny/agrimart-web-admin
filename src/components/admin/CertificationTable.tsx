@@ -2,11 +2,12 @@
 
 import type React from "react"
 import { Button } from "../ui/button"
-import { Eye, Check, X, Award, Calendar, Building2 } from "lucide-react"
-import type { ApiCertification } from "../../types/api"
+import { Eye, Check, X, Award, Calendar, Building2, User } from "lucide-react"
+import type { ApiCertification, User as ApiUser } from "../../types/api"
 
 interface CertificationTableProps {
   certifications: ApiCertification[]
+  usersMap?: Record<string, ApiUser>
   onViewCertification: (certification: ApiCertification) => void
   onApproveCertification: (certificationId: string) => void
   onRejectCertification: (certification: ApiCertification) => void
@@ -18,6 +19,7 @@ interface CertificationTableProps {
 
 const CertificationTable: React.FC<CertificationTableProps> = ({
   certifications,
+  usersMap = {},
   onViewCertification,
   onApproveCertification,
   onRejectCertification,
@@ -47,7 +49,15 @@ const CertificationTable: React.FC<CertificationTableProps> = ({
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">{certification.certificationName}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                    {usersMap[certification.userId] && (
+                      <div className="flex items-center gap-1">
+                        <User className="w-4 h-4" />
+                        <span className="font-medium text-gray-900">
+                          {`${usersMap[certification.userId].firstName} ${usersMap[certification.userId].lastName}`.trim() || usersMap[certification.userId].email}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1">
                       <Building2 className="w-4 h-4" />
                       <span>{certification.issuingOrganization}</span>

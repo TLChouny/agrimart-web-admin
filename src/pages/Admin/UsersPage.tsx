@@ -28,6 +28,10 @@ export default function UsersPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [userCertifications, setUserCertifications] = useState<ApiCertification[]>([])
   const [isLoadingCertifications, setIsLoadingCertifications] = useState(false)
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
+  const [userToBlock, setUserToBlock] = useState<UserListItem | null>(null)
+  const [isBlocking, setIsBlocking] = useState(false)
+  const [isBlockAction, setIsBlockAction] = useState(true) // true = block, false = unblock
 
   // API functions
   const fetchUsers = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -49,18 +53,24 @@ export default function UsersPage() {
           }
           return 'wholesaler'
         }
-        const mapped: UserListItem[] = apiUsers.map(u => ({
-          id: u.id,
-          fullName: `${u.firstName} ${u.lastName}`.trim(),
-          email: u.email,
-          role: mapRole(u),
-          status: 'active',
-          createdAt: u.createdAt,
-        }))
+        const mapped: UserListItem[] = apiUsers.map(u => {
+          // Map status từ API: 0: Pending, 1: Active, 2: Banned
+          const apiStatus = u.status ?? 1 // Default to Active if not provided
+          const listStatus: 'active' | 'inactive' = apiStatus === 2 ? 'inactive' : 'active'
+          return {
+            id: u.id,
+            fullName: `${u.firstName} ${u.lastName}`.trim(),
+            email: u.email,
+            role: mapRole(u),
+            status: listStatus,
+            createdAt: u.createdAt,
+          }
+        })
         setUsers(mapped)
         // Lưu toàn bộ user data để hiển thị chi tiết
         setUsersMap(Object.fromEntries(apiUsers.map(u => [u.id, u])))
-        setBlockedMap(Object.fromEntries(mapped.map(u => [u.id, false])))
+        // Cập nhật blockedMap dựa trên status từ API (status === 2 là Banned)
+        setBlockedMap(Object.fromEntries(apiUsers.map(u => [u.id, (u.status ?? 1) === 2])))
         setPage(1)
         if (!silent) {
           toast({
@@ -119,9 +129,9 @@ export default function UsersPage() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(user => {
         if (statusFilter === 'active') {
-          return user.status === 'active' && !blockedMap[user.id]
+          return !blockedMap[user.id] // Active = không bị khóa
         } else if (statusFilter === 'inactive') {
-          return user.status === 'inactive' || blockedMap[user.id]
+          return blockedMap[user.id] // Inactive = bị khóa (Banned)
         }
         return true
       })
@@ -156,12 +166,64 @@ export default function UsersPage() {
   }
 
   // Event handlers
-  const toggleBlocked = (userId: string, value: boolean) => {
-    setBlockedMap(prev => ({ ...prev, [userId]: value }))
-    toast({
-      title: TOAST_TITLES.INFO,
-      description: USER_MESSAGES.BLOCK_PLACEHOLDER,
-    })
+  const toggleBlocked = (user: UserListItem, value: boolean) => {
+    // Nếu đang toggle sang khóa (true), mở modal xác nhận
+    if (value && !blockedMap[user.id]) {
+      setUserToBlock(user)
+      setIsBlockAction(true)
+      setIsBlockModalOpen(true)
+    }
+    // Nếu đang toggle sang mở khóa (false), mở modal xác nhận
+    else if (!value && blockedMap[user.id]) {
+      setUserToBlock(user)
+      setIsBlockAction(false)
+      setIsBlockModalOpen(true)
+    }
+  }
+
+  const handleConfirmBlock = async () => {
+    if (!userToBlock) return
+
+    setIsBlocking(true)
+    try {
+      const res = await userApi.updateStatus(userToBlock.id, {
+        status: isBlockAction ? 2 : 1, // 2: Banned, 1: Active
+        reason: isBlockAction 
+          ? 'Tài khoản bị khóa bởi quản trị viên'
+          : 'Tài khoản được mở khóa bởi quản trị viên'
+      })
+
+      if (res.isSuccess) {
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: isBlockAction ? 'Khóa tài khoản thành công' : 'Mở khóa tài khoản thành công',
+        })
+        setIsBlockModalOpen(false)
+        setUserToBlock(null)
+        // Refresh danh sách users
+        await fetchUsers({ silent: true })
+      } else {
+        const message = res.message || (isBlockAction 
+          ? 'Không thể khóa tài khoản. Vui lòng thử lại.'
+          : 'Không thể mở khóa tài khoản. Vui lòng thử lại.')
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : (isBlockAction
+        ? 'Không thể khóa tài khoản. Vui lòng thử lại.'
+        : 'Không thể mở khóa tài khoản. Vui lòng thử lại.')
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsBlocking(false)
+    }
   }
 
   const handleViewDetail = (userId: string) => {
@@ -330,7 +392,7 @@ export default function UsersPage() {
                   <TableHead className="w-[20%]">Email</TableHead>
                   <TableHead className="w-[12%]">Vai trò</TableHead>
                   <TableHead className="w-[12%]">Trạng thái</TableHead>
-                  {/* <TableHead className="w-[10%] text-right">Khóa</TableHead> */}
+                  <TableHead className="w-[10%] text-right">Khóa</TableHead>
                   <TableHead className="w-[16%] text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -356,7 +418,7 @@ export default function UsersPage() {
                       <TableHead className="w-[20%] text-left">Email</TableHead>
                       <TableHead className="w-[12%] text-left">Vai trò</TableHead>
                       <TableHead className="w-[12%] text-left">Trạng thái</TableHead>
-                      {/* <TableHead className="w-[10%] text-right">Khóa</TableHead> */}
+                      <TableHead className="w-[10%] text-right">Khóa</TableHead>
                       <TableHead className="w-[16%] text-center">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -372,20 +434,20 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
-                        {/* <TableCell className="text-right">
+                        <TableCell className="text-center">
                           <label className="inline-flex items-center gap-2 cursor-pointer select-none justify-end">
                             <input
                               type="checkbox"
                               className="peer sr-only"
                               checked={!!blockedMap[user.id]}
-                              onChange={(e) => toggleBlocked(user.id, e.target.checked)}
+                              onChange={(e) => toggleBlocked(user, e.target.checked)}
                             />
-                            <span className={`w-10 h-6 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
+                            <span className={`w-10 h-6 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-green-500'} relative transition-colors`} aria-hidden="true">
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
                             </span>
                             <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Blocked' : 'Active'}</span>
                           </label>
-                        </TableCell> */}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Button
                             variant="outline"
@@ -424,12 +486,17 @@ export default function UsersPage() {
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input type="checkbox" className="peer sr-only" checked={!!blockedMap[user.id]} onChange={(e) => toggleBlocked(user.id, e.target.checked)} />
-                      <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-gray-300'} relative transition-colors`} aria-hidden="true">
-                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
-                      </span>
-                      <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
-                    </label>
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={!!blockedMap[user.id]}
+                          onChange={(e) => toggleBlocked(user, e.target.checked)}
+                        />
+                        <span className={`w-9 h-5 rounded-full ${blockedMap[user.id] ? 'bg-rose-500' : 'bg-green-500'} relative transition-colors`} aria-hidden="true">
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${blockedMap[user.id] ? 'translate-x-4' : ''}`} />
+                        </span>
+                        <span className="text-xs text-gray-600">{blockedMap[user.id] ? 'Đã khóa' : 'Đang hoạt động'}</span>
+                      </label>
                       <Button
                         variant="outline"
                         size="sm"
@@ -475,6 +542,61 @@ export default function UsersPage() {
           )}
         </div>
       </Card>
+
+      {/* Dialog xác nhận khóa/mở khóa tài khoản */}
+      <Dialog open={isBlockModalOpen} onOpenChange={setIsBlockModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`text-xl font-semibold ${isBlockAction ? 'text-red-600' : 'text-green-600'}`}>
+              {isBlockAction ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-700 mb-2">
+                {isBlockAction 
+                  ? 'Bạn có chắc chắn muốn khóa tài khoản của người dùng này?'
+                  : 'Bạn có chắc chắn muốn mở khóa tài khoản của người dùng này?'}
+              </p>
+              {userToBlock && (
+                <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                  <p className="text-sm font-medium text-gray-900">{userToBlock.fullName}</p>
+                  <p className="text-xs text-gray-600">{userToBlock.email}</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                {isBlockAction
+                  ? 'Tài khoản sẽ bị chuyển sang trạng thái "Banned" và không thể đăng nhập.'
+                  : 'Tài khoản sẽ được chuyển sang trạng thái "Active" và có thể đăng nhập lại.'}
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsBlockModalOpen(false)
+                  setUserToBlock(null)
+                }}
+                disabled={isBlocking}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleConfirmBlock}
+                disabled={isBlocking}
+                className={isBlockAction 
+                  ? 'text-red-600 border-red-600 hover:bg-red-50'
+                  : 'text-green-600 border-green-600 hover:bg-green-50'}
+              >
+                {isBlocking 
+                  ? (isBlockAction ? 'Đang khóa...' : 'Đang mở khóa...')
+                  : (isBlockAction ? 'Xác nhận khóa' : 'Xác nhận mở khóa')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog hiển thị chi tiết user */}
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
@@ -558,6 +680,43 @@ export default function UsersPage() {
                         <p className="text-sm font-semibold text-slate-900">{selectedUser.reputationScore}</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tài liệu xác minh */}
+              {selectedUser.verifications && selectedUser.verifications.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Tài liệu xác minh
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedUser.verifications.map((verification) => (
+                      <div key={verification.id} className="rounded-2xl bg-white p-4 border border-slate-200">
+                        <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                          {verification.documentType === 0 ? 'CCCD mặt trước' : verification.documentType === 1 ? 'CCCD mặt sau' : 'Giấy phép lái xe'}
+                        </p>
+                        <div className="aspect-[16/10] bg-gray-100 rounded-lg overflow-hidden mb-2">
+                          <img
+                            src={verification.url}
+                            alt={verification.documentType === 0 ? 'CCCD mặt trước' : 'CCCD mặt sau'}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                              const parent = target.parentElement
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-gray-400">Không thể tải hình ảnh</div>'
+                              }
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Tải lên: {formatDate(verification.createdAt)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

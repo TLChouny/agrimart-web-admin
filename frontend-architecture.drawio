@@ -1,0 +1,184 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="FE-Architecture" name="Frontend Architecture">
+    <mxGraphModel dx="1510" dy="804" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Browser / FE Container -->
+        <mxCell id="browser-container" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="280" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="browser-label" value="FrontEnd (React/Next.js)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=16" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="260" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Inside FE Components -->
+        <mxCell id="pages" value="Pages / Routes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="components" value="UI Components + Tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="170" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="state" value="State Mgmt (UI/Form)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="240" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="query" value="Query Cache (React Query/SWR)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="310" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="auth" value="Auth Provider + Guards" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="380" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="form" value="Form/Validation (Yup/Zod)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="450" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="toast" value="Toast/Logger (Sentry)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="520" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="socket-client" value="WebSocket/SignalR Client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="590" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-client" value="API Client (Axios/Fetch)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="660" width="240" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- API Gateway -->
+        <mxCell id="apigw" value="API GATEWAY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;fontStyle=1;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="420" y="300" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Realtime Hub -->
+        <mxCell id="ws" value="Realtime Hub&#xa;(WS/SignalR)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontStyle=1;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="420" y="420" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Cloudinary CDN -->
+        <mxCell id="cloudinary" value="Cloudinary CDN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontStyle=1;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="420" y="180" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend Services -->
+        <mxCell id="services-container" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="40" width="280" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="services-label" value="Backend Services" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=16" vertex="1" parent="1">
+          <mxGeometry x="730" y="50" width="260" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="identity" value="Identity API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="100" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="farm" value="Farm API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="180" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="auction" value="Auction API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="260" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="notification" value="Notification API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="340" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="payment" value="Payment API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="420" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="file-storage" value="File Storage API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="500" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Frontend to API Gateway (HTTPS) -->
+        <mxCell id="e1" value="HTTPS Request" edge="1" parent="1" source="api-client" target="apigw" style="endArrow=block;startArrow=block;strokeColor=#d79b00;strokeWidth=2;fontSize=12;fontColor=#d79b00;labelBackgroundColor=#ffffff">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1-response" value="---HTTP Response" edge="1" parent="1" source="apigw" target="api-client" style="endArrow=block;startArrow=block;dashed=1;strokeColor=#d79b00;strokeWidth=2;fontSize=12;fontColor=#d79b00;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="685" as="sourcePoint"/>
+            <mxPoint x="520" y="340" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="320" y="685"/>
+              <mxPoint x="320" y="340"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Edges: Frontend to Realtime Hub (WebSocket) -->
+        <mxCell id="e2" value="WS Request" edge="1" parent="1" source="socket-client" target="ws" style="endArrow=block;startArrow=block;strokeColor=#d6b656;strokeWidth=2;fontSize=12;fontColor=#d6b656;labelBackgroundColor=#ffffff">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2-response" value="---WS Response" edge="1" parent="1" source="ws" target="socket-client" style="endArrow=block;startArrow=block;dashed=1;strokeColor=#d6b656;strokeWidth=2;fontSize=12;fontColor=#d6b656;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="460" as="sourcePoint"/>
+            <mxPoint x="60" y="615" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="320" y="460"/>
+              <mxPoint x="320" y="615"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Edges: Frontend to Cloudinary (Direct) -->
+        <mxCell id="e3" value="Direct Upload/Asset" edge="1" parent="1" source="components" target="cloudinary" style="endArrow=block;startArrow=block;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=12;fontColor=#9673a6;labelBackgroundColor=#ffffff">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: API Gateway to Backend Services -->
+        <mxCell id="e4" edge="1" parent="1" source="apigw" target="identity" style="endArrow=block;strokeColor=#d79b00;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="apigw" target="farm" style="endArrow=block;strokeColor=#d79b00;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="apigw" target="auction" style="endArrow=block;strokeColor=#d79b00;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="apigw" target="notification" style="endArrow=block;strokeColor=#d79b00;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="apigw" target="payment" style="endArrow=block;strokeColor=#d79b00;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="apigw" target="file-storage" style="endArrow=block;strokeColor=#d79b00;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Realtime Hub to Services (dashed) -->
+        <mxCell id="e10" edge="1" parent="1" source="ws" target="auction" style="endArrow=block;dashed=1;strokeColor=#d6b656;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="ws" target="notification" style="endArrow=block;dashed=1;strokeColor=#d6b656;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: File Storage to Cloudinary (dashed) -->
+        <mxCell id="e12" edge="1" parent="1" source="file-storage" target="cloudinary" style="endArrow=block;dashed=1;strokeColor=#9673a6;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="530"/>
+              <mxPoint x="860" y="220"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Internal connections within FE -->
+        <mxCell id="e13" edge="1" parent="1" source="pages" target="components" style="endArrow=block;startArrow=block;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;opacity=50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="components" target="state" style="endArrow=block;startArrow=block;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;opacity=50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="query" target="api-client" style="endArrow=block;startArrow=block;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;opacity=50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="auth" target="api-client" style="endArrow=block;startArrow=block;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;opacity=50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="form" target="api-client" style="endArrow=block;startArrow=block;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;opacity=50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="socket-client" target="query" style="endArrow=block;startArrow=block;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;opacity=50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+

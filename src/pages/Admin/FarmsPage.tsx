@@ -6,17 +6,23 @@ import { Input } from '../../components/ui/input'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { farmApi } from '../../services/api/farmApi'
+import { userApi } from '../../services/api/userApi'
 import { ROUTES } from '../../constants'
-import type { Farm } from '../../types/api'
+import type { Farm, User as ApiUser } from '../../types/api'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FARM_MESSAGES, TOAST_TITLES } from '../../services/constants/messages'
 import { Search, RefreshCw, LandPlot as FarmIcon, Eye } from 'lucide-react'
+
+// Cache users data để tránh fetch lại nhiều lần
+let usersCache: { data: Record<string, ApiUser>; timestamp: number } | null = null
+const USERS_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export default function FarmsPage() {
   const navigate = useNavigate()
   const [farms, setFarms] = useState<Farm[]>([])
   const [isLoadingFarms, setIsLoadingFarms] = useState(false)
   const [cropCounts, setCropCounts] = useState<Record<string, number>>({})
+  const [_isLoadingCrops, setIsLoadingCrops] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const FARM_PAGE_SIZE = 10
   const [farmPage, setFarmPage] = useState(1)
@@ -28,6 +34,44 @@ export default function FarmsPage() {
     navigate(`${ROUTES.ADMIN_CROPS}?farmId=${farmId}`)
   }
 
+  // Lazy load crop counts để không block UI
+  const loadCropCounts = useCallback(async (farmsList: Farm[]) => {
+    setIsLoadingCrops(true)
+    try {
+      // Batch requests với Promise.all nhưng giới hạn số lượng đồng thời
+      const BATCH_SIZE = 5
+      const results: Array<[string, number]> = []
+      
+      for (let i = 0; i < farmsList.length; i += BATCH_SIZE) {
+        const batch = farmsList.slice(i, i + BATCH_SIZE)
+        const batchResults = await Promise.all(
+          batch.map(async (farm) => {
+            try {
+              const cropsRes = await farmApi.getCropsByFarmId(farm.id)
+              const count = cropsRes.isSuccess && Array.isArray(cropsRes.data) ? cropsRes.data.length : 0
+              return [farm.id, count] as const
+            } catch {
+              return [farm.id, 0] as const
+            }
+          })
+        )
+        results.push(...batchResults.map(([id, count]) => [id, count] as [string, number]))
+        
+        // Cập nhật UI từng batch để responsive hơn
+        const countsMap = Object.fromEntries(results)
+        setCropCounts(prev => ({ ...prev, ...countsMap }))
+      }
+    } catch (err) {
+      console.error('Lỗi khi lấy số lượng crop cho các nông trại:', err)
+      toast({
+        title: TOAST_TITLES.INFO,
+        description: FARM_MESSAGES.CROP_COUNT_ERROR,
+      })
+    } finally {
+      setIsLoadingCrops(false)
+    }
+  }, [toast])
+
   // API functions
   const fetchFarms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     setIsLoadingFarms(true)
@@ -35,36 +79,59 @@ export default function FarmsPage() {
     try {
       const response = await farmApi.getFarms()
       if (response.isSuccess && response.data) {
-        const convertedFarms: Farm[] = response.data.map(apiFarm => ({
-          id: apiFarm.id,
-          name: apiFarm.name,
-          owner: 'Chưa cập nhật',
-          location: 'Chưa cập nhật',
-          size: 'Chưa cập nhật',
-          type: 'Chưa cập nhật',
-          status: apiFarm.isActive ? 'active' : 'inactive',
-          createdAt: apiFarm.createdAt,
-          imageUrl: apiFarm.farmImage,
-        }))
+        // Fetch thông tin user với cache
+        let usersMap: Record<string, ApiUser> = {}
+        const now = Date.now()
+        
+        // Kiểm tra cache
+        if (usersCache && (now - usersCache.timestamp) < USERS_CACHE_TTL) {
+          usersMap = usersCache.data
+        } else {
+          // Fetch từ API nếu cache hết hạn hoặc chưa có
+          try {
+            const usersResponse = await userApi.list()
+            if (usersResponse.isSuccess) {
+              const payload = usersResponse.data as ApiUser[] | { items: ApiUser[] }
+              const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
+              usersMap = Object.fromEntries(apiUsers.map(user => [user.id, user]))
+              // Cập nhật cache
+              usersCache = { data: usersMap, timestamp: now }
+            }
+          } catch (err) {
+            console.error('Lỗi khi lấy thông tin người dùng:', err)
+            // Fallback to cache nếu có
+            if (usersCache) {
+              usersMap = usersCache.data
+            }
+          }
+        }
+
+        // Map farms với thông tin user
+        const convertedFarms: Farm[] = response.data.map(apiFarm => {
+          const user = usersMap[apiFarm.userId]
+          const ownerName = user 
+            ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+            : 'Chưa xác định'
+          const location = user?.address 
+            ? `${user.address}${user.communes ? `, ${user.communes}` : ''}${user.province ? `, ${user.province}` : ''}`.trim()
+            : 'Chưa cập nhật'
+          
+          return {
+            id: apiFarm.id,
+            name: apiFarm.name,
+            owner: ownerName,
+            location: location || 'Chưa cập nhật',
+            size: 'Chưa cập nhật', // API không có field này
+            type: 'Chưa cập nhật', // API không có field này
+            status: apiFarm.isActive ? 'active' : 'inactive',
+            createdAt: apiFarm.createdAt,
+            imageUrl: apiFarm.farmImage,
+          }
+        })
         setFarms(convertedFarms)
 
-        try {
-          const results = await Promise.all(
-            convertedFarms.map(async (farm) => {
-              const cropsRes = await farmApi.getCropsByFarmId(farm.id)
-              const count = cropsRes.isSuccess && Array.isArray(cropsRes.data) ? cropsRes.data.length : 0
-              return [farm.id, count] as const
-            })
-          )
-          const countsMap = Object.fromEntries(results)
-          setCropCounts(countsMap)
-        } catch (err) {
-          console.error('Lỗi khi lấy số lượng crop cho các nông trại:', err)
-          toast({
-            title: TOAST_TITLES.INFO,
-            description: FARM_MESSAGES.CROP_COUNT_ERROR,
-          })
-        }
+        // Lazy load crop counts - chỉ load khi cần (không block UI)
+        loadCropCounts(convertedFarms)
 
         if (!silent) {
           toast({

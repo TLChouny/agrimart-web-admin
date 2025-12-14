@@ -7,7 +7,11 @@ export const userApi = {
   async list(): Promise<APIResponse<ListResponse<ApiUser> | ApiUser[]>> {
     // Some services return APIResponse<{ items: User[]; ... }>,
     // identity currently returns APIResponse<User[]>; support both.
-    return httpClient.get<ListResponse<ApiUser> | ApiUser[]>(ENDPOINTS.users.list, { cache: false })
+    // Cache users list với TTL 5 phút vì data không thay đổi thường xuyên
+    return httpClient.get<ListResponse<ApiUser> | ApiUser[]>(ENDPOINTS.users.list, { 
+      cache: true,
+      cacheTTL: 5 * 60 * 1000 // 5 minutes
+    })
   },
 
   async getById(userId: string): Promise<APIResponse<ApiUser>> {

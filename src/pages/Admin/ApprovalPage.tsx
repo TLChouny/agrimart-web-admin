@@ -30,6 +30,7 @@ const ApprovalPage: React.FC = () => {
   const [certificationRejectReason, setCertificationRejectReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [usersMap, setUsersMap] = useState<Record<string, ApiUser>>({})
   const { toast } = useToastContext()
 
   // Helper function to map User to PendingAccount
@@ -68,6 +69,7 @@ const ApprovalPage: React.FC = () => {
       submittedAt: user.createdAt,
       status: statusMap[user.status ?? 0] || 'pending',
       documents: [], // API doesn't provide documents yet
+      verifications: user.verifications || [],
     }
   }, [])
 
@@ -150,6 +152,28 @@ const ApprovalPage: React.FC = () => {
       if (res.isSuccess) {
         const certifications = Array.isArray(res.data) ? res.data : []
         setPendingCertifications(certifications)
+        
+        // Fetch users for certifications to get user names
+        if (certifications.length > 0) {
+          try {
+            const userIds = [...new Set(certifications.map(c => c.userId))]
+            const usersRes = await userApi.list()
+            if (usersRes.isSuccess) {
+              const payload = usersRes.data as ApiUser[] | { items: ApiUser[] }
+              const apiUsers: ApiUser[] = Array.isArray(payload) ? payload : (payload?.items ?? [])
+              const newUsersMap: Record<string, ApiUser> = {}
+              apiUsers.forEach(user => {
+                if (userIds.includes(user.id)) {
+                  newUsersMap[user.id] = user
+                }
+              })
+              setUsersMap(prev => ({ ...prev, ...newUsersMap }))
+            }
+          } catch (err) {
+            console.error('Lỗi khi tải thông tin người dùng:', err)
+          }
+        }
+        
         if (!silent) {
           toast({
             title: TOAST_TITLES.SUCCESS,
@@ -423,6 +447,7 @@ const ApprovalPage: React.FC = () => {
 
       <CertificationDetailModal
         certification={selectedCertification}
+        user={selectedCertification ? usersMap[selectedCertification.userId] : null}
         isOpen={isCertificationDetailModalOpen}
         onClose={handleCloseCertificationDetailModal}
         formatDate={formatApprovalDate}

@@ -55,27 +55,44 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
       {stats.map((stat, index) => {
         const isHighlight = !!stat.highlight
         return (
           <Card
             key={`stat-${stat.title}-${index}`}
-            className={`${isHighlight ? "bg-emerald-600 text-white" : "border-gray-200"}`}
+            className={`group relative overflow-hidden transition-all duration-300 ${
+              isHighlight 
+                ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-emerald-400" 
+                : "border-gray-200 hover:border-gray-300 bg-white"
+            }`}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-sm font-medium ${isHighlight ? "text-emerald-100" : "text-gray-600"}`}>
+            {!isHighlight && (
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            )}
+            <CardContent className="p-5 relative z-10">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-xs font-medium uppercase tracking-wide ${
+                  isHighlight ? "text-emerald-50" : "text-gray-500"
+                }`}>
                   {stat.title}
                 </h3>
-                <ArrowUpRight className={`w-4 h-4 ${isHighlight ? "text-emerald-200" : "text-gray-400"}`} />
+                <ArrowUpRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
+                  isHighlight ? "text-emerald-100" : "text-gray-400"
+                }`} />
               </div>
-              <div className="space-y-2">
-                <p className={`text-3xl font-bold ${isHighlight ? "text-white" : "text-gray-900"}`}>{stat.value}</p>
+              <div className="space-y-1.5">
+                <p className={`text-2xl font-bold ${
+                  isHighlight ? "text-white" : "text-gray-900"
+                }`}>
+                  {stat.value}
+                </p>
                 {stat.change && (
-                  <div className="flex items-center gap-1 text-xs">
+                  <div className="flex items-center gap-1.5 text-xs">
                     {trendIcon(stat.trend)}
-                    <span className={isHighlight ? "text-emerald-100" : "text-gray-500"}>{stat.change}</span>
+                    <span className={isHighlight ? "text-emerald-50" : "text-gray-500"}>
+                      {stat.change}
+                    </span>
                   </div>
                 )}
               </div>

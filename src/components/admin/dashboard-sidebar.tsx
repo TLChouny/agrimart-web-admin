@@ -62,9 +62,11 @@ export function DashboardSidebar() {
     <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-            <Wheat className="w-4 h-4 text-white" />
-          </div>
+          <img 
+            src="/assets/logo.png" 
+            alt="AgriMart Logo" 
+            className="w-8 h-8 object-contain"
+          />
           <span className="font-semibold text-lg">AgriMart Admin</span>
         </div>
       </div>

@@ -5,6 +5,15 @@ export interface RegisterRequestDTO { Email: string; Password: string; FirstName
 export interface CreateUserVerificationDTO { document?: File | null; documentType: DocumentType }
 export const DocumentType = { IdentityCard: 0, DrivingLicense: 1 } as const
 export type DocumentType = typeof DocumentType[keyof typeof DocumentType]
+
+export interface ApiUserVerification {
+  id: string
+  url: string
+  documentType: DocumentType
+  createdAt: string
+  updatedAt: string | null
+  userId: string
+}
 export interface User { 
   id: string
   firstName: string
@@ -25,6 +34,7 @@ export interface User {
     history: unknown[]
   }
   certifications?: ApiCertification[] | null
+  verifications?: ApiUserVerification[]
   roleId?: string
   roleObject?: Role
   emailConfirmed?: boolean

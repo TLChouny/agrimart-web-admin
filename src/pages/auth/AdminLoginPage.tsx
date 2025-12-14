@@ -157,9 +157,11 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
       <div className="w-full max-w-sm sm:max-w-md">
         <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
-            <div className="h-6 w-6 sm:h-8 sm:w-8 bg-green-600 rounded flex items-center justify-center">
-              <span className="text-white font-bold text-sm sm:text-base">A</span>
-            </div>
+            <img 
+              src="/assets/logo.png" 
+              alt="AgriMart Logo" 
+              className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
+            />
             <span className="text-xl sm:text-2xl font-bold text-green-800">AgriMart Admin</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Đăng nhập</h1>

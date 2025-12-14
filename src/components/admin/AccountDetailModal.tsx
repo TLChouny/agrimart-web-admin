@@ -2,7 +2,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Label } from "../ui/label"
-import { Mail, User, Calendar, MapPin, Award } from "lucide-react"
+import { User, Calendar, MapPin, Award, Eye } from "lucide-react"
 import type { PendingAccount } from "../../types/approval"
 import { certificationApi } from "../../services/api/certificationApi"
 import type { ApiCertification } from "../../types/api"
@@ -88,15 +88,55 @@ const AccountDetailModal: React.FC<AccountDetailModalProps> = ({ account, isOpen
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3"><Mail className="h-4 w-4 text-emerald-600" /></div>
-              Tài liệu đính kèm
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3"><Eye className="h-4 w-4 text-emerald-600" /></div>
+              Tài liệu xác minh
             </h3>
             <div className="bg-gray-50 rounded-lg p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-3"><h4 className="font-medium text-gray-900 text-sm">Giấy chứng nhận đất đai</h4><div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-emerald-400 transition-colors"><div className="aspect-[3/4] bg-gray-100 rounded-lg flex items-center justify-center mb-3"><img src="/land-certificate-document.jpg" alt="Giấy chứng nhận đất đai" className="w-full h-full object-cover rounded-lg" /></div><p className="text-xs text-gray-600 text-center">Giấy chứng nhận quyền sử dụng đất</p></div></div>
-                <div className="space-y-3"><h4 className="font-medium text-gray-900 text-sm">CCCD mặt trước</h4><div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-emerald-400 transition-colors"><div className="aspect-[16/10] bg-gray-100 rounded-lg flex items-center justify-center mb-3"><img src="/vietnam-id-card-front-side.jpg" alt="CCCD mặt trước" className="w-full h-full object-cover rounded-lg" /></div><p className="text-xs text-gray-600 text-center">Căn cước công dân - Mặt trước</p></div></div>
-                <div className="space-y-3"><h4 className="font-medium text-gray-900 text-sm">CCCD mặt sau</h4><div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-emerald-400 transition-colors"><div className="aspect-[16/10] bg-gray-100 rounded-lg flex items-center justify-center mb-3"><img src="/vietnam-id-card-back-side.jpg" alt="CCCD mặt sau" className="w-full h-full object-cover rounded-lg" /></div><p className="text-xs text-gray-600 text-center">Căn cước công dân - Mặt sau</p></div></div>
-              </div>
+              {account.verifications && account.verifications.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {account.verifications.map((verification) => (
+                    <div key={verification.id} className="space-y-3">
+                      <h4 className="font-medium text-gray-900 text-sm">
+                        {verification.documentType === 0 
+                          ? 'CCCD mặt trước' 
+                          : verification.documentType === 1 
+                          ? 'CCCD mặt sau' 
+                          : 'Giấy phép lái xe'}
+                      </h4>
+                      <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-emerald-400 transition-colors">
+                        <div className="aspect-[16/10] bg-gray-100 rounded-lg overflow-hidden mb-3">
+                          <img
+                            src={verification.url}
+                            alt={verification.documentType === 0 ? 'CCCD mặt trước' : 'CCCD mặt sau'}
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                              const parent = target.parentElement
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-gray-400">Không thể tải hình ảnh</div>'
+                              }
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 text-center">
+                          {verification.documentType === 0 
+                            ? 'Căn cước công dân - Mặt trước' 
+                            : 'Căn cước công dân - Mặt sau'}
+                        </p>
+                        <p className="text-xs text-gray-500 text-center mt-1">
+                          Tải lên: {formatDate(verification.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Eye className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600">Chưa có tài liệu xác minh nào</p>
+                </div>
+              )}
             </div>
           </div>
           <div>
