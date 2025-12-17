@@ -28,7 +28,14 @@ export function UserGrowthChart({ data, isLoading }: { data: Array<{ month: stri
         <p className="text-sm text-gray-600 mt-1">Số lượng tài khoản mới theo tháng</p>
       </CardHeader>
       <CardContent className="pt-6">
-        <LineChart data={data} isLoading={isLoading} xKey="month" yKey="accounts" height={300} />
+        <LineChart
+          data={data}
+          isLoading={isLoading}
+          xKey="month"
+          yKey="accounts"
+          height={300}
+          lines={[{ key: 'accounts', label: 'Tài khoản', color: '#8b5cf6' }]}
+        />
       </CardContent>
     </Card>
   )

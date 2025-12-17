@@ -111,6 +111,22 @@ export interface ApiHarvestImage {
   updatedAt: string | null
 }
 
+// Statistics - System Profit
+export interface SystemProfitPoint {
+  time: string
+  profit: number
+  income: number
+  expense: number
+}
+
+export interface SystemProfitSummary {
+  data: SystemProfitPoint[]
+  timeRange: 'daily' | 'monthly'
+  startDate: string
+  endDate: string
+  totalProfit: number
+}
+
 // Order related types
 export type OrderParty = 'farmer' | 'buyer'
 export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled'
@@ -444,8 +460,18 @@ export interface CreateLedgerDTO {
 }
 
 // Transaction related types
-export type TransactionType = 0 | 1 | 2 | 3 | 4 // 0: Unknown, 1: Payment, 2: Refund, 3: Transfer, 4: Escrow
+export type TransactionType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 // 0: Unknown, 1: PayEscrow, 2: ReleaseEscrow, 3: RefundEscrow, 4: AddFunds, 5: WithdrawFunds, 6: PayRemainingEscrow, 7: AuctionJoinFee, 8: RefundAuctionJoinFee, 9: AuctionFee
 export type PaymentType = 0 | 1 | 2 // 0: Unknown, 1: VNPay, 2: Wallet
+
+export interface ApiEscrow {
+  id: string
+  auctionId?: string | null
+  buyRequestId?: string | null
+  amount: number
+  status: string
+  createdAt: string
+  updatedAt: string | null
+}
 
 export interface ApiTransaction {
   id: string
@@ -460,6 +486,8 @@ export interface ApiTransaction {
   escrowId: string
   transactionType: TransactionType
   paymentType: PaymentType
+  relatedEntityId?: string | null
+  relatedEntityType?: string | null
   fromWalletId: string | null
   toWalletId: string | null
   signature: string
@@ -512,6 +540,59 @@ export interface ApiUserBankAccount {
   isPrimary: boolean
   createdAt: string
   updatedAt: string | null
+}
+
+// Dispute related types
+export type DisputeStatus = 0 | 1 | 2 | 3 | 4 // 0: Pending, 1: Approved, 2: Rejected, 3: InAdminReview, 4: Resolved
+
+export interface ApiDisputeAttachment {
+  id: string
+  url: string
+}
+
+export interface ApiDispute {
+  id: string
+  escrowId: string
+  actualAmount: number
+  actualGrade1Amount: number | null
+  actualGrade2Amount: number | null
+  actualGrade3Amount: number | null
+  disputeMessage: string
+  disputeStatus: DisputeStatus
+  resolvedAt: string | null
+  attachments: ApiDisputeAttachment[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PaginatedDisputes {
+  data: ApiDispute[]
+  pageNumber: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
+export interface ApiDisputeResolve {
+  id: string
+  disputeId: string
+  refundAmount: number
+  adminNote: string
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface UpdateDisputeStatusDTO {
+  status: 'InAdminReview' | 'Resolved'
+  adminNote?: string
+}
+
+export interface CreateDisputeResolveDTO {
+  disputeId: string
+  refundAmount: number
+  adminNote: string
 }
 
 // Certification related types

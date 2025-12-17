@@ -11,6 +11,7 @@ import type {
   RejectWithdrawRequestDTO,
   ApiUserBankAccount,
   ApiBank,
+  ApiEscrow,
 } from '../../types/api'
 
 export const walletApi = {
@@ -119,6 +120,19 @@ export const walletApi = {
   // Bank APIs
   async getBanks(): Promise<APIResponse<ApiBank[]>> {
     return httpClient.get<ApiBank[]>(ENDPOINTS.bank.list, { cache: false })
+  },
+
+  // Escrow APIs
+  async getEscrowById(id: string): Promise<APIResponse<ApiEscrow>> {
+    return httpClient.get<ApiEscrow>(ENDPOINTS.escrow.detail(id), { cache: false })
+  },
+
+  async getEscrowByAuctionId(auctionId: string): Promise<APIResponse<ApiEscrow>> {
+    return httpClient.get<ApiEscrow>(ENDPOINTS.escrow.byAuction(auctionId), { cache: false })
+  },
+
+  async getEscrowByBuyRequestId(buyRequestId: string): Promise<APIResponse<ApiEscrow>> {
+    return httpClient.get<ApiEscrow>(ENDPOINTS.escrow.byBuyRequest(buyRequestId), { cache: false })
   },
 }
 

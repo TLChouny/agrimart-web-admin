@@ -20,6 +20,7 @@ export const ROUTES = {
   ADMIN_PRODUCTS: '/admin/products',
   ADMIN_SHIPPERS: '/admin/shippers',
   ADMIN_WALLET: '/admin/wallet',
+  ADMIN_DISPUTES: '/admin/disputes',
   FARMER_DASHBOARD: '/farmer/dashboard',
   FARMER_FARMS: '/farmer/farms',
   FARMER_CROPS: '/farmer/crops',

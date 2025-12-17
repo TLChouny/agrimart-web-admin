@@ -10,11 +10,13 @@ import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { walletApi } from '../../services/api/walletApi'
 import { userApi } from '../../services/api/userApi'
-import type { ApiWallet, ApiLedger, WalletStatus, ApiWithdrawRequest, WithdrawRequestStatus, ApiUserBankAccount, User, ApiTransaction } from '../../types/api'
+import { auctionApi } from '../../services/api/auctionApi'
+import type { ApiWallet, ApiLedger, WalletStatus, ApiWithdrawRequest, WithdrawRequestStatus, ApiUserBankAccount, User, ApiTransaction, ApiEnglishAuction } from '../../types/api'
 import { formatCurrencyVND } from '../../utils/currency'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
 import { Wallet, RefreshCw, Search, Eye, CheckCircle2, XCircle, CircleCheck, Loader2, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const WALLET_STATUS_LABELS: Record<WalletStatus, string> = {
   0: 'Hoạt động',
@@ -42,6 +44,9 @@ const TRANSACTION_TYPE_LABELS: Record<number, string> = {
   4: 'Nạp tiền',
   5: 'Rút tiền',
   6: 'Thanh toán phần còn lại Escrow',
+  7: 'Phí tham gia đấu giá',
+  8: 'Hoàn phí tham gia đấu giá',
+  9: 'Phí đấu giá',
 }
 
 const getWalletStatusBadge = (status: WalletStatus) => {
@@ -82,8 +87,29 @@ const formatDateTime = (iso: string) => {
   })
 }
 
+// Clean description để loại bỏ ID auction và các UUID không cần thiết
+const cleanDescription = (description: string | null | undefined): string => {
+  if (!description) return '—'
+  
+  // Loại bỏ UUID pattern (8-4-4-4-12)
+  let cleaned = description.replace(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+    ''
+  )
+  
+  // Loại bỏ các pattern như "auction: {id}" hoặc "auctionId: {id}"
+  cleaned = cleaned.replace(/auction\s*:?\s*[0-9a-f-]+/gi, '')
+  cleaned = cleaned.replace(/auctionId\s*:?\s*[0-9a-f-]+/gi, '')
+  
+  // Loại bỏ các khoảng trắng thừa và dấu phẩy/cột thừa
+  cleaned = cleaned.replace(/\s*[,:]\s*/g, ' ').replace(/\s+/g, ' ').trim()
+  
+  return cleaned || '—'
+}
+
 export default function WalletPage() {
   const { toast } = useToastContext()
+  const navigate = useNavigate()
   // System wallet state
   const [wallet, setWallet] = useState<ApiWallet | null>(null)
   const [ledgers, setLedgers] = useState<ApiLedger[]>([])
@@ -123,6 +149,13 @@ export default function WalletPage() {
   const [transactionDetail, setTransactionDetail] = useState<ApiTransaction | null>(null)
   const [transactionDetailLoading, setTransactionDetailLoading] = useState<boolean>(false)
   const [showTransactionDetailModal, setShowTransactionDetailModal] = useState<boolean>(false)
+  const [fromWalletDetail, setFromWalletDetail] = useState<ApiWallet | null>(null)
+  const [toWalletDetail, setToWalletDetail] = useState<ApiWallet | null>(null)
+  const [fromUserDetail, setFromUserDetail] = useState<User | null>(null)
+  const [toUserDetail, setToUserDetail] = useState<User | null>(null)
+  const [partyInfoLoading, setPartyInfoLoading] = useState<boolean>(false)
+  const [relatedAuction, setRelatedAuction] = useState<ApiEnglishAuction | null>(null)
+  const [relatedEntityLoading, setRelatedEntityLoading] = useState<boolean>(false)
 
   // Fetch system wallet
   const fetchSystemWallet = useCallback(async () => {
@@ -449,6 +482,252 @@ export default function WalletPage() {
     await fetchWithdrawRequestDetail(request.id)
   }
 
+  // Load thông tin ví và người gửi / nhận cho 1 giao dịch
+  const loadTransactionParties = useCallback(
+    async (tx: ApiTransaction) => {
+      setFromWalletDetail(null)
+      setToWalletDetail(null)
+      setFromUserDetail(null)
+      setToUserDetail(null)
+
+      if (!tx.fromWalletId && !tx.toWalletId) return
+
+      try {
+        setPartyInfoLoading(true)
+
+        if (tx.fromWalletId) {
+          try {
+            const fromWalletRes = await walletApi.getWalletById(tx.fromWalletId)
+            if (fromWalletRes.isSuccess && fromWalletRes.data) {
+              setFromWalletDetail(fromWalletRes.data)
+
+              if (fromWalletRes.data.userId) {
+                const userRes = await userApi.getById(fromWalletRes.data.userId)
+                if (userRes.isSuccess && userRes.data) {
+                  setFromUserDetail(userRes.data)
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching from wallet/user:', err)
+          }
+        }
+
+        if (tx.toWalletId) {
+          try {
+            const toWalletRes = await walletApi.getWalletById(tx.toWalletId)
+            if (toWalletRes.isSuccess && toWalletRes.data) {
+              setToWalletDetail(toWalletRes.data)
+
+              if (toWalletRes.data.userId) {
+                const userRes = await userApi.getById(toWalletRes.data.userId)
+                if (userRes.isSuccess && userRes.data) {
+                  setToUserDetail(userRes.data)
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching to wallet/user:', err)
+          }
+        }
+      } finally {
+        setPartyInfoLoading(false)
+      }
+    },
+    []
+  )
+
+  // Load thông tin đối tượng liên quan (Auction/BuyRequest) dựa trên relatedEntityId, relatedEntityType hoặc escrowId
+  const loadRelatedEntityInfo = useCallback(
+    async (tx: ApiTransaction) => {
+      setRelatedAuction(null)
+
+      try {
+        setRelatedEntityLoading(true)
+
+        console.log('[loadRelatedEntityInfo] Transaction:', {
+          transactionType: tx.transactionType,
+          escrowId: tx.escrowId,
+          relatedEntityId: tx.relatedEntityId,
+          relatedEntityType: tx.relatedEntityType,
+        })
+
+        // Với giao dịch nhận cọc (type 1) và nhận tiền còn lại (type 6), dùng escrowId để lấy thông tin
+        if ((tx.transactionType === 1 || tx.transactionType === 6) && 
+            tx.escrowId && 
+            tx.escrowId !== '00000000-0000-0000-0000-000000000000') {
+          try {
+            console.log('[loadRelatedEntityInfo] Loading escrow:', tx.escrowId)
+            // Bước 1: Load escrow detail để lấy auctionId hoặc buyRequestId
+            const escrowRes = await walletApi.getEscrowById(tx.escrowId)
+            console.log('[loadRelatedEntityInfo] Escrow response:', escrowRes)
+            
+            if (escrowRes.isSuccess && escrowRes.data) {
+              const escrow = escrowRes.data
+              console.log('[loadRelatedEntityInfo] Escrow data:', escrow)
+              
+              // Bước 2: Nếu escrow có auctionId, gọi GET /escrow/auction/{auctionId}
+              if (escrow.auctionId && escrow.auctionId !== '00000000-0000-0000-0000-000000000000') {
+                try {
+                  console.log('[loadRelatedEntityInfo] Loading escrow by auctionId:', escrow.auctionId)
+                  const escrowByAuctionRes = await walletApi.getEscrowByAuctionId(escrow.auctionId)
+                  console.log('[loadRelatedEntityInfo] Escrow by auction response:', escrowByAuctionRes)
+                  
+                  // Sau đó load auction detail để hiển thị
+                  const auctionRes = await auctionApi.getEnglishAuctionById(escrow.auctionId)
+                  if (auctionRes.isSuccess && auctionRes.data) {
+                    console.log('[loadRelatedEntityInfo] Auction loaded successfully:', auctionRes.data)
+                    setRelatedAuction(auctionRes.data)
+                    return
+                  }
+                } catch (err) {
+                  console.error('[loadRelatedEntityInfo] Error fetching escrow/auction or auction:', err)
+                }
+              }
+              
+              // Bước 3: Nếu escrow có buyRequestId, gọi GET /escrow/buyrequest/{buyRequestId}
+              if (escrow.buyRequestId && escrow.buyRequestId !== '00000000-0000-0000-0000-000000000000') {
+                try {
+                  console.log('[loadRelatedEntityInfo] Loading escrow by buyRequestId:', escrow.buyRequestId)
+                  const escrowByBuyRequestRes = await walletApi.getEscrowByBuyRequestId(escrow.buyRequestId)
+                  console.log('[loadRelatedEntityInfo] Escrow by buyRequest response:', escrowByBuyRequestRes)
+                  
+                  // TODO: Load buyrequest detail khi có API
+                  // const buyRequestRes = await buyRequestApi.getById(escrow.buyRequestId)
+                  // ...
+                } catch (err) {
+                  console.error('[loadRelatedEntityInfo] Error fetching escrow/buyrequest:', err)
+                }
+              }
+              
+              // Fallback: Nếu không có auctionId/buyRequestId trong escrow, thử load auction trực tiếp từ escrowId
+              // (có thể escrowId chính là auctionId trong một số trường hợp)
+              if (!escrow.auctionId && !escrow.buyRequestId) {
+                console.log('[loadRelatedEntityInfo] Escrow does not have auctionId or buyRequestId, trying fallback')
+              }
+            } else {
+              console.warn('[loadRelatedEntityInfo] Escrow API failed:', escrowRes.message)
+            }
+          } catch (err) {
+            console.error('[loadRelatedEntityInfo] Error fetching escrow detail:', err)
+          }
+        }
+
+        // Nếu có relatedEntityId hợp lệ, thử load trực tiếp (cho các transaction type khác hoặc fallback)
+        if (tx.relatedEntityId && 
+            tx.relatedEntityId !== '00000000-0000-0000-0000-000000000000') {
+          // Xác định loại entity từ relatedEntityType hoặc suy đoán từ transactionType
+          const entityType = tx.relatedEntityType || 
+            (tx.transactionType === 7 || tx.transactionType === 8 || tx.transactionType === 9 ? 'Auction' : null)
+
+          // Nếu có relatedEntityType rõ ràng từ backend
+          if (entityType === 'Auction' && tx.relatedEntityId) {
+            try {
+              console.log('[loadRelatedEntityInfo] Loading auction from relatedEntityId:', tx.relatedEntityId)
+              const auctionRes = await auctionApi.getEnglishAuctionById(tx.relatedEntityId)
+              if (auctionRes.isSuccess && auctionRes.data) {
+                console.log('[loadRelatedEntityInfo] Auction loaded from relatedEntityId:', auctionRes.data)
+                setRelatedAuction(auctionRes.data)
+                return
+              }
+            } catch (err) {
+              console.error('[loadRelatedEntityInfo] Error fetching auction detail:', err)
+            }
+          }
+        }
+
+        // TODO: Thêm case cho BuyRequest khi có API
+        // if (entityType === 'BuyRequest' && tx.relatedEntityId) {
+        //   const buyRequestRes = await buyRequestApi.getById(tx.relatedEntityId)
+        //   ...
+        // }
+      } finally {
+        setRelatedEntityLoading(false)
+      }
+    },
+    []
+  )
+
+  // Open withdraw request detail directly from a transaction (using relatedEntityId)
+  const openWithdrawRequestDetailById = useCallback(
+    async (withdrawRequestId: string) => {
+      // Reset previous detail
+      setUserBankAccount(null)
+      setUserInfo(null)
+      setWalletInfo(null)
+
+      // Show modal immediately, data sẽ được fill sau khi fetch xong
+      setShowWithdrawRequestDetailModal(true)
+
+      try {
+        const res = await walletApi.getWithdrawRequestById(withdrawRequestId)
+        if (res.isSuccess && res.data) {
+          // Đồng bộ selected + detail để modal hiển thị đầy đủ
+          setSelectedWithdrawRequest(res.data)
+          setWithdrawRequestDetail(res.data)
+
+          // Load thêm thông tin liên quan (user, bank, wallet)
+          if (res.data.userId) {
+            try {
+              setUserInfoLoading(true)
+              const userRes = await userApi.getById(res.data.userId)
+              if (userRes.isSuccess && userRes.data) {
+                setUserInfo(userRes.data)
+              }
+            } catch (err) {
+              console.error('Error fetching user info:', err)
+            } finally {
+              setUserInfoLoading(false)
+            }
+          }
+
+          if (res.data.walletId) {
+            try {
+              setWalletInfoLoading(true)
+              const walletRes = await walletApi.getWalletById(res.data.walletId)
+              if (walletRes.isSuccess && walletRes.data) {
+                setWalletInfo(walletRes.data)
+              }
+            } catch (err) {
+              console.error('Error fetching wallet info:', err)
+            } finally {
+              setWalletInfoLoading(false)
+            }
+          }
+
+          if (res.data.userBankAccountId) {
+            try {
+              setBankAccountLoading(true)
+              const bankAccountRes = await walletApi.getUserBankAccountById(res.data.userBankAccountId)
+              if (bankAccountRes.isSuccess && bankAccountRes.data) {
+                setUserBankAccount(bankAccountRes.data)
+              }
+            } catch (err) {
+              console.error('Error fetching bank account:', err)
+            } finally {
+              setBankAccountLoading(false)
+            }
+          }
+        } else {
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: res.message || 'Không thể tải chi tiết yêu cầu rút tiền',
+            variant: 'destructive',
+          })
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải chi tiết yêu cầu rút tiền'
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+      }
+    },
+    [toast]
+  )
+
   const filteredLedgers = useMemo(() => {
     let filtered = ledgers
 
@@ -698,8 +977,8 @@ export default function WalletPage() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="truncate max-w-[300px]" title={ledger.description}>
-                          {ledger.description || '—'}
+                        <div className="truncate max-w-[300px]" title={cleanDescription(ledger.description)}>
+                          {cleanDescription(ledger.description)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -723,6 +1002,10 @@ export default function WalletPage() {
                               const res = await walletApi.getTransactionById(ledger.transactionId)
                               if (res.isSuccess && res.data) {
                                 setTransactionDetail(res.data)
+                                // Load thêm thông tin ví + user gửi/nhận cho giao dịch này
+                                await loadTransactionParties(res.data)
+                                // Load thông tin đối tượng liên quan (Auction/BuyRequest)
+                                await loadRelatedEntityInfo(res.data)
                               }
                             } catch (err) {
                               toast({
@@ -910,7 +1193,7 @@ export default function WalletPage() {
                 )}
               </div>
             )}
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end gap-3 pt-4">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -918,13 +1201,14 @@ export default function WalletPage() {
                   setSelectedWithdrawRequest(null)
                 }}
                 disabled={Boolean(processingRequest)}
+                className="min-h-[40px] px-4"
               >
                 Hủy
               </Button>
               <Button
                 onClick={handleApproveWithdrawRequest}
                 disabled={Boolean(processingRequest)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white min-h-[40px] px-4"
               >
                 {processingRequest === selectedWithdrawRequest?.id ? (
                   <>
@@ -965,7 +1249,7 @@ export default function WalletPage() {
                 )}
               </div>
             )}
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end gap-3 pt-4">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -973,13 +1257,14 @@ export default function WalletPage() {
                   setSelectedWithdrawRequest(null)
                 }}
                 disabled={Boolean(processingRequest)}
+                className="min-h-[40px] px-4"
               >
                 Hủy
               </Button>
               <Button
                 onClick={handleCompleteWithdrawRequest}
                 disabled={Boolean(processingRequest)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white min-h-[40px] px-4"
               >
                 {processingRequest === selectedWithdrawRequest?.id ? (
                   <>
@@ -1033,7 +1318,7 @@ export default function WalletPage() {
                 rows={4}
               />
             </div>
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end gap-3 pt-4">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1042,14 +1327,14 @@ export default function WalletPage() {
                   setSelectedWithdrawRequest(null)
                 }}
                 disabled={Boolean(processingRequest)}
+                className="min-h-[40px] px-4"
               >
                 Hủy
               </Button>
               <Button
-                variant="outline"
                 onClick={handleConfirmReject}
                 disabled={Boolean(processingRequest)}
-                className="text-red-600 border-red-600 hover:bg-red-50"
+                className="bg-red-600 hover:bg-red-700 text-white min-h-[40px] px-4"
               >
                 {processingRequest === selectedWithdrawRequest?.id ? (
                   <>
@@ -1215,13 +1500,21 @@ export default function WalletPage() {
       </Dialog>
 
       {/* Transaction Detail Modal */}
-      <Dialog open={showTransactionDetailModal} onOpenChange={(open) => {
-        if (!open) {
-          setShowTransactionDetailModal(false)
-          setSelectedTransactionId(null)
-          setTransactionDetail(null)
-        }
-      }}>
+      <Dialog
+        open={showTransactionDetailModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowTransactionDetailModal(false)
+            setSelectedTransactionId(null)
+            setTransactionDetail(null)
+            setFromWalletDetail(null)
+            setToWalletDetail(null)
+            setFromUserDetail(null)
+            setToUserDetail(null)
+            setRelatedAuction(null)
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-4 border-b border-gray-200">
             <DialogTitle className="text-2xl font-semibold text-gray-900">
@@ -1301,6 +1594,14 @@ export default function WalletPage() {
                           : '—'}
                       </p>
                     </div>
+                    {transactionDetail.relatedEntityId && (
+                      <div className="col-span-2">
+                        <Label className="text-sm font-medium text-gray-700">Related Entity ID</Label>
+                        <p className="text-xs font-mono text-gray-700 mt-1 break-all">
+                          {transactionDetail.relatedEntityId}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Thời gian giao dịch</Label>
@@ -1322,6 +1623,190 @@ export default function WalletPage() {
                       <p className="text-sm text-gray-900 mt-1">
                         {formatDateTime(transactionDetail.updatedAt)}
                       </p>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-gray-200 mt-2">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Thông tin người gửi / người nhận
+                    </Label>
+                    {partyInfoLoading ? (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang tải thông tin ví và người dùng...
+                      </div>
+                    ) : (
+                      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Người gửi</p>
+                          <p className="font-medium text-gray-900">
+                            {fromUserDetail
+                              ? `${fromUserDetail.firstName} ${fromUserDetail.lastName}`
+                              : fromWalletDetail
+                              ? `Wallet ${fromWalletDetail.id}`
+                              : transactionDetail.fromWalletId || '—'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Wallet ID:{' '}
+                            <span className="font-mono">
+                              {fromWalletDetail?.id || transactionDetail.fromWalletId || '—'}
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Người nhận</p>
+                          <p className="font-medium text-gray-900">
+                            {toUserDetail
+                              ? `${toUserDetail.firstName} ${toUserDetail.lastName}`
+                              : toWalletDetail
+                              ? `Wallet ${toWalletDetail.id}`
+                              : transactionDetail.toWalletId || '—'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Wallet ID:{' '}
+                            <span className="font-mono">
+                              {toWalletDetail?.id || transactionDetail.toWalletId || '—'}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hiển thị đối tượng liên quan nếu có relatedEntityId hoặc escrowId (cho type 1, 6) */}
+                  {(transactionDetail.relatedEntityId || 
+                    ((transactionDetail.transactionType === 1 || transactionDetail.transactionType === 6) && 
+                     transactionDetail.escrowId && 
+                     transactionDetail.escrowId !== '00000000-0000-0000-0000-000000000000')) && (
+                    <div className="pt-2 border-t border-gray-200 mt-2 space-y-3">
+                      <Label className="text-sm font-medium text-gray-700">Đối tượng liên quan</Label>
+                      
+                      {relatedEntityLoading ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Đang tải thông tin đối tượng liên quan...
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-sm">
+                            <p className="text-gray-700">
+                              Loại:{' '}
+                              <span className="font-medium">
+                                {transactionDetail.relatedEntityType || 
+                                  (relatedAuction ? 'Auction' : 
+                                  (transactionDetail.transactionType === 7 || transactionDetail.transactionType === 8 || transactionDetail.transactionType === 9 
+                                    ? 'Auction' 
+                                    : transactionDetail.transactionType === 1 || transactionDetail.transactionType === 6
+                                    ? 'Auction/BuyRequest'
+                                    : '—'))}
+                              </span>
+                            </p>
+                            {(transactionDetail.relatedEntityId && 
+                              transactionDetail.relatedEntityId !== '00000000-0000-0000-0000-000000000000') ? (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Related Entity ID:{' '}
+                                <span className="font-mono break-all">
+                                  {transactionDetail.relatedEntityId}
+                                </span>
+                              </p>
+                            ) : null}
+                            {transactionDetail.escrowId && 
+                             transactionDetail.escrowId !== '00000000-0000-0000-0000-000000000000' && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Escrow ID:{' '}
+                                <span className="font-mono break-all">
+                                  {transactionDetail.escrowId}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Hiển thị thông tin chi tiết Auction nếu đã load được */}
+                          {relatedAuction && (
+                            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 space-y-2">
+                              <p className="text-sm font-semibold text-emerald-900">
+                                Phiên đấu giá #{relatedAuction.sessionCode}
+                              </p>
+                              <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
+                                <div>
+                                  <span className="text-gray-500">Giá khởi điểm:</span>{' '}
+                                  <span className="font-medium">{formatCurrencyVND(relatedAuction.startingPrice)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Giá hiện tại:</span>{' '}
+                                  <span className="font-medium">
+                                    {relatedAuction.currentPrice ? formatCurrencyVND(relatedAuction.currentPrice) : '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Trạng thái:</span>{' '}
+                                  <Badge variant="outline" className="text-xs">
+                                    {relatedAuction.status}
+                                  </Badge>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Ngày kết thúc:</span>{' '}
+                                  <span className="font-medium">
+                                    {formatDateTime(relatedAuction.endDate)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Nút điều hướng - hiển thị nếu đã load được auction hoặc có relatedEntityType là Auction */}
+                          {(relatedAuction || 
+                            transactionDetail.relatedEntityType === 'Auction' || 
+                            transactionDetail.transactionType === 7 || 
+                            transactionDetail.transactionType === 8 || 
+                            transactionDetail.transactionType === 9 ||
+                            (transactionDetail.transactionType === 1 || transactionDetail.transactionType === 6)) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-emerald-700 border-emerald-600 hover:bg-emerald-50"
+                              onClick={() => {
+                                if (!transactionDetail.relatedEntityId) return
+                                navigate(`/admin/auctions/${transactionDetail.relatedEntityId}`)
+                              }}
+                            >
+                              Đi tới phiên đấu giá
+                            </Button>
+                          )}
+
+                          {/* TODO: Thêm case cho BuyRequest khi có API */}
+                          {transactionDetail.relatedEntityType === 'BuyRequest' && (
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <p className="text-sm text-gray-700">
+                                Yêu cầu mua ID: <span className="font-mono">{transactionDetail.relatedEntityId}</span>
+                              </p>
+                              {/* TODO: Load và hiển thị chi tiết BuyRequest khi có API */}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {transactionDetail.relatedEntityId &&
+                    (transactionDetail.relatedEntityType === 'WithdrawRequest' ||
+                      transactionDetail.transactionType === 5) && (
+                    <div className="pt-2 border-t border-gray-200 mt-2">
+                      <p className="text-sm text-gray-700 mb-2">
+                        Giao dịch này liên quan tới một yêu cầu rút tiền. Bạn có thể mở chi tiết để xem đầy đủ thông tin.
+                      </p>
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => {
+                          setShowTransactionDetailModal(false)
+                          if (transactionDetail.relatedEntityId) {
+                            openWithdrawRequestDetailById(transactionDetail.relatedEntityId)
+                          }
+                        }}
+                      >
+                        Xem chi tiết yêu cầu rút tiền
+                      </Button>
                     </div>
                   )}
                 </div>

@@ -140,6 +140,25 @@ export const ENDPOINTS = {
     approve: (id: string) => `/api/certification/${id}/approve`,
     byUser: (userId: string) => `/api/certification/user/${userId}`,
   },
+  statistics: {
+    systemProfit: '/api/payment-service/statistics/system-profit',
+    systemProfitCurrentMonth: '/api/payment-service/statistics/system-profit/current-month',
+    systemProfitCurrentYear: '/api/payment-service/statistics/system-profit/current-year',
+  },
+  dispute: {
+    list: '/api/payment-service/dispute',
+    pending: '/api/payment-service/dispute/pending',
+    detail: (id: string) => `/api/payment-service/dispute/${id}`,
+    updateStatus: (id: string) => `/api/payment-service/dispute/${id}/status`,
+    createResolve: '/api/payment-service/dispute/resolve',
+    resolveByDisputeId: (disputeId: string) =>
+      `/api/payment-service/dispute/resolve/dispute/${disputeId}`,
+  },
+  escrow: {
+    detail: (id: string) => `/api/payment-service/escrow/${id}`,
+    byAuction: (auctionId: string) => `/api/payment-service/escrow/auction/${auctionId}`,
+    byBuyRequest: (buyRequestId: string) => `/api/payment-service/escrow/buyrequest/${buyRequestId}`,
+  },
 } as const
 
 export * from './messages'

@@ -8,7 +8,7 @@ import type { PendingAccount } from "../../types/approval"
 interface ApprovalTableProps {
   accounts: PendingAccount[]
   onViewAccount: (account: PendingAccount) => void
-  onApproveAccount: (accountId: string) => void
+  onApproveAccount: (account: PendingAccount) => void
   onRejectAccount: (account: PendingAccount) => void
   isApproving: boolean
   isRejecting: boolean
@@ -52,16 +52,35 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({ accounts, onViewAccount, 
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {getStatusBadge(account.status)}
-              <Button variant="outline" size="sm" onClick={() => onViewAccount(account)} className="flex items-center gap-2">
-                <Eye className="w-4 h-4" />Chi tiết
+              <Button 
+                size="sm"
+                variant="outline" 
+                onClick={() => onViewAccount(account)} 
+                className="h-8 px-3 text-xs"
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                Chi tiết
               </Button>
               {account.status === "pending" && (
                 <>
-                  <Button size="sm" onClick={() => onApproveAccount(account.id)} disabled={isApproving || isRejecting} className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2">
-                    <Check className="w-4 h-4" />{isApproving ? "Đang duyệt..." : "Duyệt"}
+                  <Button 
+                    size="sm"
+                    onClick={() => onApproveAccount(account)} 
+                    disabled={isApproving || isRejecting} 
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                  >
+                    <Check className="w-3 h-3 mr-1" />
+                    {isApproving ? "Đang duyệt..." : "Duyệt"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onRejectAccount(account)} disabled={isApproving || isRejecting} className="text-red-600 border-red-600 hover:bg-red-50 flex items-center gap-2">
-                    <X className="w-4 h-4" />Từ chối
+                  <Button 
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRejectAccount(account)} 
+                    disabled={isApproving || isRejecting} 
+                    className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600 text-xs"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Từ chối
                   </Button>
                 </>
               )}

@@ -1,36 +1,39 @@
 import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
-import { Label } from '../ui/label'
-import { Textarea } from '../ui/textarea'
-import { XCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import type { PendingAccount } from '../../types/approval'
 
-interface RejectModalProps {
+interface ApproveAccountModalProps {
   account: PendingAccount | null
   isOpen: boolean
   onClose: () => void
-  rejectReason: string
-  setRejectReason: (reason: string) => void
-  onConfirmReject: (accountId: string, reason: string) => void
-  isRejecting: boolean
+  onConfirmApprove: (accountId: string) => void
+  isApproving: boolean
 }
 
-const RejectModal: React.FC<RejectModalProps> = ({ account, isOpen, onClose, rejectReason, setRejectReason, onConfirmReject, isRejecting }) => {
-  const handleSubmit = () => {
-    if (account && rejectReason.trim()) {
-      onConfirmReject(account.id, rejectReason.trim())
+const ApproveAccountModal: React.FC<ApproveAccountModalProps> = ({
+  account,
+  isOpen,
+  onClose,
+  onConfirmApprove,
+  isApproving,
+}) => {
+  const handleConfirm = () => {
+    if (account) {
+      onConfirmApprove(account.id)
     }
   }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-red-600">Xác nhận từ chối tài khoản</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-emerald-600">Xác nhận duyệt tài khoản</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-gray-700">
-            Bạn có chắc chắn muốn từ chối tài khoản này? Hành động này không thể hoàn tác.
+            Bạn có chắc chắn muốn duyệt tài khoản này? Tài khoản sẽ được chuyển sang trạng thái "Đã duyệt" và người dùng có thể sử dụng tài khoản này.
           </p>
           {account && (
             <div className="rounded-lg bg-gray-50 p-3 space-y-1">
@@ -47,33 +50,29 @@ const RejectModal: React.FC<RejectModalProps> = ({ account, isOpen, onClose, rej
               )}
             </div>
           )}
-          <div>
-            <Label htmlFor="rejectReason" className="text-sm font-medium text-gray-700">Lý do từ chối *</Label>
-            <Textarea id="rejectReason" placeholder="Nhập lý do từ chối tài khoản này..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="mt-1" rows={4} />
-          </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="outline"
               onClick={onClose}
-              disabled={isRejecting}
+              disabled={isApproving}
               className="min-h-[40px] px-4"
             >
               Hủy
             </Button>
             <Button
-              onClick={handleSubmit}
-              disabled={!rejectReason.trim() || isRejecting}
-              className="bg-red-600 hover:bg-red-700 text-white min-h-[40px] px-4"
+              onClick={handleConfirm}
+              disabled={isApproving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white min-h-[40px] px-4"
             >
-              {isRejecting ? (
+              {isApproving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Đang từ chối...
+                  Đang duyệt...
                 </>
               ) : (
                 <>
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Xác nhận từ chối
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Xác nhận duyệt
                 </>
               )}
             </Button>
@@ -84,5 +83,5 @@ const RejectModal: React.FC<RejectModalProps> = ({ account, isOpen, onClose, rej
   )
 }
 
-export default RejectModal
+export default ApproveAccountModal
 

@@ -3,8 +3,10 @@ import type { PendingAccount } from '../../types/approval'
 import ApprovalTabs from '../../components/admin/ApprovalTabs'
 import AccountDetailModal from '../../components/admin/AccountDetailModal'
 import RejectModal from '../../components/admin/RejectModal'
+import ApproveAccountModal from '../../components/admin/ApproveAccountModal'
 import CertificationDetailModal from '../../components/admin/CertificationDetailModal'
 import RejectCertificationModal from '../../components/admin/RejectCertificationModal'
+import ApproveCertificationModal from '../../components/admin/ApproveCertificationModal'
 import { formatApprovalDate, getApprovalStatusConfig } from '../../utils/approvalUtils'
 import { Badge } from '../../components/ui/badge'
 import { userApi } from '../../services/api/userApi'
@@ -16,8 +18,11 @@ import { TOAST_TITLES, APPROVAL_MESSAGES, CERTIFICATION_MESSAGES } from '../../s
 
 const ApprovalPage: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<PendingAccount | null>(null)
+  const [selectedAccountForAction, setSelectedAccountForAction] = useState<PendingAccount | null>(null)
+  const [isAccountDetailModalOpen, setIsAccountDetailModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [isApproveAccountModalOpen, setIsApproveAccountModalOpen] = useState(false)
   const [isApproving, setIsApproving] = useState(false)
   const [isRejecting, setIsRejecting] = useState(false)
   const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([])
@@ -27,6 +32,7 @@ const ApprovalPage: React.FC = () => {
   const [selectedCertification, setSelectedCertification] = useState<ApiCertification | null>(null)
   const [isCertificationDetailModalOpen, setIsCertificationDetailModalOpen] = useState(false)
   const [isCertificationRejectModalOpen, setIsCertificationRejectModalOpen] = useState(false)
+  const [isCertificationApproveModalOpen, setIsCertificationApproveModalOpen] = useState(false)
   const [certificationRejectReason, setCertificationRejectReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -213,6 +219,11 @@ const ApprovalPage: React.FC = () => {
   }, [loadAccounts, loadCertifications])
 
   // Event handlers
+  const handleApproveAccountClick = (account: PendingAccount) => {
+    setSelectedAccountForAction(account)
+    setIsApproveAccountModalOpen(true)
+  }
+
   const handleApprove = async (accountId: string) => {
     setIsApproving(true)
     try {
@@ -226,6 +237,8 @@ const ApprovalPage: React.FC = () => {
           title: TOAST_TITLES.SUCCESS,
           description: APPROVAL_MESSAGES.APPROVE_SUCCESS,
         })
+        setIsApproveAccountModalOpen(false)
+        setSelectedAccountForAction(null)
         await loadAccounts({ silent: true })
       } else {
         const message = res.message || APPROVAL_MESSAGES.APPROVE_ERROR
@@ -265,6 +278,7 @@ const ApprovalPage: React.FC = () => {
         })
         setIsRejectModalOpen(false)
         setRejectReason('')
+        setSelectedAccountForAction(null)
         await loadAccounts({ silent: true })
       } else {
         const message = res.message || APPROVAL_MESSAGES.REJECT_ERROR
@@ -289,15 +303,30 @@ const ApprovalPage: React.FC = () => {
     }
   }
 
-  const handleViewAccount = (account: PendingAccount) => setSelectedAccount(account)
-  const handleRejectAccount = (account: PendingAccount) => { setSelectedAccount(account); setIsRejectModalOpen(true) }
-  const handleCloseDetailModal = () => setSelectedAccount(null)
+  const handleViewAccount = (account: PendingAccount) => {
+    setSelectedAccount(account)
+    setIsAccountDetailModalOpen(true)
+  }
+  const handleRejectAccount = (account: PendingAccount) => {
+    setSelectedAccountForAction(account)
+    setIsRejectModalOpen(true)
+  }
+  const handleCloseDetailModal = () => {
+    setSelectedAccount(null)
+    setIsAccountDetailModalOpen(false)
+  }
   const handleCloseRejectModal = () => {
     setIsRejectModalOpen(false)
     setRejectReason('')
+    setSelectedAccountForAction(null)
   }
 
   // Certification handlers
+  const handleApproveCertificationClick = (certification: ApiCertification) => {
+    setSelectedCertification(certification)
+    setIsCertificationApproveModalOpen(true)
+  }
+
   const handleApproveCertification = async (certificationId: string) => {
     setIsApproving(true)
     try {
@@ -310,6 +339,8 @@ const ApprovalPage: React.FC = () => {
           title: TOAST_TITLES.SUCCESS,
           description: CERTIFICATION_MESSAGES.APPROVE_SUCCESS,
         })
+        setIsCertificationApproveModalOpen(false)
+        setSelectedCertification(null)
         await loadCertifications({ silent: true })
       } else {
         const message = res.message || CERTIFICATION_MESSAGES.APPROVE_ERROR
@@ -429,10 +460,10 @@ const ApprovalPage: React.FC = () => {
         isLoading={isLoading}
         error={error}
         onViewAccount={handleViewAccount}
-        onApproveAccount={handleApprove}
+        onApproveAccount={handleApproveAccountClick}
         onRejectAccount={handleRejectAccount}
         onViewCertification={handleViewCertification}
-        onApproveCertification={handleApproveCertification}
+        onApproveCertification={handleApproveCertificationClick}
         onRejectCertification={handleRejectCertificationClick}
         isApproving={isApproving}
         isRejecting={isRejecting}
@@ -441,9 +472,20 @@ const ApprovalPage: React.FC = () => {
         getCertificationStatusBadge={getCertificationStatusBadge}
       />
 
-      <AccountDetailModal account={selectedAccount} isOpen={!!selectedAccount} onClose={handleCloseDetailModal} formatDate={formatApprovalDate} />
+      <AccountDetailModal account={selectedAccount} isOpen={isAccountDetailModalOpen} onClose={handleCloseDetailModal} formatDate={formatApprovalDate} />
 
-      <RejectModal account={selectedAccount} isOpen={isRejectModalOpen} onClose={handleCloseRejectModal} rejectReason={rejectReason} setRejectReason={setRejectReason} onConfirmReject={handleReject} isRejecting={isRejecting} />
+      <ApproveAccountModal
+        account={selectedAccountForAction}
+        isOpen={isApproveAccountModalOpen}
+        onClose={() => {
+          setIsApproveAccountModalOpen(false)
+          setSelectedAccountForAction(null)
+        }}
+        onConfirmApprove={handleApprove}
+        isApproving={isApproving}
+      />
+
+      <RejectModal account={selectedAccountForAction} isOpen={isRejectModalOpen} onClose={handleCloseRejectModal} rejectReason={rejectReason} setRejectReason={setRejectReason} onConfirmReject={handleReject} isRejecting={isRejecting} />
 
       <CertificationDetailModal
         certification={selectedCertification}
@@ -462,6 +504,17 @@ const ApprovalPage: React.FC = () => {
         setRejectReason={setCertificationRejectReason}
         onConfirmReject={handleRejectCertification}
         isRejecting={isRejecting}
+      />
+
+      <ApproveCertificationModal
+        certification={selectedCertification}
+        isOpen={isCertificationApproveModalOpen}
+        onClose={() => {
+          setIsCertificationApproveModalOpen(false)
+          setSelectedCertification(null)
+        }}
+        onConfirmApprove={handleApproveCertification}
+        isApproving={isApproving}
       />
     </div>
   )

@@ -1,0 +1,148 @@
+flowchart TD
+    Start([🏠 HomePage]) --> AuthCheck{Đã đăng nhập?}
+    
+    AuthCheck -->|Chưa| AuthChoice{Chọn hành động}
+    AuthChoice -->|Đăng nhập| Login[🔐 Login Page]
+    AuthChoice -->|Đăng ký| Register[📝 Register Page]
+    
+    Login --> LoginSuccess{Đăng nhập thành công?}
+    Register --> RegisterSuccess{Đăng ký thành công?}
+    
+    LoginSuccess -->|Có| RoleCheck{Loại tài khoản?}
+    LoginSuccess -->|Không| Login
+    RegisterSuccess -->|Có| RoleCheck
+    RegisterSuccess -->|Không| Register
+    
+    RoleCheck -->|Farmer| FarmerDash[👨‍🌾 Farmer Dashboard]
+    RoleCheck -->|Wholesaler| WholesalerDash[🏪 Wholesaler Dashboard]
+    
+    %% Farmer Flow
+    FarmerDash --> FarmerMenu{Menu Farmer}
+    FarmerMenu -->|Quản lý Nông trại| Farms[🚜 Farms Page]
+    FarmerMenu -->|Quản lý Cây trồng| Crops[🌾 Crops Page]
+    FarmerMenu -->|Đấu giá| Auctions[🔨 Auctions Page]
+    FarmerMenu -->|Hợp đồng| Contracts[📄 Contracts Page]
+    FarmerMenu -->|Yêu cầu mua| BuyRequests[🛒 Buy Requests Page]
+    FarmerMenu -->|Ví| Wallet[💳 Wallet Page]
+    
+    Farms --> FarmActions{Thao tác}
+    FarmActions -->|Thêm mới| FarmForm[📝 Farm Form Dialog]
+    FarmActions -->|Xem chi tiết| FarmDetail[📋 Farm Detail]
+    FarmForm --> Farms
+    FarmDetail --> Farms
+    
+    Crops --> CropActions{Thao tác}
+    CropActions -->|Thêm mới| CropForm[📝 Crop Form Dialog]
+    CropActions -->|Xem chi tiết| CropDetail[📋 Crop Detail Page]
+    CropForm --> Crops
+    CropDetail --> Crops
+    
+    Auctions --> AuctionActions{Thao tác}
+    AuctionActions -->|Tạo đấu giá| CreateAuction[➕ Create Auction Page]
+    AuctionActions -->|Xem chi tiết| AuctionDetail[📋 Auction Detail Page]
+    CreateAuction --> Auctions
+    AuctionDetail --> AuctionDetailActions{Trong đấu giá}
+    AuctionDetailActions -->|Kết thúc đấu giá| Contracts
+    AuctionDetailActions -->|Quay lại| Auctions
+    
+    Contracts --> ContractActions{Thao tác}
+    ContractActions -->|Xem chi tiết| ContractDetail[📋 Contract Detail Page]
+    ContractDetail --> Contracts
+    
+    BuyRequests --> BuyRequestActions{Thao tác}
+    BuyRequestActions -->|Xem chi tiết| BuyRequestDetail[📋 Buy Request Detail]
+    BuyRequestDetail --> BuyRequests
+    
+    Wallet --> WalletActions{Thao tác}
+    WalletActions -->|Nạp tiền| Deposit[💰 Deposit Dialog]
+    WalletActions -->|Rút tiền| Withdraw[💸 Withdraw Dialog]
+    WalletActions -->|Quản lý tài khoản| BankAccount[🏦 Bank Account Dialog]
+    Deposit --> Wallet
+    Withdraw --> Wallet
+    BankAccount --> Wallet
+    
+    %% Wholesaler Flow
+    WholesalerDash --> WholesalerMenu{Menu Wholesaler}
+    WholesalerMenu -->|Đấu giá| WholesalerAuctions[🔨 Auctions Page]
+    WholesalerMenu -->|Đấu giá đã tham gia| ParticipatedAuctions[✅ Participated Auctions]
+    WholesalerMenu -->|Tìm sản phẩm| FindProducts[🔍 Find Products Page]
+    WholesalerMenu -->|Yêu cầu mua| MyBuyRequests[🛒 My Buy Requests]
+    WholesalerMenu -->|Hợp đồng| WholesalerContracts[📄 Contracts Page]
+    WholesalerMenu -->|Báo cáo| Reports[📊 Reports Page]
+    WholesalerMenu -->|Ví| WholesalerWallet[💳 Wallet Page]
+    
+    WholesalerAuctions --> WholesalerAuctionActions{Thao tác}
+    WholesalerAuctionActions -->|Xem chi tiết| WholesalerAuctionDetail[📋 Auction Detail Page]
+    WholesalerAuctionActions -->|Đặt giá| BidAction[💰 Place Bid]
+    BidAction --> WholesalerAuctionDetail
+    WholesalerAuctionDetail --> WholesalerAuctionDetailFlow{Trong đấu giá}
+    WholesalerAuctionDetailFlow -->|Thắng đấu giá| ParticipatedAuctions
+    WholesalerAuctionDetailFlow -->|Quay lại| WholesalerAuctions
+    
+    ParticipatedAuctions --> ParticipatedActions{Thao tác}
+    ParticipatedActions -->|Xem chi tiết| ParticipatedDetail[📋 Participated Auction Detail]
+    ParticipatedDetail --> ParticipatedAuctions
+    
+    FindProducts --> FindProductActions{Thao tác}
+    FindProductActions -->|Tìm kiếm| SearchResults[🔍 Search Results]
+    FindProductActions -->|Xem chi tiết| ProductDetail[📋 Product Detail]
+    SearchResults --> ProductDetail
+    ProductDetail --> FindProducts
+    
+    MyBuyRequests --> MyBuyRequestActions{Thao tác}
+    MyBuyRequestActions -->|Tạo yêu cầu| CreateBuyRequest[➕ Create Buy Request]
+    MyBuyRequestActions -->|Xem chi tiết| BuyRequestDetailWS[📋 Buy Request Detail]
+    CreateBuyRequest --> MyBuyRequests
+    BuyRequestDetailWS --> MyBuyRequests
+    
+    WholesalerContracts --> WholesalerContractActions{Thao tác}
+    WholesalerContractActions -->|Xem chi tiết| WholesalerContractDetail[📋 Contract Detail Page]
+    WholesalerContractDetail --> WholesalerContracts
+    
+    Reports --> ReportsView[📊 Reports View]
+    ReportsView --> WholesalerDash
+    
+    WholesalerWallet --> WholesalerWalletActions{Thao tác}
+    WholesalerWalletActions -->|Xem lịch sử| WalletHistory[📜 Wallet History]
+    WalletHistory --> WholesalerWallet
+    
+    %% Navigation back
+    Farms -.->|Quay lại| FarmerDash
+    Crops -.->|Quay lại| FarmerDash
+    Auctions -.->|Quay lại| FarmerDash
+    Contracts -.->|Quay lại| FarmerDash
+    BuyRequests -.->|Quay lại| FarmerDash
+    Wallet -.->|Quay lại| FarmerDash
+    
+    WholesalerAuctions -.->|Quay lại| WholesalerDash
+    ParticipatedAuctions -.->|Quay lại| WholesalerDash
+    FindProducts -.->|Quay lại| WholesalerDash
+    MyBuyRequests -.->|Quay lại| WholesalerDash
+    WholesalerContracts -.->|Quay lại| WholesalerDash
+    Reports -.->|Quay lại| WholesalerDash
+    WholesalerWallet -.->|Quay lại| WholesalerDash
+    
+    %% Logout
+    FarmerDash --> Logout{Đăng xuất?}
+    WholesalerDash --> Logout
+    Logout -->|Có| Start
+    Logout -->|Không| FarmerDash
+    Logout -->|Không| WholesalerDash
+    
+    %% Styling
+    classDef startEnd fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    classDef auth fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef farmer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef wholesaler fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef detail fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    
+    class Start,Login,Register startEnd
+    class AuthCheck,AuthChoice,LoginSuccess,RegisterSuccess,RoleCheck decision
+    class FarmerDash,Farms,Crops,Auctions,Contracts,BuyRequests,Wallet,FarmerMenu,FarmerMenu decision
+    class WholesalerDash,WholesalerAuctions,ParticipatedAuctions,FindProducts,MyBuyRequests,WholesalerContracts,Reports,WholesalerWallet,WholesalerMenu decision
+    class FarmDetail,CropDetail,AuctionDetail,ContractDetail,BuyRequestDetail,ParticipatedDetail,WholesalerAuctionDetail,WholesalerContractDetail,BuyRequestDetailWS,ProductDetail detail
+    class FarmForm,CropForm,CreateAuction,Deposit,Withdraw,BankAccount,BidAction,CreateBuyRequest farmer
+    class WalletHistory,ReportsView wholesaler
+
+

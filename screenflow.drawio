@@ -1,0 +1,654 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="ScreenFlow" name="AgriMart Screen Flow">
+    <mxGraphModel dx="2000" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Entry Point -->
+        <mxCell id="homepage" value="HomePage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="50" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Auth Section -->
+        <mxCell id="login" value="Login Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="100" y="150" width="180" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="register" value="Register Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="100" y="220" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Farmer Flow Section -->
+        <mxCell id="farmer-dash" value="Farmer Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="50" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="farmer-farms" value="Farms Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="320" y="150" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-farm-form" value="Farm Form Dialog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="300" y="220" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-farm-detail" value="Farm Detail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="460" y="220" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="farmer-crops" value="Crops Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="320" y="290" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-crop-form" value="Crop Form Dialog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="300" y="360" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-crop-detail" value="Crop Detail Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="460" y="360" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="farmer-auctions" value="Auctions Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="320" y="430" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-create-auction" value="Create Auction Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="300" y="500" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-auction-detail" value="Auction Detail Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="460" y="500" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="farmer-contracts" value="Contracts Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="320" y="570" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-contract-detail" value="Contract Detail Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="380" y="640" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="farmer-buy-requests" value="Buy Requests Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="320" y="710" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-buy-request-detail" value="Buy Request Detail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="380" y="780" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="farmer-wallet" value="Wallet Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="320" y="850" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-deposit" value="Deposit Dialog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="300" y="920" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-withdraw" value="Withdraw Dialog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="440" y="920" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="farmer-bank-account" value="Bank Account Dialog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="370" y="980" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Wholesaler Flow Section -->
+        <mxCell id="wholesaler-dash" value="Wholesaler Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#6a1b9a;strokeWidth=2;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="700" y="50" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-auctions" value="Auctions Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="150" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-auction-detail" value="Auction Detail Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="600" y="220" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-place-bid" value="Place Bid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="760" y="220" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-participated" value="Participated Auctions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="290" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-participated-detail" value="Participated Auction Detail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="680" y="360" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-find-products" value="Find Products Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="430" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-product-detail" value="Product Detail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="680" y="500" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-buy-requests" value="My Buy Requests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="570" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-create-buy-request" value="Create Buy Request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="600" y="640" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-buy-request-detail" value="Buy Request Detail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="760" y="640" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-contracts" value="Contracts Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="710" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-contract-detail" value="Contract Detail Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="680" y="780" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-reports" value="Reports Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="850" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-reports-view" value="Reports View" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="680" y="920" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wholesaler-wallet" value="Wallet Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6a1b9a;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="620" y="990" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="wholesaler-wallet-history" value="Wallet History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="680" y="1060" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin Flow Section -->
+        <mxCell id="admin-login" value="Admin Login Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1000" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-dash" value="Admin Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5ff;strokeColor=#01579b;strokeWidth=2;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="130" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-users" value="Users Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="220" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-approval" value="Approval Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="220" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-farms" value="Farms Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="290" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin-farm-profile" value="Profile Farm Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="900" y="360" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-crops" value="Crops Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="290" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-categories" value="Categories Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="360" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-harvests" value="Harvests Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="360" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-auctions" value="Auctions Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="430" width="160" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin-auction-detail" value="Auction Detail Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="900" y="500" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin-auction-activity" value="Auction Activity History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="1060" y="500" width="160" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin-auction-bid-history" value="Auction Bid History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="1240" y="500" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin-auction-winner" value="Auction Winner Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="900" y="560" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin-auction-reports" value="Auction Reports Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="1060" y="560" width="160" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-orders" value="Orders Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="430" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-products" value="Products Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="500" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-shippers" value="Shippers Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="500" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-reports" value="Reports Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="570" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-wallet" value="Wallet Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="570" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-settings" value="Settings Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="920" y="640" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="admin-help" value="Help Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#01579b;strokeWidth=2;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="640" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Entry to Auth -->
+        <mxCell id="e1" edge="1" parent="1" source="homepage" target="login" style="endArrow=block;strokeColor=#6c8ebf;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="homepage" target="register" style="endArrow=block;strokeColor=#6c8ebf;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Auth to Dashboards -->
+        <mxCell id="e3" edge="1" parent="1" source="login" target="farmer-dash" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="175"/>
+              <mxPoint x="190" y="80"/>
+              <mxPoint x="490" y="80"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="login" target="wholesaler-dash" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="175"/>
+              <mxPoint x="190" y="80"/>
+              <mxPoint x="790" y="80"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="register" target="farmer-dash" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="245"/>
+              <mxPoint x="190" y="80"/>
+              <mxPoint x="490" y="80"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="register" target="wholesaler-dash" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="245"/>
+              <mxPoint x="190" y="80"/>
+              <mxPoint x="790" y="80"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="homepage" target="admin-login" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="80"/>
+              <mxPoint x="1090" y="80"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="admin-login" target="admin-dash" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Farmer Flow -->
+        <mxCell id="e9" edge="1" parent="1" source="farmer-dash" target="farmer-farms" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="farmer-farms" target="farmer-farm-form" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="farmer-farms" target="farmer-farm-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="farmer-farm-form" target="farmer-farms" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="farmer-farm-detail" target="farmer-farms" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e14" edge="1" parent="1" source="farmer-dash" target="farmer-crops" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="farmer-crops" target="farmer-crop-form" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="farmer-crops" target="farmer-crop-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="farmer-crop-form" target="farmer-crops" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="farmer-crop-detail" target="farmer-crops" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e19" edge="1" parent="1" source="farmer-dash" target="farmer-auctions" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="farmer-auctions" target="farmer-create-auction" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e21" edge="1" parent="1" source="farmer-auctions" target="farmer-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e22" edge="1" parent="1" source="farmer-create-auction" target="farmer-auctions" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e23" edge="1" parent="1" source="farmer-auction-detail" target="farmer-contracts" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="520"/>
+              <mxPoint x="530" y="595"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e24" edge="1" parent="1" source="farmer-auction-detail" target="farmer-auctions" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e25" edge="1" parent="1" source="farmer-dash" target="farmer-contracts" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e26" edge="1" parent="1" source="farmer-contracts" target="farmer-contract-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e27" edge="1" parent="1" source="farmer-contract-detail" target="farmer-contracts" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e28" edge="1" parent="1" source="farmer-dash" target="farmer-buy-requests" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e29" edge="1" parent="1" source="farmer-buy-requests" target="farmer-buy-request-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e30" edge="1" parent="1" source="farmer-buy-request-detail" target="farmer-buy-requests" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e31" edge="1" parent="1" source="farmer-dash" target="farmer-wallet" style="endArrow=block;strokeColor=#2e7d32;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e32" edge="1" parent="1" source="farmer-wallet" target="farmer-deposit" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e33" edge="1" parent="1" source="farmer-wallet" target="farmer-withdraw" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e34" edge="1" parent="1" source="farmer-wallet" target="farmer-bank-account" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e35" edge="1" parent="1" source="farmer-deposit" target="farmer-wallet" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e36" edge="1" parent="1" source="farmer-withdraw" target="farmer-wallet" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e37" edge="1" parent="1" source="farmer-bank-account" target="farmer-wallet" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Wholesaler Flow -->
+        <mxCell id="e38" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-auctions" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e39" edge="1" parent="1" source="wholesaler-auctions" target="wholesaler-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e40" edge="1" parent="1" source="wholesaler-auctions" target="wholesaler-place-bid" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e41" edge="1" parent="1" source="wholesaler-place-bid" target="wholesaler-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e42" edge="1" parent="1" source="wholesaler-auction-detail" target="wholesaler-participated" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="240"/>
+              <mxPoint x="670" y="315"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e43" edge="1" parent="1" source="wholesaler-auction-detail" target="wholesaler-auctions" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e44" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-participated" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e45" edge="1" parent="1" source="wholesaler-participated" target="wholesaler-participated-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e46" edge="1" parent="1" source="wholesaler-participated-detail" target="wholesaler-participated" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e47" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-find-products" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e48" edge="1" parent="1" source="wholesaler-find-products" target="wholesaler-product-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e49" edge="1" parent="1" source="wholesaler-product-detail" target="wholesaler-find-products" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e50" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-buy-requests" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e51" edge="1" parent="1" source="wholesaler-buy-requests" target="wholesaler-create-buy-request" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e52" edge="1" parent="1" source="wholesaler-buy-requests" target="wholesaler-buy-request-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e53" edge="1" parent="1" source="wholesaler-create-buy-request" target="wholesaler-buy-requests" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e54" edge="1" parent="1" source="wholesaler-buy-request-detail" target="wholesaler-buy-requests" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e55" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-contracts" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e56" edge="1" parent="1" source="wholesaler-contracts" target="wholesaler-contract-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e57" edge="1" parent="1" source="wholesaler-contract-detail" target="wholesaler-contracts" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e58" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-reports" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e59" edge="1" parent="1" source="wholesaler-reports" target="wholesaler-reports-view" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e60" edge="1" parent="1" source="wholesaler-reports-view" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="940"/>
+              <mxPoint x="790" y="940"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e61" edge="1" parent="1" source="wholesaler-dash" target="wholesaler-wallet" style="endArrow=block;strokeColor=#6a1b9a;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e62" edge="1" parent="1" source="wholesaler-wallet" target="wholesaler-wallet-history" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e63" edge="1" parent="1" source="wholesaler-wallet-history" target="wholesaler-wallet" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Admin Flow -->
+        <mxCell id="e64" edge="1" parent="1" source="admin-dash" target="admin-users" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e65" edge="1" parent="1" source="admin-dash" target="admin-approval" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e66" edge="1" parent="1" source="admin-dash" target="admin-farms" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e67" edge="1" parent="1" source="admin-farms" target="admin-farm-profile" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e68" edge="1" parent="1" source="admin-farm-profile" target="admin-farms" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e69" edge="1" parent="1" source="admin-dash" target="admin-crops" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e70" edge="1" parent="1" source="admin-dash" target="admin-categories" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e71" edge="1" parent="1" source="admin-dash" target="admin-harvests" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e72" edge="1" parent="1" source="admin-dash" target="admin-auctions" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e73" edge="1" parent="1" source="admin-auctions" target="admin-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e74" edge="1" parent="1" source="admin-auction-detail" target="admin-auction-activity" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e75" edge="1" parent="1" source="admin-auction-detail" target="admin-auction-bid-history" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e76" edge="1" parent="1" source="admin-auction-detail" target="admin-auction-winner" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e77" edge="1" parent="1" source="admin-auction-detail" target="admin-auction-reports" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e78" edge="1" parent="1" source="admin-auction-activity" target="admin-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e79" edge="1" parent="1" source="admin-auction-bid-history" target="admin-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e80" edge="1" parent="1" source="admin-auction-winner" target="admin-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e81" edge="1" parent="1" source="admin-auction-reports" target="admin-auction-detail" style="endArrow=block;dashed=1;strokeColor=#c2185b;strokeWidth=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e82" edge="1" parent="1" source="admin-dash" target="admin-orders" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e83" edge="1" parent="1" source="admin-dash" target="admin-products" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e84" edge="1" parent="1" source="admin-dash" target="admin-shippers" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e85" edge="1" parent="1" source="admin-dash" target="admin-reports" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e86" edge="1" parent="1" source="admin-dash" target="admin-wallet" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e87" edge="1" parent="1" source="admin-dash" target="admin-settings" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e88" edge="1" parent="1" source="admin-dash" target="admin-help" style="endArrow=block;strokeColor=#01579b;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Back navigation (dashed lines) -->
+        <mxCell id="e89" edge="1" parent="1" source="farmer-farms" target="farmer-dash" style="endArrow=block;dashed=1;strokeColor=#2e7d32;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e90" edge="1" parent="1" source="farmer-crops" target="farmer-dash" style="endArrow=block;dashed=1;strokeColor=#2e7d32;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e91" edge="1" parent="1" source="farmer-auctions" target="farmer-dash" style="endArrow=block;dashed=1;strokeColor=#2e7d32;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e92" edge="1" parent="1" source="farmer-contracts" target="farmer-dash" style="endArrow=block;dashed=1;strokeColor=#2e7d32;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e93" edge="1" parent="1" source="farmer-buy-requests" target="farmer-dash" style="endArrow=block;dashed=1;strokeColor=#2e7d32;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e94" edge="1" parent="1" source="farmer-wallet" target="farmer-dash" style="endArrow=block;dashed=1;strokeColor=#2e7d32;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e95" edge="1" parent="1" source="wholesaler-auctions" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e96" edge="1" parent="1" source="wholesaler-participated" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e97" edge="1" parent="1" source="wholesaler-find-products" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e98" edge="1" parent="1" source="wholesaler-buy-requests" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e99" edge="1" parent="1" source="wholesaler-contracts" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e100" edge="1" parent="1" source="wholesaler-reports" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e101" edge="1" parent="1" source="wholesaler-wallet" target="wholesaler-dash" style="endArrow=block;dashed=1;strokeColor=#6a1b9a;strokeWidth=1;opacity=50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+
+

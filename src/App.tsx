@@ -26,6 +26,7 @@ import AdminSettingsPage from './pages/Admin/SettingsPage';
 import AdminHelpPage from './pages/Admin/HelpPage';
 import ReportsPage from './pages/Admin/ReportsPage';
 import WalletPage from './pages/Admin/WalletPage';
+import DisputesPage from './pages/Admin/DisputesPage';
 
 import { ROUTES } from './constants';
 import { ToastProvider } from './contexts/ToastContext';
@@ -173,6 +174,11 @@ function App() {
         <Route path={ROUTES.ADMIN_WALLET} element={
           <ProtectedRoute>
             <AdminLayout><WalletPage /></AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path={ROUTES.ADMIN_DISPUTES} element={
+          <ProtectedRoute>
+            <AdminLayout><DisputesPage /></AdminLayout>
           </ProtectedRoute>
         } />
 

@@ -45,11 +45,7 @@ export function ColumnChart({ data, isLoading, xKey, yKey, height = 300 }: Colum
             axisLine={false}
             tickLine={false}
             tick={{ fill: '#6b7280' }}
-            tickFormatter={(value) => {
-              if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
-              if (value >= 1000) return `${(value / 1000).toFixed(1)}K`
-              return value.toString()
-            }}
+            tickFormatter={(value) => formatCurrencyVND(value, { unit: 'VND' })}
           />
           <Tooltip
             formatter={(value: number, name: string) => {

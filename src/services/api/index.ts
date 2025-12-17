@@ -3,6 +3,8 @@ export type { HttpRequestOptions } from './httpClient'
 export { requestCache, RequestCache } from './requestCache'
 export { reportApi } from './reportApi'
 export { postApi } from './postApi'
+export { disputeApi } from './disputeApi'
 export { walletApi } from './walletApi'
 export { certificationApi } from './certificationApi'
+export { statisticsApi } from './statisticsApi'
 

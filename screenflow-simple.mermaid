@@ -1,0 +1,101 @@
+flowchart TD
+    Start([🏠 HomePage]) --> AuthCheck{Đã đăng nhập?}
+    
+    AuthCheck -->|Chưa| Login[🔐 Login Page]
+    AuthCheck -->|Chưa| Register[📝 Register Page]
+    Login --> RoleCheck{Loại tài khoản?}
+    Register --> RoleCheck
+    
+    RoleCheck -->|Farmer 👨‍🌾| FarmerFlow
+    RoleCheck -->|Wholesaler 🏪| WholesalerFlow
+    
+    subgraph FarmerFlow["Farmer User Flow"]
+        direction TB
+        FD[👨‍🌾 Dashboard] --> FM{Menu}
+        FM -->|Farms| F1[🚜 Farms]
+        FM -->|Crops| F2[🌾 Crops]
+        FM -->|Auctions| F3[🔨 Auctions]
+        FM -->|Contracts| F4[📄 Contracts]
+        FM -->|Buy Requests| F5[🛒 Buy Requests]
+        FM -->|Wallet| F6[💳 Wallet]
+        
+        F1 --> F1D[📋 Farm Detail/Form]
+        F2 --> F2D[📋 Crop Detail]
+        F3 --> F3A{Action}
+        F3A -->|Create| F3C[➕ Create Auction]
+        F3A -->|View| F3D[📋 Auction Detail]
+        F4 --> F4D[📋 Contract Detail]
+        F5 --> F5D[📋 Buy Request Detail]
+        F6 --> F6A{Action}
+        F6A -->|Deposit| F6D[💰 Deposit]
+        F6A -->|Withdraw| F6W[💸 Withdraw]
+        F6A -->|Bank| F6B[🏦 Bank Account]
+        
+        F1D --> F1
+        F2D --> F2
+        F3C --> F3
+        F3D --> F3
+        F4D --> F4
+        F5D --> F5
+        F6D --> F6
+        F6W --> F6
+        F6B --> F6
+    end
+    
+    subgraph WholesalerFlow["Wholesaler User Flow"]
+        direction TB
+        WD[🏪 Dashboard] --> WM{Menu}
+        WM -->|Auctions| W1[🔨 Auctions]
+        WM -->|Participated| W2[✅ Participated Auctions]
+        WM -->|Find Products| W3[🔍 Find Products]
+        WM -->|Buy Requests| W4[🛒 My Buy Requests]
+        WM -->|Contracts| W5[📄 Contracts]
+        WM -->|Reports| W6[📊 Reports]
+        WM -->|Wallet| W7[💳 Wallet]
+        
+        W1 --> W1A{Action}
+        W1A -->|View| W1D[📋 Auction Detail]
+        W1A -->|Bid| W1B[💰 Place Bid]
+        W2 --> W2D[📋 Participated Detail]
+        W3 --> W3D[📋 Product Detail]
+        W4 --> W4A{Action}
+        W4A -->|Create| W4C[➕ Create Buy Request]
+        W4A -->|View| W4D[📋 Buy Request Detail]
+        W5 --> W5D[📋 Contract Detail]
+        W6 --> W6V[📊 Reports View]
+        W7 --> W7H[📜 Wallet History]
+        
+        W1D --> W1
+        W1B --> W1D
+        W2D --> W2
+        W3D --> W3
+        W4C --> W4
+        W4D --> W4
+        W5D --> W5
+        W6V --> W6
+        W7H --> W7
+    end
+    
+    FarmerFlow --> Logout{Đăng xuất?}
+    WholesalerFlow --> Logout
+    Logout -->|Có| Start
+    Logout -->|Không| FD
+    Logout -->|Không| WD
+    
+    %% Styling
+    classDef startEnd fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    classDef auth fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef farmer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef wholesaler fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef detail fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    
+    class Start startEnd
+    class Login,Register auth
+    class AuthCheck,RoleCheck,Logout decision
+    class FD,F1,F2,F3,F4,F5,F6,FM farmer
+    class WD,W1,W2,W3,W4,W5,W6,W7,WM wholesaler
+    class F1D,F2D,F3C,F3D,F4D,F5D,F6D,F6W,F6B detail
+    class W1D,W1B,W2D,W3D,W4C,W4D,W5D,W6V,W7H detail
+
+

@@ -9,7 +9,7 @@ interface CertificationTableProps {
   certifications: ApiCertification[]
   usersMap?: Record<string, ApiUser>
   onViewCertification: (certification: ApiCertification) => void
-  onApproveCertification: (certificationId: string) => void
+  onApproveCertification: (certification: ApiCertification) => void
   onRejectCertification: (certification: ApiCertification) => void
   isApproving: boolean
   isRejecting: boolean
@@ -88,27 +88,35 @@ const CertificationTable: React.FC<CertificationTableProps> = ({
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {getStatusBadge(certification.status)}
-              <Button variant="outline" size="sm" onClick={() => onViewCertification(certification)} className="flex items-center gap-2">
-                <Eye className="w-4 h-4" />Chi tiết
+              <Button 
+                size="sm"
+                variant="outline" 
+                onClick={() => onViewCertification(certification)} 
+                className="h-8 px-3 text-xs"
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                Chi tiết
               </Button>
               {certification.status === 0 && (
                 <>
                   <Button
                     size="sm"
-                    onClick={() => onApproveCertification(certification.id)}
+                    onClick={() => onApproveCertification(certification)}
                     disabled={isApproving || isRejecting}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
                   >
-                    <Check className="w-4 h-4" />{isApproving ? "Đang duyệt..." : "Duyệt"}
+                    <Check className="w-3 h-3 mr-1" />
+                    {isApproving ? "Đang duyệt..." : "Duyệt"}
                   </Button>
                   <Button
-                    variant="outline"
                     size="sm"
+                    variant="outline"
                     onClick={() => onRejectCertification(certification)}
                     disabled={isApproving || isRejecting}
-                    className="text-red-600 border-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-600 text-xs"
                   >
-                    <X className="w-4 h-4" />Từ chối
+                    <X className="w-3 h-3 mr-1" />
+                    Từ chối
                   </Button>
                 </>
               )}

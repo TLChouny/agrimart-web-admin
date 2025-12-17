@@ -18,6 +18,7 @@ import { reportApi } from "../../services/api/reportApi"
 import { userApi } from "../../services/api/userApi"
 import { walletApi } from "../../services/api/walletApi"
 import { certificationApi } from "../../services/api/certificationApi"
+import { statisticsApi } from "../../services/api/statisticsApi"
 import type {
   ApiFarm,
   ApiEnglishAuction,
@@ -26,6 +27,7 @@ import type {
   User as ApiUser,
   ApiWallet,
   ApiLedger,
+  SystemProfitSummary,
 } from "../../types/api"
 import { useToastContext } from "../../contexts/ToastContext"
 import { TOAST_TITLES } from "../../services/constants/messages"
@@ -49,18 +51,31 @@ export default function AdminDashboardPage() {
   const [systemLedgers, setSystemLedgers] = useState<ApiLedger[]>([])
   const [bidLogsMap, setBidLogsMap] = useState<Map<string, ApiAuctionBidLog[]>>(new Map())
   const [pendingCertifications, setPendingCertifications] = useState<any[]>([])
+  const [systemProfit, setSystemProfit] = useState<SystemProfitSummary | null>(null)
+  const [profitRange, setProfitRange] = useState<'current-year' | 'current-month' | 'custom'>('current-year')
+  const [profitCustom, setProfitCustom] = useState<{ start: string; end: string; timeRange: 'daily' | 'monthly' }>(() => {
+    const end = new Date()
+    const start = new Date()
+    start.setDate(start.getDate() - 30)
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+      timeRange: 'daily',
+    }
+  })
 
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      const [farmRes, auctionRes, reportRes, userRes, systemWalletRes, certificationRes] = await Promise.all([
+      const [farmRes, auctionRes, reportRes, userRes, systemWalletRes, certificationRes, systemProfitRes] = await Promise.all([
         farmApi.getFarms(),
         auctionApi.getEnglishAuctions(undefined, 1, 500), // Lấy nhiều hơn để tính toán charts
         reportApi.getReports({ pageNumber: 1, pageSize: 100 }),
         userApi.list(),
         walletApi.getSystemWallet(),
         certificationApi.getPending(),
+        statisticsApi.getSystemProfitCurrentYear(),
       ])
 
       setFarms(farmRes.data ?? [])
@@ -89,6 +104,8 @@ export default function AdminDashboardPage() {
           setSystemLedgers([])
         }
       }
+
+      setSystemProfit(systemProfitRes.data ?? null)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không thể tải dữ liệu dashboard"
       setErrorMessage(message)
@@ -140,8 +157,37 @@ export default function AdminDashboardPage() {
     }
   }, [auctions, loadBidLogs])
 
+  // Load system profit when range changes
+  useEffect(() => {
+    const loadProfit = async () => {
+      try {
+        if (profitRange === 'current-year') {
+          const res = await statisticsApi.getSystemProfitCurrentYear()
+          setSystemProfit(res.data ?? null)
+          return
+        }
+        if (profitRange === 'current-month') {
+          const res = await statisticsApi.getSystemProfitCurrentMonth()
+          setSystemProfit(res.data ?? null)
+          return
+        }
+        // custom
+        const res = await statisticsApi.getSystemProfit({
+          startDate: profitCustom.start,
+          endDate: profitCustom.end,
+          timeRange: profitCustom.timeRange,
+        })
+        setSystemProfit(res.data ?? null)
+      } catch (error) {
+        console.error('Error loading system profit:', error)
+        setSystemProfit(null)
+      }
+    }
+    loadProfit()
+  }, [profitRange, profitCustom])
+
   // Tự động refresh data mỗi 30 giây
-  useAutoRefresh(loadDashboardData, 30000, true, false)
+  useAutoRefresh(loadDashboardData, 30000, false, false)
 
 
   // Calculate all metrics for System Overview
@@ -200,9 +246,16 @@ export default function AdminDashboardPage() {
 
   // System Revenue Analysis - Column Chart (profit over time)
   const systemRevenueData = useMemo(() => {
+    // Ưu tiên dữ liệu từ Statistics API (current-year)
+    if (systemProfit?.data?.length) {
+      return systemProfit.data.map(point => ({
+        time: point.time.includes('-') ? point.time.split('-').reverse().join('/') : point.time,
+        profit: point.profit,
+      }))
+    }
+
+    // Fallback: tính từ systemLedgers (12 tháng gần nhất)
     if (!systemLedgers.length) return []
-    
-    // Group by month for last 12 months
     const now = new Date()
     const months: Array<{ time: string; profit: number }> = []
     
@@ -211,7 +264,7 @@ export default function AdminDashboardPage() {
       const monthLabel = `T${date.getMonth() + 1}/${date.getFullYear()}`
       
       const monthLedgers = systemLedgers.filter(ledger => {
-      if (!ledger.createdAt) return false
+        if (!ledger.createdAt) return false
         const ledgerDate = new Date(ledger.createdAt)
         return ledgerDate.getFullYear() === date.getFullYear() && 
                ledgerDate.getMonth() === date.getMonth()
@@ -225,7 +278,7 @@ export default function AdminDashboardPage() {
     }
     
     return months
-  }, [systemLedgers])
+  }, [systemLedgers, systemProfit])
 
   // User Growth Trend - Line Chart
   const userGrowthData = useMemo(() => {
@@ -541,6 +594,58 @@ export default function AdminDashboardPage() {
             <h2 className="text-xl font-semibold text-gray-900">Phân tích doanh thu</h2>
                       </div>
                     </div>
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {(['current-year', 'current-month', 'custom'] as const).map((option) => (
+              <Button
+                key={option}
+                variant={profitRange === option ? "default" : "outline"}
+                size="sm"
+                onClick={() => setProfitRange(option)}
+              >
+                {option === 'current-year' && 'Năm nay'}
+                {option === 'current-month' && 'Tháng này'}
+                {option === 'custom' && 'Tùy chỉnh'}
+              </Button>
+            ))}
+          </div>
+          {profitRange === 'custom' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Từ ngày</label>
+                <input
+                  type="date"
+                  value={profitCustom.start}
+                  onChange={(e) => setProfitCustom((prev) => ({ ...prev, start: e.target.value }))}
+                  max={profitCustom.end}
+                  className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Đến ngày</label>
+                <input
+                  type="date"
+                  value={profitCustom.end}
+                  onChange={(e) => setProfitCustom((prev) => ({ ...prev, end: e.target.value }))}
+                  min={profitCustom.start}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Nhóm theo</label>
+                <select
+                  value={profitCustom.timeRange}
+                  onChange={(e) => setProfitCustom((prev) => ({ ...prev, timeRange: e.target.value as 'daily' | 'monthly' }))}
+                  className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="daily">Ngày</option>
+                  <option value="monthly">Tháng</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
         <SystemRevenueChart data={systemRevenueData} isLoading={isLoading} />
       </section>
 

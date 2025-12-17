@@ -15,10 +15,10 @@ interface ApprovalTabsProps {
   isLoading: boolean
   error: string | null
   onViewAccount: (account: PendingAccount) => void
-  onApproveAccount: (accountId: string) => void
+  onApproveAccount: (account: PendingAccount) => void
   onRejectAccount: (account: PendingAccount) => void
   onViewCertification: (certification: ApiCertification) => void
-  onApproveCertification: (certificationId: string) => void
+  onApproveCertification: (certification: ApiCertification) => void
   onRejectCertification: (certification: ApiCertification) => void
   isApproving: boolean
   isRejecting: boolean

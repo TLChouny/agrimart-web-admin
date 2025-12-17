@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
+import { XCircle, Loader2 } from 'lucide-react'
 import type { ApiCertification } from '../../types/api'
 
 interface RejectCertificationModalProps {
@@ -33,14 +34,22 @@ const RejectCertificationModal: React.FC<RejectCertificationModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-red-600">Từ chối chứng chỉ</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-red-600">Xác nhận từ chối chứng chỉ</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium text-gray-700">
-              Chứng chỉ: {certification?.certificationName}
-            </Label>
-          </div>
+          <p className="text-sm text-gray-700">
+            Bạn có chắc chắn muốn từ chối chứng chỉ này? Hành động này không thể hoàn tác.
+          </p>
+          {certification && (
+            <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+              <p className="text-sm font-medium text-gray-900">
+                Chứng chỉ: {certification.certificationName}
+              </p>
+              <p className="text-xs text-gray-600">
+                Tổ chức cấp: {certification.issuingOrganization}
+              </p>
+            </div>
+          )}
           <div>
             <Label htmlFor="rejectReason" className="text-sm font-medium text-gray-700">
               Lý do từ chối *
@@ -54,17 +63,31 @@ const RejectCertificationModal: React.FC<RejectCertificationModalProps> = ({
               rows={4}
             />
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={onClose} disabled={isRejecting}>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isRejecting}
+              className="min-h-[40px] px-4"
+            >
               Hủy
             </Button>
             <Button
-              variant="outline"
               onClick={handleSubmit}
               disabled={!rejectReason.trim() || isRejecting}
-              className="text-red-600 border-red-600 hover:bg-red-50"
+              className="bg-red-600 hover:bg-red-700 text-white min-h-[40px] px-4"
             >
-              {isRejecting ? 'Đang từ chối...' : 'Từ chối'}
+              {isRejecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Đang từ chối...
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Xác nhận từ chối
+                </>
+              )}
             </Button>
           </div>
         </div>
