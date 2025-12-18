@@ -159,6 +159,15 @@ export const ENDPOINTS = {
     byAuction: (auctionId: string) => `/api/payment-service/escrow/auction/${auctionId}`,
     byBuyRequest: (buyRequestId: string) => `/api/payment-service/escrow/buyrequest/${buyRequestId}`,
   },
+  // Messaging / Notifications (aligned with agrimart-web)
+  notification: {
+    byUserId: (userId: string) => `/api/messaging-service/Notifications/user/${encodeURIComponent(userId)}`,
+    unreadCountByUserId: (userId: string) =>
+      `/api/messaging-service/Notifications/user/${encodeURIComponent(userId)}/unread-count`,
+    markAsRead: (id: string) => `/api/messaging-service/Notifications/${encodeURIComponent(id)}/read`,
+    markAllAsRead: (userId: string) =>
+      `/api/messaging-service/Notifications/user/${encodeURIComponent(userId)}/read-all`,
+  },
 } as const
 
 export * from './messages'

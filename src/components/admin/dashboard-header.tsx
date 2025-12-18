@@ -1,8 +1,7 @@
-import { Bell } from "lucide-react"
-import { Button } from "../ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useAuth } from "../../contexts/AuthContext"
 import adminAvatar from "../../../public/assets/admin-86irejDo.jpg"
+import { AdminNotificationBell } from "./AdminNotificationBell"
 
 export function DashboardHeader() {
   const { user } = useAuth()
@@ -28,10 +27,8 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-4">
-        
-          <Button variant="ghost" size="icon">
-            <Bell className="w-5 h-5" />
-          </Button>
+          {/* Notification Bell với SignalR */}
+          <AdminNotificationBell />
 
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8">

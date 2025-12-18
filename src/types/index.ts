@@ -10,6 +10,32 @@ export interface User {
   createdAt: Date
 }
 
+// Admin Notification Types
+export type AdminNotificationType = 
+  | 'account_pending'      // Tài khoản cần duyệt
+  | 'certification_pending' // Chứng chỉ cần duyệt
+  | 'auction_pending'      // Phiên đấu giá cần duyệt
+  | 'withdraw_pending'     // Yêu cầu rút tiền cần xử lý
+  | 'dispute_pending'      // Khiếu nại cần xử lý
+  | 'wallet_transfer'      // Có tiền chuyển đến ví hệ thống
+  | 'system'               // Thông báo hệ thống chung
+
+export type AdminNotificationSeverity = 'info' | 'warning' | 'success' | 'error'
+
+export interface AdminNotification {
+  id: string
+  type: AdminNotificationType
+  title: string
+  message: string
+  severity: AdminNotificationSeverity
+  isRead: boolean
+  relatedEntityId?: string
+  relatedEntityType?: string
+  data?: Record<string, unknown>
+  createdAt: string
+  readAt?: string | null
+}
+
 export interface UserAddress {
   provinceId: string
   provinceName: string
