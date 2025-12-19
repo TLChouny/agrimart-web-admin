@@ -168,6 +168,23 @@ export const ENDPOINTS = {
     markAllAsRead: (userId: string) =>
       `/api/messaging-service/Notifications/user/${encodeURIComponent(userId)}/read-all`,
   },
+  policy: {
+    categories: {
+      list: '/api/policy/categories',
+      detail: (id: string) => `/api/policy/categories/${id}`,
+      create: '/api/policy/categories',
+      update: (id: string) => `/api/policy/categories/${id}`,
+      delete: (id: string) => `/api/policy/categories/${id}`,
+      items: (categoryId: string) => `/api/policy/categories/${categoryId}/items`,
+    },
+    items: {
+      list: '/api/policy/items',
+      detail: (id: string) => `/api/policy/items/${id}`,
+      create: '/api/policy/items',
+      update: (id: string) => `/api/policy/items/${id}`,
+      delete: (id: string) => `/api/policy/items/${id}`,
+    },
+  },
 } as const
 
 export * from './messages'

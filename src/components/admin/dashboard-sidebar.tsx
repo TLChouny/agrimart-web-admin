@@ -1,7 +1,7 @@
 function cn(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" ") }
 import type { LucideIcon } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, Truck, Settings, LogOut, Scissors, FileWarning, Wallet, ShieldAlert } from "lucide-react"
+import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, Truck, LogOut, Scissors, FileWarning, Wallet, ShieldAlert, FileText } from "lucide-react"
 import { adminAuthService } from "../../services/adminAuthService"
 import { useAuth } from "../../contexts/AuthContext"
 import { ROUTES } from "../../constants"
@@ -24,12 +24,9 @@ const menuItems: MenuItem[] = [
   { icon: ShieldAlert, label: "Tranh chấp", path: "/admin/disputes" },
   // { icon: ShoppingCart, label: "Đơn hàng", path: "/admin/orders" },
   { icon: Wallet, label: "Ví của tôi", path: "/admin/wallet" },
+  { icon: FileText, label: "Chính sách", path: "/admin/policy" },
 
-]
 
-const generalItems = [
-  { icon: Settings, label: "Cài đặt", path: "/admin/settings" },
-  // { icon: HelpCircle, label: "Hỗ trợ", path: "/admin/help" },
 ]
 
 export function DashboardSidebar() {
@@ -74,7 +71,7 @@ export function DashboardSidebar() {
 
       <div className="flex-1 p-4">
         <div className="mb-6">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">MENU</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Bảng điều khiển</p>
           <nav className="space-y-1">
             {menuItems.map((item) => (
               <NavLink
@@ -100,23 +97,7 @@ export function DashboardSidebar() {
         </div>
 
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">GENERAL</p>
           <nav className="space-y-1">
-            {generalItems.map((item) => (
-              <NavLink
-                key={item.label}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    "flex w-full items-center gap-3 h-10 rounded-md px-3 text-sm",
-                    isActive ? "bg-emerald-600 text-white" : "text-gray-700 hover:bg-gray-100"
-                  )
-                }
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
             <button
               type="button"
               onClick={handleLogout}

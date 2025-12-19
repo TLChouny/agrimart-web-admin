@@ -7,4 +7,5 @@ export { disputeApi } from './disputeApi'
 export { walletApi } from './walletApi'
 export { certificationApi } from './certificationApi'
 export { statisticsApi } from './statisticsApi'
+export { policyApi } from './policyApi'
 

@@ -619,3 +619,48 @@ export interface ApproveCertificationDTO {
   status: 1 | 2 // 1: Active, 2: Reject
   rejectionReason?: string // Required when status is 2 (Reject)
 }
+
+// Policy related types
+export interface ApiPolicyCategory {
+  id: string
+  name: string
+  description: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface CreatePolicyCategoryDTO {
+  name: string
+  description: string
+}
+
+export interface UpdatePolicyCategoryDTO {
+  name: string
+  description: string
+  isActive: boolean
+}
+
+export interface ApiPolicyItem {
+  id: string
+  categoryId: string
+  categoryName: string
+  content: string
+  description: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface CreatePolicyItemDTO {
+  categoryId: string
+  content: string
+  description: string
+}
+
+export interface UpdatePolicyItemDTO {
+  categoryId: string
+  content: string
+  description: string
+  isActive: boolean
+}
