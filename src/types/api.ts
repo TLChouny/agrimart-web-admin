@@ -585,13 +585,14 @@ export interface ApiDisputeResolve {
 }
 
 export interface UpdateDisputeStatusDTO {
-  status: 'InAdminReview' | 'Resolved'
+  status: 3 | 4 // 3: InAdminReview, 4: Resolved (sử dụng number thay vì string enum)
   adminNote?: string
 }
 
 export interface CreateDisputeResolveDTO {
-  disputeId: string
+  escrowId: string
   refundAmount: number
+  isFinalDecision: boolean
   adminNote: string
 }
 

@@ -66,6 +66,10 @@ export default function DisputesPage() {
   const [showDetailModal, setShowDetailModal] = useState<boolean>(false)
   const [adminNote, setAdminNote] = useState<string>('')
   const [refundAmount, setRefundAmount] = useState<string>('')
+  const [isFinalDecision, setIsFinalDecision] = useState<boolean>(true)
+  const [showUpdateStatusModal, setShowUpdateStatusModal] = useState<boolean>(false)
+  const [disputeToUpdate, setDisputeToUpdate] = useState<ApiDispute | null>(null)
+  const [updateStatusNote, setUpdateStatusNote] = useState<string>('')
 
   const loadDisputes = useCallback(
     async (page: number, status: DisputeStatus | 'all') => {
@@ -78,7 +82,42 @@ export default function DisputesPage() {
         })
 
         if (res.isSuccess && res.data) {
-          setDisputes(res.data.data)
+          // Normalize status cho mỗi dispute để đảm bảo type đúng
+          // Backend trả về "distupeStatus" (lỗi chính tả) thay vì "disputeStatus"
+          // Backend enum: Pending=0, Approved=1, Rejected=2, InAdminReview=3, Resolved=4
+          const statusMap: Record<string, number> = {
+            'Pending': 0,
+            'Approved': 1,
+            'Rejected': 2,
+            'InAdminReview': 3,
+            'Resolved': 4,
+            '0': 0,
+            '1': 1,
+            '2': 2,
+            '3': 3,
+            '4': 4,
+          }
+          
+          const normalizedDisputes = res.data.data.map((dispute: any) => {
+            // Backend trả về "distupeStatus" thay vì "disputeStatus"
+            const rawStatus = dispute.distupeStatus ?? dispute.disputeStatus
+            
+            let normalizedStatus: number
+            if (typeof rawStatus === 'string') {
+              // Nếu là string, có thể là enum name hoặc số dạng string
+              normalizedStatus = statusMap[rawStatus] ?? Number(rawStatus)
+            } else {
+              normalizedStatus = rawStatus ?? 0
+            }
+            
+            return {
+              ...dispute,
+              disputeStatus: normalizedStatus as DisputeStatus,
+              // Map thêm các field có thể bị sai chính tả
+              isWholesalerCreated: dispute.isWholeSalerCreated ?? dispute.isWholesalerCreated ?? false,
+            }
+          })
+          setDisputes(normalizedDisputes as ApiDispute[])
           setTotalPages(res.data.totalPages)
           setTotalCount(res.data.totalCount)
         } else {
@@ -122,16 +161,25 @@ export default function DisputesPage() {
   }, [disputes, searchValue])
 
   const handleOpenDetail = async (dispute: ApiDispute) => {
-    setSelectedDispute(dispute)
+    // Normalize status để đảm bảo so sánh đúng
+    const normalizedDispute = {
+      ...dispute,
+      disputeStatus: typeof dispute.disputeStatus === 'string' 
+        ? Number(dispute.disputeStatus) 
+        : dispute.disputeStatus
+    } as ApiDispute
+    
+    setSelectedDispute(normalizedDispute)
     setResolveInfo(null)
     setAdminNote('')
     setRefundAmount('')
+    setIsFinalDecision(true)
     setShowDetailModal(true)
 
-    if (dispute.disputeStatus === 4) {
+    if (normalizedDispute.disputeStatus === 4) {
       try {
         setDetailLoading(true)
-        const res = await disputeApi.getResolveByDisputeId(dispute.id)
+        const res = await disputeApi.getResolveByDisputeId(normalizedDispute.id)
         if (res.isSuccess && res.data) {
           setResolveInfo(res.data)
           setAdminNote(res.data.adminNote || '')
@@ -151,15 +199,29 @@ export default function DisputesPage() {
     try {
       setActionLoading(true)
       const res = await disputeApi.updateDisputeStatus(selectedDispute.id, {
-        status: 'InAdminReview',
+        status: 3, // InAdminReview
         adminNote: adminNote || 'Bắt đầu xem xét tranh chấp',
       })
       if (res.isSuccess && res.data) {
+        // Normalize response để đảm bảo status đúng
+        const updatedDispute = res.data as any
+        const normalizedStatus = typeof updatedDispute.distupeStatus !== 'undefined' 
+          ? Number(updatedDispute.distupeStatus)
+          : typeof updatedDispute.disputeStatus !== 'undefined'
+          ? Number(updatedDispute.disputeStatus)
+          : 3 // Fallback về 3 nếu không có
+        
+        const normalizedDispute: ApiDispute = {
+          ...updatedDispute,
+          disputeStatus: normalizedStatus as DisputeStatus,
+          isWholesalerCreated: updatedDispute.isWholeSalerCreated ?? updatedDispute.isWholesalerCreated ?? false,
+        }
+        
         toast({
           title: TOAST_TITLES.SUCCESS,
           description: 'Đã chuyển tranh chấp sang trạng thái admin đang xử lý',
         })
-        setSelectedDispute(res.data)
+        setSelectedDispute(normalizedDispute)
         await loadDisputes(pageNumber, statusFilter)
       } else {
         toast({
@@ -181,7 +243,109 @@ export default function DisputesPage() {
     }
   }
 
-  const handleResolveDispute = async () => {
+  const handleOpenUpdateStatusModal = (dispute: ApiDispute) => {
+    setDisputeToUpdate(dispute)
+    setUpdateStatusNote('')
+    setShowUpdateStatusModal(true)
+  }
+
+  const handleUpdateToInAdminReview = async (dispute?: ApiDispute, note?: string) => {
+    const disputeToUse = dispute || disputeToUpdate
+    if (!disputeToUse) return
+    
+    // Đảm bảo dispute đang ở trạng thái Approved (1)
+    const currentStatus = Number(disputeToUse.disputeStatus)
+    if (currentStatus !== 1) {
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: 'Chỉ có thể chuyển trạng thái từ "Hai bên đã đồng ý" sang "Admin đang xử lý"',
+        variant: 'destructive',
+      })
+      return
+    }
+    
+    const noteToUse = note || updateStatusNote || adminNote || 'Chuyển sang trạng thái admin đang xem xét'
+    if (!noteToUse.trim()) {
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: 'Vui lòng nhập ghi chú trước khi cập nhật trạng thái',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setActionLoading(true)
+      // Chuyển từ status 1 (Approved - Hai bên đã đồng ý) sang status 3 (InAdminReview - Admin đang xử lý)
+      console.log('Updating dispute status:', {
+        disputeId: disputeToUse.id,
+        currentStatus: disputeToUse.disputeStatus,
+        newStatus: 3,
+        note: noteToUse
+      })
+      
+      const statusRes = await disputeApi.updateDisputeStatus(disputeToUse.id, {
+        status: 3, // InAdminReview - Admin đang xử lý
+        adminNote: noteToUse,
+      })
+      
+      console.log('Update status response:', statusRes)
+      
+      if (statusRes.isSuccess && statusRes.data) {
+        // Normalize response để đảm bảo status đúng
+        const updatedDispute = statusRes.data as any
+        console.log('Raw response data:', updatedDispute)
+        console.log('distupeStatus:', updatedDispute.distupeStatus)
+        console.log('disputeStatus:', updatedDispute.disputeStatus)
+        
+        const normalizedStatus = typeof updatedDispute.distupeStatus !== 'undefined' 
+          ? Number(updatedDispute.distupeStatus)
+          : typeof updatedDispute.disputeStatus !== 'undefined'
+          ? Number(updatedDispute.disputeStatus)
+          : 3 // Fallback về 3 nếu không có
+        
+        console.log('Normalized status:', normalizedStatus)
+        
+        const normalizedDispute: ApiDispute = {
+          ...updatedDispute,
+          disputeStatus: normalizedStatus as DisputeStatus,
+          isWholesalerCreated: updatedDispute.isWholeSalerCreated ?? updatedDispute.isWholesalerCreated ?? false,
+        }
+        
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: 'Đã cập nhật trạng thái từ "Hai bên đã đồng ý" sang "Admin đang xử lý"',
+        })
+        // Nếu đang xem chi tiết dispute này, cập nhật selectedDispute
+        if (selectedDispute?.id === disputeToUse.id) {
+          setSelectedDispute(normalizedDispute)
+        }
+        setShowUpdateStatusModal(false)
+        setDisputeToUpdate(null)
+        setUpdateStatusNote('')
+        // Reload danh sách để đảm bảo status mới được hiển thị
+        await loadDisputes(pageNumber, statusFilter)
+      } else {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: statusRes.message || 'Không thể cập nhật trạng thái tranh chấp',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Đã xảy ra lỗi khi cập nhật trạng thái tranh chấp'
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleCreateResolve = async () => {
     if (!selectedDispute) return
     const refund = Number(refundAmount || '0')
     if (Number.isNaN(refund) || refund < 0) {
@@ -192,6 +356,7 @@ export default function DisputesPage() {
       })
       return
     }
+    
     if (!adminNote.trim()) {
       toast({
         title: TOAST_TITLES.ERROR,
@@ -204,44 +369,45 @@ export default function DisputesPage() {
     try {
       setActionLoading(true)
 
-      const statusRes = await disputeApi.updateDisputeStatus(selectedDispute.id, {
-        status: 'Resolved',
-        adminNote,
-      })
-      if (!statusRes.isSuccess || !statusRes.data) {
-        toast({
-          title: TOAST_TITLES.ERROR,
-          description: statusRes.message || 'Không thể cập nhật trạng thái tranh chấp',
-          variant: 'destructive',
-        })
-        setActionLoading(false)
-        return
-      }
-
+      // Tạo resolve
       const resolveRes = await disputeApi.createDisputeResolve({
-        disputeId: selectedDispute.id,
+        escrowId: selectedDispute.escrowId,
         refundAmount: refund,
+        isFinalDecision,
         adminNote,
       })
 
       if (resolveRes.isSuccess && resolveRes.data) {
         toast({
           title: TOAST_TITLES.SUCCESS,
-          description: 'Đã kết thúc tranh chấp và ghi nhận thông tin hoàn tiền',
+          description: 'Đã tạo bản ghi giải quyết tranh chấp thành công',
         })
-        setSelectedDispute(statusRes.data)
         setResolveInfo(resolveRes.data)
         await loadDisputes(pageNumber, statusFilter)
       } else {
+        // Hiển thị thông báo lỗi chi tiết từ API
+        const errorMessage = resolveRes.message || 'Không thể tạo bản ghi giải quyết tranh chấp'
+        let displayMessage = errorMessage
+        
+        // Xử lý các loại lỗi phổ biến
+        if (errorMessage.includes('exceed') || errorMessage.includes('vượt quá')) {
+          // Extract số tiền tối đa từ message nếu có
+          const maxAmountMatch = errorMessage.match(/\((\d+)\)/)
+          const maxAmount = maxAmountMatch ? Number(maxAmountMatch[1]) : null
+          displayMessage = `Số tiền hoàn (${formatCurrencyVND(refund)}) không được vượt quá tổng số tiền escrow${maxAmount ? ` (${formatCurrencyVND(maxAmount)})` : ''}. Vui lòng nhập lại số tiền hoàn.`
+        } else if (errorMessage.includes('auction')) {
+          displayMessage = 'Escrow này không có liên kết với auction. Vui lòng kiểm tra lại thông tin escrow.'
+        }
+        
         toast({
           title: TOAST_TITLES.ERROR,
-          description: resolveRes.message || 'Không thể tạo bản ghi giải quyết tranh chấp',
+          description: displayMessage,
           variant: 'destructive',
         })
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Đã xảy ra lỗi khi xử lý tranh chấp'
+        error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tạo bản ghi giải quyết tranh chấp'
       toast({
         title: TOAST_TITLES.ERROR,
         description: message,
@@ -252,8 +418,13 @@ export default function DisputesPage() {
     }
   }
 
-  const canStartAdminReview = selectedDispute?.disputeStatus === 2
-  const canResolve = selectedDispute?.disputeStatus === 3
+
+  const canStartAdminReview = selectedDispute && Number(selectedDispute.disputeStatus) === 2
+  // Có thể update status từ Approved (1) lên InAdminReview (3)
+  // Status 1 = "Hai bên đã đồng ý" (Approved) -> chuyển sang status 3 = "Admin đang xử lý" (InAdminReview)
+  const canUpdateToInAdminReview = selectedDispute && Number(selectedDispute.disputeStatus) === 1
+  // Có thể tạo resolve nếu chưa có resolve info và dispute ở trạng thái InAdminReview (3)
+  const canCreateResolve = selectedDispute && !resolveInfo && Number(selectedDispute.disputeStatus) === 3
 
   const handlePageChange = (next: number) => {
     if (next < 1 || next > totalPages || next === pageNumber) return
@@ -327,16 +498,37 @@ export default function DisputesPage() {
                 <SimpleTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[16%]">ID</TableHead>
-                      <TableHead className="w-[16%]">Escrow ID</TableHead>
-                      <TableHead className="w-[12%] text-right">Số tiền thực tế</TableHead>
-                      <TableHead className="w-[14%]">Trạng thái</TableHead>
-                      <TableHead className="w-[18%]">Thời gian tạo / cập nhật</TableHead>
-                      <TableHead className="w-[24%] text-right">Thao tác</TableHead>
+                      <TableHead className="w-[14%]">ID</TableHead>
+                      <TableHead className="w-[14%]">Escrow ID</TableHead>
+                      <TableHead className="w-[10%] text-right">Số tiền thực tế</TableHead>
+                      <TableHead className="w-[12%]">Trạng thái</TableHead>
+                      <TableHead className="w-[16%]">Thời gian tạo / cập nhật</TableHead>
+                      <TableHead className="w-[18%] text-center">Cập nhật trạng thái</TableHead>
+                      <TableHead className="w-[16%] text-right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredDisputes.map((dispute) => (
+                    {filteredDisputes.map((dispute) => {
+                      // Normalize status để đảm bảo so sánh đúng
+                      // Backend enum: Pending=0, Approved=1, Rejected=2, InAdminReview=3, Resolved=4
+                      const statusMap: Record<string, number> = {
+                        'Pending': 0,
+                        'Approved': 1,
+                        'Rejected': 2,
+                        'InAdminReview': 3,
+                        'Resolved': 4,
+                      }
+                      
+                      let normalizedStatus: number
+                      if (typeof dispute.disputeStatus === 'string') {
+                        normalizedStatus = statusMap[dispute.disputeStatus] ?? Number(dispute.disputeStatus)
+                      } else {
+                        normalizedStatus = dispute.disputeStatus
+                      }
+                      
+                      const isApproved = normalizedStatus === 1 // Approved = 1
+                      
+                      return (
                       <TableRow key={dispute.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="flex flex-col">
@@ -367,6 +559,21 @@ export default function DisputesPage() {
                             <span>Cập nhật: {formatDateTime(dispute.updatedAt)}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-center">
+                          {isApproved ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenUpdateStatusModal(dispute)}
+                              disabled={actionLoading}
+                              className="h-8 px-3 text-xs border-purple-600 text-purple-600 hover:bg-purple-50"
+                            >
+                              Chuyển sang Admin xem xét
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -381,7 +588,7 @@ export default function DisputesPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                   </TableBody>
                 </SimpleTable>
               </div>
@@ -427,6 +634,7 @@ export default function DisputesPage() {
             setResolveInfo(null)
             setAdminNote('')
             setRefundAmount('')
+            setIsFinalDecision(true)
           }
         }}
       >
@@ -536,7 +744,7 @@ export default function DisputesPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="refundAmount" className="text-sm font-medium text-gray-700">
                         Số tiền hoàn (VND)
@@ -552,19 +760,45 @@ export default function DisputesPage() {
                         className="mt-1"
                       />
                       <p className="mt-1 text-xs text-gray-500">
-                        Theo rule: RefundAmount không được vượt quá số tiền escrow.
+                        Theo rule: Số tiền hoàn không được vượt quá tổng số tiền escrow.
+                        {selectedDispute && (
+                          <span className="block mt-1 font-semibold text-red-600">
+                            Số tiền tối đa: {formatCurrencyVND(selectedDispute.actualAmount)}
+                          </span>
+                        )}
                       </p>
                     </div>
 
-                    {resolveInfo && (
-                      <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                        <p className="font-semibold mb-1">Thông tin giải quyết đã ghi nhận</p>
-                        <p>Số tiền hoàn: {formatCurrencyVND(resolveInfo.refundAmount)}</p>
-                        <p>Ghi chú: {resolveInfo.adminNote}</p>
-                        <p>Ngày tạo: {formatDateTime(resolveInfo.createdAt)}</p>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Quyết định cuối cùng
+                      </Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="checkbox"
+                          id="isFinalDecision"
+                          checked={isFinalDecision}
+                          onChange={(e) => setIsFinalDecision(e.target.checked)}
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <Label htmlFor="isFinalDecision" className="text-sm text-gray-700 cursor-pointer">
+                          Đây là quyết định cuối cùng
+                        </Label>
                       </div>
-                    )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        Đánh dấu nếu đây là quyết định cuối cùng của admin.
+                      </p>
+                    </div>
                   </div>
+
+                  {resolveInfo && (
+                    <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      <p className="font-semibold mb-1">Thông tin giải quyết đã ghi nhận</p>
+                      <p>Số tiền hoàn: {formatCurrencyVND(resolveInfo.refundAmount)}</p>
+                      <p>Ghi chú: {resolveInfo.adminNote}</p>
+                      <p>Ngày tạo: {formatDateTime(resolveInfo.createdAt)}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:justify-between gap-3 pt-2">
@@ -600,20 +834,31 @@ export default function DisputesPage() {
                         )}
                       </Button>
                     )}
-                    {canResolve && (
+                    {canUpdateToInAdminReview && (
                       <Button
                         type="button"
-                        onClick={handleResolveDispute}
+                        variant="outline"
+                        onClick={() => handleOpenUpdateStatusModal(selectedDispute!)}
                         disabled={actionLoading}
-                        className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="h-9 px-4 border-purple-600 text-purple-600 hover:bg-purple-50"
+                      >
+                        Chuyển sang Admin xem xét
+                      </Button>
+                    )}
+                    {canCreateResolve && (
+                      <Button
+                        type="button"
+                        onClick={handleCreateResolve}
+                        disabled={actionLoading}
+                        className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         {actionLoading ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Đang xử lý...
+                            Đang tạo...
                           </>
                         ) : (
-                          'Kết thúc tranh chấp'
+                          'Tạo giải quyết tranh chấp'
                         )}
                       </Button>
                     )}
@@ -621,6 +866,79 @@ export default function DisputesPage() {
                 </div>
               </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Modal */}
+      <Dialog
+        open={showUpdateStatusModal}
+        onOpenChange={(open) => {
+          setShowUpdateStatusModal(open)
+          if (!open) {
+            setDisputeToUpdate(null)
+            setUpdateStatusNote('')
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Cập nhật trạng thái tranh chấp
+            </DialogTitle>
+            <p className="mt-1 text-sm text-gray-600">
+              Chuyển từ "Hai bên đã đồng ý" sang "Admin đang xử lý"
+            </p>
+          </DialogHeader>
+
+          {disputeToUpdate && (
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label htmlFor="updateStatusNote" className="text-sm font-medium text-gray-700">
+                  Ghi chú <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="updateStatusNote"
+                  rows={4}
+                  placeholder="Nhập ghi chú về việc chuyển trạng thái..."
+                  value={updateStatusNote}
+                  onChange={(e) => setUpdateStatusNote(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Ghi chú này sẽ được lưu lại trong lịch sử cập nhật trạng thái.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowUpdateStatusModal(false)
+                    setDisputeToUpdate(null)
+                    setUpdateStatusNote('')
+                  }}
+                  disabled={actionLoading}
+                  className="h-9 px-4"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  onClick={() => handleUpdateToInAdminReview()}
+                  disabled={actionLoading || !updateStatusNote.trim()}
+                  className="h-9 px-4 bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Đang cập nhật...
+                    </>
+                  ) : (
+                    'Cập nhật trạng thái'
+                  )}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

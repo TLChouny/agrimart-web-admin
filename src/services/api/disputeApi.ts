@@ -36,6 +36,7 @@ export const disputeApi = {
     id: string,
     data: UpdateDisputeStatusDTO
   ): Promise<APIResponse<ApiDispute>> {
+    // API yêu cầu format trực tiếp { status, adminNote } (không wrap trong dto)
     return httpClient.patch<ApiDispute>(ENDPOINTS.dispute.updateStatus(id), data, {
       invalidateCache: ENDPOINTS.dispute.list,
     })
@@ -44,6 +45,7 @@ export const disputeApi = {
   async createDisputeResolve(
     data: CreateDisputeResolveDTO
   ): Promise<APIResponse<ApiDisputeResolve>> {
+    // API có thể yêu cầu format trực tiếp hoặc wrap trong dto, thử trực tiếp trước
     return httpClient.post<ApiDisputeResolve>(ENDPOINTS.dispute.createResolve, data, {
       invalidateCache: ENDPOINTS.dispute.list,
     })
