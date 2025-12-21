@@ -56,6 +56,12 @@ export const disputeApi = {
       cache: false,
     })
   },
+
+  async getResolveByEscrowId(escrowId: string): Promise<APIResponse<ApiDisputeResolve>> {
+    return httpClient.get<ApiDisputeResolve>(ENDPOINTS.dispute.resolveByEscrowId(escrowId), {
+      cache: false,
+    })
+  },
 }
 
 

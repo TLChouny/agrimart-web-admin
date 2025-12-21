@@ -153,6 +153,8 @@ export const ENDPOINTS = {
     createResolve: '/api/payment-service/dispute/resolve',
     resolveByDisputeId: (disputeId: string) =>
       `/api/payment-service/dispute/resolve/dispute/${disputeId}`,
+    resolveByEscrowId: (escrowId: string) =>
+      `/api/payment-service/dispute/resolve/escrow/${escrowId}`,
   },
   escrow: {
     detail: (id: string) => `/api/payment-service/escrow/${id}`,

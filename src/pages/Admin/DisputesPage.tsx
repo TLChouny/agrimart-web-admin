@@ -11,7 +11,7 @@ import { disputeApi } from '../../services/api/disputeApi'
 import type { ApiDispute, ApiDisputeResolve, DisputeStatus } from '../../types/api'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
-import { Loader2, ShieldAlert, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { Loader2, ShieldAlert, Search, ChevronLeft, ChevronRight, Eye, RefreshCw } from 'lucide-react'
 import { formatCurrencyVND } from '../../utils/currency'
 
 const DISPUTE_STATUS_LABELS: Record<DisputeStatus, string> = {
@@ -47,6 +47,13 @@ const formatDateTime = (iso: string | null) => {
   })
 }
 
+const formatQuantity = (value?: number | null) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return '—'
+  }
+  return `${new Intl.NumberFormat('vi-VN').format(value)} kg`
+}
+
 export default function DisputesPage() {
   const { toast } = useToastContext()
 
@@ -58,6 +65,7 @@ export default function DisputesPage() {
   const [pageSize] = useState<number>(10)
   const [totalPages, setTotalPages] = useState<number>(1)
   const [totalCount, setTotalCount] = useState<number>(0)
+  const [resolveInfoMap, setResolveInfoMap] = useState<Record<string, ApiDisputeResolve>>({})
 
   const [selectedDispute, setSelectedDispute] = useState<ApiDispute | null>(null)
   const [resolveInfo, setResolveInfo] = useState<ApiDisputeResolve | null>(null)
@@ -120,6 +128,29 @@ export default function DisputesPage() {
           setDisputes(normalizedDisputes as ApiDispute[])
           setTotalPages(res.data.totalPages)
           setTotalCount(res.data.totalCount)
+          
+          // Load resolveInfo cho tất cả disputes bằng escrowId (không phân biệt status)
+          const resolvePromises = normalizedDisputes.map(async (dispute: any) => {
+            try {
+              const resolveRes = await disputeApi.getResolveByEscrowId(dispute.escrowId)
+              if (resolveRes.isSuccess && resolveRes.data) {
+                return { disputeId: dispute.id, resolveInfo: resolveRes.data }
+              }
+            } catch (error) {
+              // Không log error vì có thể escrow chưa có resolve, chỉ log khi cần debug
+              // console.error(`Failed to load resolve info for escrow ${dispute.escrowId}`, error)
+            }
+            return null
+          })
+          
+          const resolveResults = await Promise.all(resolvePromises)
+          const newResolveInfoMap: Record<string, ApiDisputeResolve> = {}
+          resolveResults.forEach((result) => {
+            if (result) {
+              newResolveInfoMap[result.disputeId] = result.resolveInfo
+            }
+          })
+          setResolveInfoMap((prev) => ({ ...prev, ...newResolveInfoMap }))
         } else {
           toast({
             title: TOAST_TITLES.ERROR,
@@ -176,21 +207,27 @@ export default function DisputesPage() {
     setIsFinalDecision(true)
     setShowDetailModal(true)
 
-    if (normalizedDispute.disputeStatus === 4) {
-      try {
-        setDetailLoading(true)
-        const res = await disputeApi.getResolveByDisputeId(normalizedDispute.id)
-        if (res.isSuccess && res.data) {
-          setResolveInfo(res.data)
-          setAdminNote(res.data.adminNote || '')
-          setRefundAmount(res.data.refundAmount.toString())
-        }
-      } catch (error) {
-        // không toast quá ồn, chỉ log
-        console.error('Failed to load dispute resolve info', error)
-      } finally {
-        setDetailLoading(false)
+    // Load resolveInfo cho tất cả status nếu có (không chỉ status = 4)
+    try {
+      setDetailLoading(true)
+      const res = await disputeApi.getResolveByEscrowId(normalizedDispute.escrowId)
+      if (res.isSuccess && res.data) {
+        const resolveData = res.data
+        setResolveInfo(resolveData)
+        setAdminNote(resolveData.adminNote || '')
+        setRefundAmount(resolveData.refundAmount.toString())
+        // Cập nhật resolveInfoMap
+        setResolveInfoMap((prev) => ({
+          ...prev,
+          [normalizedDispute.id]: resolveData,
+        }))
       }
+    } catch (error) {
+      // Không toast quá ồn, chỉ log khi cần debug
+      // Có thể escrow chưa có resolve, đây là trường hợp bình thường
+      // console.error('Failed to load dispute resolve info', error)
+    } finally {
+      setDetailLoading(false)
     }
   }
 
@@ -345,6 +382,98 @@ export default function DisputesPage() {
     }
   }
 
+  const handleUpdateToResolved = async (dispute?: ApiDispute, note?: string) => {
+    const disputeToUse = dispute || disputeToUpdate || selectedDispute
+    if (!disputeToUse) return
+    
+    // Đảm bảo dispute đang ở trạng thái Approved (1) và đã có resolveInfo
+    const currentStatus = Number(disputeToUse.disputeStatus)
+    if (currentStatus !== 1) {
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: 'Chỉ có thể chuyển trạng thái từ "Hai bên đã đồng ý" sang "Đã kết thúc"',
+        variant: 'destructive',
+      })
+      return
+    }
+    
+    // Kiểm tra resolveInfo
+    const currentResolveInfo = resolveInfo || resolveInfoMap[disputeToUse.id]
+    if (!currentResolveInfo) {
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: 'Chưa có thông tin giải quyết tranh chấp. Vui lòng tạo giải quyết trước.',
+        variant: 'destructive',
+      })
+      return
+    }
+    
+    const noteToUse = note || updateStatusNote || adminNote || 'Kết thúc tranh chấp'
+    if (!noteToUse.trim()) {
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: 'Vui lòng nhập ghi chú trước khi cập nhật trạng thái',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setActionLoading(true)
+      // Chuyển từ status 1 (Approved - Hai bên đã đồng ý) sang status 4 (Resolved - Đã kết thúc)
+      const statusRes = await disputeApi.updateDisputeStatus(disputeToUse.id, {
+        status: 4, // Resolved - Đã kết thúc
+        adminNote: noteToUse,
+      })
+      
+      if (statusRes.isSuccess && statusRes.data) {
+        // Normalize response để đảm bảo status đúng
+        const updatedDispute = statusRes.data as any
+        const normalizedStatus = typeof updatedDispute.distupeStatus !== 'undefined' 
+          ? Number(updatedDispute.distupeStatus)
+          : typeof updatedDispute.disputeStatus !== 'undefined'
+          ? Number(updatedDispute.disputeStatus)
+          : 4 // Fallback về 4 nếu không có
+        
+        const normalizedDispute: ApiDispute = {
+          ...updatedDispute,
+          disputeStatus: normalizedStatus as DisputeStatus,
+          isWholesalerCreated: updatedDispute.isWholeSalerCreated ?? updatedDispute.isWholesalerCreated ?? false,
+        }
+        
+        toast({
+          title: TOAST_TITLES.SUCCESS,
+          description: 'Đã cập nhật trạng thái từ "Hai bên đã đồng ý" sang "Đã kết thúc"',
+        })
+        // Nếu đang xem chi tiết dispute này, cập nhật selectedDispute
+        if (selectedDispute?.id === disputeToUse.id) {
+          setSelectedDispute(normalizedDispute)
+        }
+        setShowUpdateStatusModal(false)
+        setDisputeToUpdate(null)
+        setUpdateStatusNote('')
+        // Reload danh sách để đảm bảo status mới được hiển thị
+        await loadDisputes(pageNumber, statusFilter)
+      } else {
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: statusRes.message || 'Không thể cập nhật trạng thái tranh chấp',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Đã xảy ra lỗi khi cập nhật trạng thái tranh chấp'
+      toast({
+        title: TOAST_TITLES.ERROR,
+        description: message,
+        variant: 'destructive',
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handleCreateResolve = async () => {
     if (!selectedDispute) return
     const refund = Number(refundAmount || '0')
@@ -378,11 +507,17 @@ export default function DisputesPage() {
       })
 
       if (resolveRes.isSuccess && resolveRes.data) {
+        const resolveData = resolveRes.data
         toast({
           title: TOAST_TITLES.SUCCESS,
           description: 'Đã tạo bản ghi giải quyết tranh chấp thành công',
         })
-        setResolveInfo(resolveRes.data)
+        setResolveInfo(resolveData)
+        // Cập nhật resolveInfoMap
+        setResolveInfoMap((prev) => ({
+          ...prev,
+          [selectedDispute.id]: resolveData,
+        }))
         await loadDisputes(pageNumber, statusFilter)
       } else {
         // Hiển thị thông báo lỗi chi tiết từ API
@@ -420,11 +555,17 @@ export default function DisputesPage() {
 
 
   const canStartAdminReview = selectedDispute && Number(selectedDispute.disputeStatus) === 2
-  // Có thể update status từ Approved (1) lên InAdminReview (3)
+  // Có thể update status từ Approved (1) lên InAdminReview (3) nếu chưa có resolveInfo
   // Status 1 = "Hai bên đã đồng ý" (Approved) -> chuyển sang status 3 = "Admin đang xử lý" (InAdminReview)
-  const canUpdateToInAdminReview = selectedDispute && Number(selectedDispute.disputeStatus) === 1
+  const canUpdateToInAdminReview = selectedDispute && Number(selectedDispute.disputeStatus) === 1 && !resolveInfo
+  // Có thể update status từ Approved (1) lên Resolved (4) nếu đã có resolveInfo
+  const canUpdateToResolved = selectedDispute && Number(selectedDispute.disputeStatus) === 1 && !!resolveInfo
   // Có thể tạo resolve nếu chưa có resolve info và dispute ở trạng thái InAdminReview (3)
   const canCreateResolve = selectedDispute && !resolveInfo && Number(selectedDispute.disputeStatus) === 3
+  // Kiểm tra nếu dispute đã kết thúc (status = 4)
+  const isResolved = selectedDispute && Number(selectedDispute.disputeStatus) === 4
+  // Kiểm tra nếu dispute đang ở trạng thái Admin đang xem xét (status = 3)
+  const isInAdminReview = selectedDispute && Number(selectedDispute.disputeStatus) === 3
 
   const handlePageChange = (next: number) => {
     if (next < 1 || next > totalPages || next === pageNumber) return
@@ -476,6 +617,14 @@ export default function DisputesPage() {
                 <option value={3}>Admin đang xử lý</option>
                 <option value={4}>Đã kết thúc</option>
               </select>
+              <Button
+                variant="outline"
+                onClick={() => loadDisputes(pageNumber, statusFilter)}
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Làm mới
+              </Button>
             </div>
           </div>
 
@@ -498,9 +647,9 @@ export default function DisputesPage() {
                 <SimpleTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[14%]">ID</TableHead>
                       <TableHead className="w-[14%]">Escrow ID</TableHead>
-                      <TableHead className="w-[10%] text-right">Số tiền thực tế</TableHead>
+                      <TableHead className="w-[12%] text-right">Sản lượng (kg)</TableHead>
+                      <TableHead className="w-[14%] text-right">Số tiền tranh chấp mong muốn</TableHead>
                       <TableHead className="w-[12%]">Trạng thái</TableHead>
                       <TableHead className="w-[16%]">Thời gian tạo / cập nhật</TableHead>
                       <TableHead className="w-[18%] text-center">Cập nhật trạng thái</TableHead>
@@ -527,13 +676,14 @@ export default function DisputesPage() {
                       }
                       
                       const isApproved = normalizedStatus === 1 // Approved = 1
+                      const hasResolveInfo = !!resolveInfoMap[dispute.id]
                       
                       return (
                       <TableRow key={dispute.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-mono text-xs text-gray-800 truncate max-w-[220px]">
-                              {dispute.id}
+                            <span className="font-mono text-xs text-gray-700 truncate max-w-[220px]">
+                              {dispute.escrowId}
                             </span>
                             {dispute.disputeMessage && (
                               <span className="text-xs text-gray-500 truncate max-w-[220px]">
@@ -542,14 +692,16 @@ export default function DisputesPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-xs text-gray-700 truncate max-w-[220px]">
-                            {dispute.escrowId}
+                        <TableCell className="text-right">
+                          <span className="font-semibold text-gray-900">
+                            {formatQuantity(dispute.actualAmount)}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
                           <span className="font-semibold text-gray-900">
-                            {formatCurrencyVND(dispute.actualAmount)}
+                            {resolveInfoMap[dispute.id]?.refundAmount 
+                              ? formatCurrencyVND(resolveInfoMap[dispute.id].refundAmount)
+                              : '—'}
                           </span>
                         </TableCell>
                         <TableCell>{getDisputeStatusBadge(dispute.disputeStatus)}</TableCell>
@@ -561,15 +713,27 @@ export default function DisputesPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           {isApproved ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenUpdateStatusModal(dispute)}
-                              disabled={actionLoading}
-                              className="h-8 px-3 text-xs border-purple-600 text-purple-600 hover:bg-purple-50"
-                            >
-                              Chuyển sang Admin xem xét
-                            </Button>
+                            hasResolveInfo ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenUpdateStatusModal(dispute)}
+                                disabled={actionLoading}
+                                className="text-xs border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                              >
+                                Kết thúc tranh chấp
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenUpdateStatusModal(dispute)}
+                                disabled={actionLoading}
+                                className="text-xs border-purple-600 text-purple-600 hover:bg-purple-50"
+                              >
+                                Chuyển sang Admin xem xét
+                              </Button>
+                            )
                           ) : (
                             <span className="text-xs text-gray-400">—</span>
                           )}
@@ -580,9 +744,9 @@ export default function DisputesPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleOpenDetail(dispute)}
-                              className="h-8 px-3 text-xs"
+                              className="text-xs"
                             >
-                              <Eye className="w-3 h-3 mr-1" />
+                              <Eye className="h-4 w-4 mr-1.5" />
                               Chi tiết
                             </Button>
                           </div>
@@ -601,22 +765,20 @@ export default function DisputesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-3"
                     onClick={() => handlePageChange(pageNumber - 1)}
                     disabled={pageNumber <= 1}
                   >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    <ChevronLeft className="h-4 w-4 mr-1.5" />
                     Trước
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-3"
                     onClick={() => handlePageChange(pageNumber + 1)}
                     disabled={pageNumber >= totalPages}
                   >
                     Sau
-                    <ChevronRight className="w-4 h-4 ml-1" />
+                    <ChevronRight className="h-4 w-4 ml-1.5" />
                   </Button>
                 </div>
               </div>
@@ -641,11 +803,9 @@ export default function DisputesPage() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedDispute && (
             <>
-              <DialogHeader className="pb-4 border-b border-gray-200">
-                <DialogTitle className="text-2xl font-semibold text-gray-900">
-                  Chi tiết tranh chấp
-                </DialogTitle>
-                <p className="mt-1 text-sm text-gray-600">
+              <DialogHeader>
+                <DialogTitle>Chi tiết tranh chấp</DialogTitle>
+                <p className="text-sm text-gray-600">
                   Escrow ID:{' '}
                   <span className="font-mono text-xs text-gray-800">
                     {selectedDispute.escrowId}
@@ -653,18 +813,26 @@ export default function DisputesPage() {
                 </p>
               </DialogHeader>
 
-              <div className="space-y-6 pt-4">
+              <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Trạng thái</Label>
                     <div className="mt-1">{getDisputeStatusBadge(selectedDispute.disputeStatus)}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-700">Số tiền tranh chấp</Label>
+                    <Label className="text-sm font-medium text-gray-700">Sản lượng (kg)</Label>
                     <p className="mt-1 text-lg font-semibold text-gray-900">
-                      {formatCurrencyVND(selectedDispute.actualAmount)}
+                      {formatQuantity(selectedDispute.actualAmount)}
                     </p>
                   </div>
+                  {resolveInfo && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700">Số tiền tranh chấp mong muốn</Label>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">
+                        {formatCurrencyVND(resolveInfo.refundAmount)}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Thời gian tạo</Label>
                     <p className="mt-1 text-sm text-gray-900">
@@ -729,89 +897,123 @@ export default function DisputesPage() {
                       Đang tải thông tin giải quyết...
                     </div>
                   )}
-                  <div>
-                    <Label htmlFor="adminNote" className="text-sm font-medium text-gray-700">
-                      Ghi chú của admin
-                    </Label>
-                    <Textarea
-                      id="adminNote"
-                      rows={4}
-                      placeholder="Ghi lại nhận định, quyết định xử lý tranh chấp..."
-                      value={adminNote}
-                      onChange={(e) => setAdminNote(e.target.value)}
-                      className="mt-1"
-                      disabled={detailLoading}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="refundAmount" className="text-sm font-medium text-gray-700">
-                        Số tiền hoàn (VND)
-                      </Label>
-                      <Input
-                        id="refundAmount"
-                        type="number"
-                        min={0}
-                        step={1000}
-                        placeholder="Nhập số tiền hoàn..."
-                        value={refundAmount}
-                        onChange={(e) => setRefundAmount(e.target.value)}
-                        className="mt-1"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Theo rule: Số tiền hoàn không được vượt quá tổng số tiền escrow.
-                        {selectedDispute && (
-                          <span className="block mt-1 font-semibold text-red-600">
-                            Số tiền tối đa: {formatCurrencyVND(selectedDispute.actualAmount)}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Quyết định cuối cùng
-                      </Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <input
-                          type="checkbox"
-                          id="isFinalDecision"
-                          checked={isFinalDecision}
-                          onChange={(e) => setIsFinalDecision(e.target.checked)}
-                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-                        />
-                        <Label htmlFor="isFinalDecision" className="text-sm text-gray-700 cursor-pointer">
-                          Đây là quyết định cuối cùng
-                        </Label>
+                  
+                  {isResolved && resolveInfo ? (
+                    // Khi đã kết thúc, chỉ hiển thị thông tin resolve
+                    <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
+                      <p className="font-semibold text-sm text-emerald-900 mb-3">Thông tin giải quyết tranh chấp</p>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Số tiền hoàn: </span>
+                          <span className="text-gray-900">{formatCurrencyVND(resolveInfo.refundAmount)}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Ghi chú của admin: </span>
+                          <p className="text-gray-900 mt-1 whitespace-pre-line">{resolveInfo.adminNote || '—'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Quyết định cuối cùng: </span>
+                          <span className="text-gray-900">{resolveInfo.isFinalDecision ? 'Có' : 'Không'}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Ngày tạo: </span>
+                          <span className="text-gray-900">{formatDateTime(resolveInfo.createdAt)}</span>
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Đánh dấu nếu đây là quyết định cuối cùng của admin.
-                      </p>
                     </div>
-                  </div>
+                  ) : isInAdminReview ? (
+                    // Chỉ hiển thị form nhập khi đang ở trạng thái Admin đang xem xét (status = 3)
+                    <>
+                      <div>
+                        <Label htmlFor="adminNote" className="text-sm font-medium text-gray-700">
+                          Ghi chú của admin
+                        </Label>
+                        <Textarea
+                          id="adminNote"
+                          rows={4}
+                          placeholder="Ghi lại nhận định, quyết định xử lý tranh chấp..."
+                          value={adminNote}
+                          onChange={(e) => setAdminNote(e.target.value)}
+                          className="mt-1"
+                          disabled={detailLoading}
+                        />
+                      </div>
 
-                  {resolveInfo && (
-                    <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                      <p className="font-semibold mb-1">Thông tin giải quyết đã ghi nhận</p>
-                      <p>Số tiền hoàn: {formatCurrencyVND(resolveInfo.refundAmount)}</p>
-                      <p>Ghi chú: {resolveInfo.adminNote}</p>
-                      <p>Ngày tạo: {formatDateTime(resolveInfo.createdAt)}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="refundAmount" className="text-sm font-medium text-gray-700">
+                            Số tiền hoàn (VND)
+                          </Label>
+                          <Input
+                            id="refundAmount"
+                            type="number"
+                            min={0}
+                            step={1000}
+                            placeholder="Nhập số tiền hoàn..."
+                            value={refundAmount}
+                            onChange={(e) => setRefundAmount(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                            Quyết định cuối cùng
+                          </Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="checkbox"
+                              id="isFinalDecision"
+                              checked={isFinalDecision}
+                              onChange={(e) => setIsFinalDecision(e.target.checked)}
+                              className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                            />
+                            <Label htmlFor="isFinalDecision" className="text-sm text-gray-700 cursor-pointer">
+                              Đây là quyết định cuối cùng
+                            </Label>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Đánh dấu nếu đây là quyết định cuối cùng của admin.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : resolveInfo ? (
+                    // Nếu có resolveInfo nhưng không phải status 3 hoặc 4, vẫn hiển thị thông tin
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                      <p className="font-semibold text-sm text-blue-900 mb-3">Thông tin giải quyết tranh chấp</p>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Số tiền hoàn: </span>
+                          <span className="text-gray-900">{formatCurrencyVND(resolveInfo.refundAmount)}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Ghi chú của admin: </span>
+                          <p className="text-gray-900 mt-1 whitespace-pre-line">{resolveInfo.adminNote || '—'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Quyết định cuối cùng: </span>
+                          <span className="text-gray-900">{resolveInfo.isFinalDecision ? 'Có' : 'Không'}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Ngày tạo: </span>
+                          <span className="text-gray-900">{formatDateTime(resolveInfo.createdAt)}</span>
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:justify-between gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-3 pt-4 border-t border-gray-200">
                   <div className="text-xs text-gray-500">
                     <p>- Rejected → InAdminReview → Resolved (không được lùi trạng thái)</p>
                     <p>- Approved / Resolved là trạng thái cuối cùng, không chỉnh sửa lại.</p>
                   </div>
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex justify-end gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setShowDetailModal(false)}
-                      className="h-9 px-4"
                       disabled={actionLoading}
                     >
                       Đóng
@@ -822,16 +1024,9 @@ export default function DisputesPage() {
                         variant="outline"
                         onClick={handleStartAdminReview}
                         disabled={actionLoading}
-                        className="h-9 px-4 border-blue-600 text-blue-600 hover:bg-blue-50"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50"
                       >
-                        {actionLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Đang cập nhật...
-                          </>
-                        ) : (
-                          'Bắt đầu xem xét'
-                        )}
+                        {actionLoading ? 'Đang cập nhật...' : 'Bắt đầu xem xét'}
                       </Button>
                     )}
                     {canUpdateToInAdminReview && (
@@ -840,9 +1035,20 @@ export default function DisputesPage() {
                         variant="outline"
                         onClick={() => handleOpenUpdateStatusModal(selectedDispute!)}
                         disabled={actionLoading}
-                        className="h-9 px-4 border-purple-600 text-purple-600 hover:bg-purple-50"
+                        className="border-purple-600 text-purple-600 hover:bg-purple-50"
                       >
                         Chuyển sang Admin xem xét
+                      </Button>
+                    )}
+                    {canUpdateToResolved && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleOpenUpdateStatusModal(selectedDispute!)}
+                        disabled={actionLoading}
+                        className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                      >
+                        Kết thúc tranh chấp
                       </Button>
                     )}
                     {canCreateResolve && (
@@ -850,16 +1056,8 @@ export default function DisputesPage() {
                         type="button"
                         onClick={handleCreateResolve}
                         disabled={actionLoading}
-                        className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        {actionLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Đang tạo...
-                          </>
-                        ) : (
-                          'Tạo giải quyết tranh chấp'
-                        )}
+                        {actionLoading ? 'Đang tạo...' : 'Tạo giải quyết tranh chấp'}
                       </Button>
                     )}
                   </div>
@@ -887,12 +1085,14 @@ export default function DisputesPage() {
               Cập nhật trạng thái tranh chấp
             </DialogTitle>
             <p className="mt-1 text-sm text-gray-600">
-              Chuyển từ "Hai bên đã đồng ý" sang "Admin đang xử lý"
+              {disputeToUpdate && resolveInfoMap[disputeToUpdate.id]
+                ? 'Chuyển từ "Hai bên đã đồng ý" sang "Đã kết thúc"'
+                : 'Chuyển từ "Hai bên đã đồng ý" sang "Admin đang xử lý"'}
             </p>
           </DialogHeader>
 
           {disputeToUpdate && (
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4">
               <div>
                 <Label htmlFor="updateStatusNote" className="text-sm font-medium text-gray-700">
                   Ghi chú <span className="text-red-500">*</span>
@@ -919,23 +1119,30 @@ export default function DisputesPage() {
                     setUpdateStatusNote('')
                   }}
                   disabled={actionLoading}
-                  className="h-9 px-4"
                 >
                   Hủy
                 </Button>
                 <Button
-                  onClick={() => handleUpdateToInAdminReview()}
+                  onClick={() => {
+                    const hasResolveInfo = !!resolveInfoMap[disputeToUpdate.id]
+                    if (hasResolveInfo) {
+                      handleUpdateToResolved()
+                    } else {
+                      handleUpdateToInAdminReview()
+                    }
+                  }}
                   disabled={actionLoading || !updateStatusNote.trim()}
-                  className="h-9 px-4 bg-purple-600 hover:bg-purple-700 text-white"
+                  className={
+                    resolveInfoMap[disputeToUpdate.id]
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  }
                 >
-                  {actionLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Đang cập nhật...
-                    </>
-                  ) : (
-                    'Cập nhật trạng thái'
-                  )}
+                  {actionLoading
+                    ? 'Đang cập nhật...'
+                    : resolveInfoMap[disputeToUpdate.id]
+                      ? 'Kết thúc tranh chấp'
+                      : 'Cập nhật trạng thái'}
                 </Button>
               </div>
             </div>

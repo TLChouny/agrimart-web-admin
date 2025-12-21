@@ -577,11 +577,14 @@ export interface PaginatedDisputes {
 
 export interface ApiDisputeResolve {
   id: string
-  disputeId: string
+  disputeId?: string
+  escrowId?: string
   refundAmount: number
+  isFinalDecision: boolean
   adminNote: string
   createdAt: string
   updatedAt: string | null
+  disputeStatus?: number
 }
 
 export interface UpdateDisputeStatusDTO {
