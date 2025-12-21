@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { PendingAccount } from '../../types/approval'
 import ApprovalTabs from '../../components/admin/ApprovalTabs'
 import AccountDetailModal from '../../components/admin/AccountDetailModal'
@@ -17,6 +18,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES, APPROVAL_MESSAGES, CERTIFICATION_MESSAGES } from '../../services/constants/messages'
 
 const ApprovalPage: React.FC = () => {
+  const [searchParams] = useSearchParams()
+  const defaultTab = searchParams.get('tab') || 'pending'
+  
   const [selectedAccount, setSelectedAccount] = useState<PendingAccount | null>(null)
   const [selectedAccountForAction, setSelectedAccountForAction] = useState<PendingAccount | null>(null)
   const [isAccountDetailModalOpen, setIsAccountDetailModalOpen] = useState(false)
@@ -446,10 +450,10 @@ const ApprovalPage: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-[1800px] p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-responsive-2xl font-bold text-gray-900 mb-2">Quản lý xét duyệt tài khoản</h1>
-        <p className="text-responsive-base text-gray-600">Duyệt và quản lý các tài khoản nông dân đang chờ xét duyệt</p>
+    <div className="mx-auto max-w-[1800px] p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-5 md:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Quản lý xét duyệt tài khoản</h1>
+        <p className="text-sm sm:text-base text-gray-600">Duyệt và quản lý các tài khoản nông dân đang chờ xét duyệt</p>
       </div>
 
       <ApprovalTabs
@@ -470,6 +474,7 @@ const ApprovalPage: React.FC = () => {
         formatDate={formatApprovalDate}
         getStatusBadge={getStatusBadge}
         getCertificationStatusBadge={getCertificationStatusBadge}
+        defaultTab={defaultTab}
       />
 
       <AccountDetailModal account={selectedAccount} isOpen={isAccountDetailModalOpen} onClose={handleCloseDetailModal} formatDate={formatApprovalDate} />

@@ -191,33 +191,33 @@ export default function FarmsPage() {
   const pageItems = filteredFarms.slice(start, start + FARM_PAGE_SIZE)
 
   return (
-    <div className="mx-auto max-w-[1800px] p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Quản lý nông trại</h1>
-        <p className="text-base text-gray-600">Danh sách nông trại của người dùng</p>
+    <div className="mx-auto max-w-[1800px] p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-5 md:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Quản lý nông trại</h1>
+        <p className="text-sm sm:text-base text-gray-600">Danh sách nông trại của người dùng</p>
       </div>
 
-      <Card className="p-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách nông trại</h2>
-            <p className="text-sm text-gray-600">
+      <Card className="p-3 sm:p-4 md:p-6">
+        <div className="mb-4 sm:mb-5 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">Danh sách nông trại</h2>
+            <p className="text-xs sm:text-sm text-gray-600">
               {isLoadingFarms ? 'Đang tải...' : `Hiển thị ${filteredFarms.length} / ${farms.length} nông trại`}
               {error && <span className="text-red-600"> · {error}</span>}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <div className="relative w-full sm:w-56 md:w-64">
+              <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm theo tên, chủ sở hữu..."
-                className="pl-9"
+                className="pl-7 sm:pl-9 text-xs sm:text-sm"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={() => fetchFarms()} disabled={isLoadingFarms}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingFarms ? 'animate-spin' : ''}`} />
+            <Button variant="outline" size="sm" onClick={() => fetchFarms()} disabled={isLoadingFarms} className="text-xs sm:text-sm">
+              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isLoadingFarms ? 'animate-spin' : ''}`} />
               {isLoadingFarms ? 'Đang tải...' : 'Làm mới'}
             </Button>
           </div>

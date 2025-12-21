@@ -1,4 +1,5 @@
 import type React from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Card } from "../ui/card"
 import { CheckCircle, XCircle, Award } from "lucide-react"
@@ -6,6 +7,7 @@ import type { PendingAccount } from "../../types/approval"
 import type { ApiCertification } from "../../types/api"
 import ApprovalTable from "./ApprovalTable"
 import CertificationTable from "./CertificationTable"
+
 
 interface ApprovalTabsProps {
   pendingAccounts: PendingAccount[]
@@ -25,6 +27,7 @@ interface ApprovalTabsProps {
   formatDate: (dateString: string) => string
   getStatusBadge: (status: string) => React.ReactNode
   getCertificationStatusBadge: (status: number) => React.ReactNode
+  defaultTab?: string
 }
 
 const ApprovalTabs: React.FC<ApprovalTabsProps> = ({
@@ -45,9 +48,17 @@ const ApprovalTabs: React.FC<ApprovalTabsProps> = ({
   formatDate,
   getStatusBadge,
   getCertificationStatusBadge,
+  defaultTab = "pending",
 }) => {
+  const [activeTab, setActiveTab] = useState(defaultTab)
+
+  // Update active tab when defaultTab changes (from URL params)
+  useEffect(() => {
+    setActiveTab(defaultTab)
+  }, [defaultTab])
+
   return (
-    <Tabs defaultValue="pending" className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-4 mb-6">
         <TabsTrigger value="pending" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
           Tài khoản ({pendingAccounts.length})

@@ -8,12 +8,15 @@ export const SimpleTable: React.FC<{ children: React.ReactNode; className?: stri
 }) => (
   <div
     className={cn(
-      "overflow-hidden rounded-3xl border border-emerald-50/80 bg-white/80 shadow-[0_20px_60px_rgba(15,118,110,0.08)] backdrop-blur",
+      "overflow-x-auto rounded-lg sm:rounded-2xl md:rounded-3xl border border-emerald-50/80 bg-white/80 shadow-[0_20px_60px_rgba(15,118,110,0.08)] backdrop-blur",
       "transition-all duration-300",
+      "scrollbar-thin scrollbar-thumb-emerald-300 scrollbar-track-gray-100",
+      "[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-emerald-300 [&::-webkit-scrollbar-track]:bg-gray-100",
       className
     )}
+    style={{ scrollbarWidth: 'thin' }}
   >
-    <table className="min-w-full divide-y divide-emerald-50/80 text-sm text-slate-700">{children}</table>
+    <table className="min-w-[800px] divide-y divide-emerald-50/80 text-xs sm:text-sm text-slate-700 w-full">{children}</table>
   </div>
 )
 
@@ -33,8 +36,8 @@ export const TableHead: React.FC<{
   <th
     style={style}
     className={cn(
-      "px-6 py-4 text-left font-semibold text-[11px] tracking-[0.18em]",
-      "text-emerald-700/80",
+      "px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left font-semibold text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.18em]",
+      "text-emerald-700/80 whitespace-nowrap",
       className
     )}
   >
@@ -73,8 +76,8 @@ export const TableCell: React.FC<{
   <td
     style={style}
     className={cn(
-      "px-6 py-4 text-sm text-slate-700 align-middle",
-      "first:pl-6 last:pr-6",
+      "px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-xs sm:text-sm text-slate-700 align-middle",
+      "first:pl-3 sm:first:pl-4 md:first:pl-6 last:pr-3 sm:last:pr-4 md:last:pr-6",
       "whitespace-nowrap",
       className
     )}

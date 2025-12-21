@@ -7,6 +7,7 @@ interface ReputationUser {
   email: string
   reputationScore: number
   auctionCount: number
+  successfulAuctions?: number
   role: 'farmer' | 'wholesaler'
 }
 
@@ -64,7 +65,19 @@ function RankingList({ users, role }: { users: ReputationUser[]; role: 'farmer' 
                 <Award className="w-4 h-4 text-yellow-500" />
                 <span className="text-sm font-semibold text-gray-900">{user.reputationScore}</span>
               </div>
-              <p className="text-xs text-gray-500">{user.auctionCount} phiên đấu giá</p>
+              <div className="flex flex-col items-end gap-0.5">
+                <p className="text-xs text-gray-500">
+                  {role === 'farmer' 
+                    ? `${user.auctionCount} đấu giá đã tạo`
+                    : `${user.auctionCount} phiên tham gia`
+                  }
+                </p>
+                {user.successfulAuctions !== undefined && user.successfulAuctions > 0 && (
+                  <p className="text-xs text-emerald-600 font-medium">
+                    {user.successfulAuctions} {role === 'farmer' ? 'đấu giá thành công' : 'đấu giá thắng'}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

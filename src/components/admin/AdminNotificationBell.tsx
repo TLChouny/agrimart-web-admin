@@ -6,6 +6,8 @@ import type { AdminNotification, AdminNotificationType } from '../../types'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { notificationApi } from '../../services/api/notificationApi'
+import { userApi } from '../../services/api/userApi'
+import { walletApi } from '../../services/api/walletApi'
 import { ROUTES } from '../../constants'
 
 // Icon mapping cho các loại thông báo
@@ -60,16 +62,22 @@ const getNotificationRoute = (notification: AdminNotification): string | null =>
   const { type, relatedEntityId, relatedEntityType } = notification
   const entityType = (relatedEntityType || '').toLowerCase()
 
-  // Ưu tiên dựa trên relatedEntityType nếu có
+  // Ưu tiên check notification type trước cho account và certification
+  if (type === 'certification_pending') {
+    return `${ROUTES.ADMIN_APPROVAL}?tab=certifications`
+  }
+  if (type === 'account_pending') {
+    return ROUTES.ADMIN_APPROVAL
+  }
+
+  // Sau đó check relatedEntityType nếu có
   if (entityType.includes('auction')) {
     return relatedEntityId
       ? ROUTES.ADMIN_AUCTIONS_BY_ID.replace(':id', relatedEntityId)
       : ROUTES.ADMIN_AUCTIONS
   }
 
-  if (entityType.includes('withdrawrequest')) {
-    // Hiện tại admin hiển thị danh sách yêu cầu rút trong trang ví
-    // Có thể bổ sung query string để filter theo id nếu cần
+  if (entityType.includes('withdrawrequest') || entityType.includes('withdraw')) {
     return ROUTES.ADMIN_WALLET
   }
 
@@ -81,12 +89,16 @@ const getNotificationRoute = (notification: AdminNotification): string | null =>
     return ROUTES.ADMIN_DISPUTES
   }
 
-  // Fallback theo notification type
+  if (entityType.includes('user') || entityType.includes('account')) {
+    return ROUTES.ADMIN_APPROVAL
+  }
+
+  if (entityType.includes('certification') || entityType.includes('cert')) {
+    return `${ROUTES.ADMIN_APPROVAL}?tab=certifications`
+  }
+
+  // Fallback theo notification type (account_pending và certification_pending đã được xử lý ở trên)
   switch (type) {
-    case 'account_pending':
-    case 'certification_pending':
-      // Các duyệt tài khoản / chứng chỉ tập trung ở trang approval
-      return ROUTES.ADMIN_APPROVAL
     case 'auction_pending':
       return relatedEntityId
         ? ROUTES.ADMIN_AUCTIONS_BY_ID.replace(':id', relatedEntityId)
@@ -96,6 +108,8 @@ const getNotificationRoute = (notification: AdminNotification): string | null =>
       return ROUTES.ADMIN_WALLET
     case 'dispute_pending':
       return ROUTES.ADMIN_DISPUTES
+    case 'system':
+      return ROUTES.ADMIN_DASHBOARD
     default:
       return ROUTES.ADMIN_DASHBOARD
   }
@@ -107,9 +121,47 @@ export function AdminNotificationBell() {
   const [isLoading, setIsLoading] = useState(false)
   const [apiNotifications, setApiNotifications] = useState<AdminNotification[]>([])
   const [apiUnreadCount, setApiUnreadCount] = useState(0)
+  const [userNamesMap, setUserNamesMap] = useState<Record<string, string>>({})
   const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // UUID pattern để tìm userId trong message
+  const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
+
+  // Fetch user name từ userId
+  const fetchUserName = useCallback(async (userId: string): Promise<string | null> => {
+    if (userNamesMap[userId]) {
+      return userNamesMap[userId]
+    }
+
+    try {
+      const res = await userApi.getById(userId)
+      if (res.isSuccess && res.data) {
+        const userName = `${res.data.firstName} ${res.data.lastName}`.trim() || res.data.email
+        setUserNamesMap(prev => ({ ...prev, [userId]: userName }))
+        return userName
+      }
+    } catch (error) {
+      console.error('[AdminNotificationBell] Error fetching user:', error)
+    }
+    return null
+  }, [userNamesMap])
+
+  // Fetch user name từ withdraw request
+  const fetchUserNameFromWithdrawRequest = useCallback(async (withdrawRequestId: string): Promise<string | null> => {
+    try {
+      const res = await walletApi.getWithdrawRequestById(withdrawRequestId)
+      if (res.isSuccess && res.data) {
+        const userId = res.data.userId
+        return await fetchUserName(userId)
+      }
+    } catch (error) {
+      console.error('[AdminNotificationBell] Error fetching withdraw request:', error)
+    }
+    return null
+  }, [fetchUserName])
+
 
   // Hook để quản lý notifications qua SignalR
   const {
@@ -139,6 +191,108 @@ export function AdminNotificationBell() {
       }
     }
   })
+
+  // State để lưu formatted messages
+  const [formattedMessages, setFormattedMessages] = useState<Record<string, string>>({})
+
+  // Format messages khi notifications thay đổi
+  useEffect(() => {
+    const formatAllMessages = async () => {
+      const allNotifications = [...apiNotifications, ...notifications]
+      const newFormattedMessages: Record<string, string> = {}
+      const userIdsToFetch = new Set<string>()
+
+      // Tìm tất cả userIds cần fetch từ messages
+      allNotifications.forEach(notification => {
+        if (formattedMessages[notification.id]) {
+          newFormattedMessages[notification.id] = formattedMessages[notification.id]
+          return
+        }
+
+        const userIds = notification.message.match(UUID_PATTERN) || []
+        userIds.forEach(userId => {
+          if (!userNamesMap[userId]) {
+            userIdsToFetch.add(userId)
+          }
+        })
+      })
+
+      // Fetch tất cả user names cần thiết
+      if (userIdsToFetch.size > 0) {
+        const fetchPromises = Array.from(userIdsToFetch).map(async (userId) => {
+          const userName = await fetchUserName(userId)
+          return { userId, userName }
+        })
+
+        const fetchResults = await Promise.all(fetchPromises)
+        const newUserNamesMap: Record<string, string> = {}
+        fetchResults.forEach(({ userId, userName }) => {
+          if (userName) {
+            newUserNamesMap[userId] = userName
+          }
+        })
+
+        // Cập nhật userNamesMap
+        if (Object.keys(newUserNamesMap).length > 0) {
+          setUserNamesMap(prev => ({ ...prev, ...newUserNamesMap }))
+        }
+      }
+
+      // Format messages với user names đã có
+      allNotifications.forEach(notification => {
+        if (newFormattedMessages[notification.id]) {
+          return
+        }
+
+        let message = notification.message
+        const userIds = notification.message.match(UUID_PATTERN) || []
+
+        // Nếu là notification về withdrawal, lấy userId từ relatedEntityId
+        if (notification.type === 'withdraw_pending' && notification.relatedEntityId && userIds.length > 0) {
+          // Fetch withdraw request để lấy userId và format message
+          fetchUserNameFromWithdrawRequest(notification.relatedEntityId).then(userName => {
+            if (userName) {
+              let formattedMessage = notification.message
+              userIds.forEach(userId => {
+                formattedMessage = formattedMessage.replace(userId, userName)
+              })
+              setFormattedMessages(prev => ({ ...prev, [notification.id]: formattedMessage }))
+            }
+          }).catch(() => {
+            // Fallback: dùng userNamesMap nếu có
+            let formattedMessage = notification.message
+            userIds.forEach(userId => {
+              const userName = userNamesMap[userId]
+              if (userName) {
+                formattedMessage = formattedMessage.replace(userId, userName)
+              }
+            })
+            setFormattedMessages(prev => ({ ...prev, [notification.id]: formattedMessage }))
+          })
+          // Tạm thời dùng message gốc, sẽ update sau khi fetch xong
+          newFormattedMessages[notification.id] = message
+        } else if (userIds.length > 0) {
+          // Với các notification khác, thay userId bằng tên từ map
+          userIds.forEach(userId => {
+            const userName = userNamesMap[userId]
+            if (userName) {
+              message = message.replace(userId, userName)
+            }
+          })
+          newFormattedMessages[notification.id] = message
+        } else {
+          newFormattedMessages[notification.id] = message
+        }
+      })
+
+      setFormattedMessages(prev => ({ ...prev, ...newFormattedMessages }))
+    }
+
+    if (apiNotifications.length > 0 || notifications.length > 0) {
+      formatAllMessages()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiNotifications, notifications])
 
   // Hợp nhất notifications từ SignalR (realtime) và API (lịch sử)
   const mergedNotifications = useMemo(() => {
@@ -218,6 +372,8 @@ export function AdminNotificationBell() {
 
   // Handle click on notification
   const handleNotificationClick = useCallback((notification: AdminNotification) => {
+    console.log('[AdminNotificationBell] Notification clicked:', notification)
+    
     // Mark as read (API + local state + SignalR state)
     const markOneAsRead = async () => {
       if (!user?.id || notification.isRead) return
@@ -243,8 +399,18 @@ export function AdminNotificationBell() {
 
     // Navigate to related page
     const route = getNotificationRoute(notification)
+    console.log('[AdminNotificationBell] Route for notification:', route, 'Type:', notification.type)
+    
     if (route) {
       navigate(route)
+    } else {
+      console.warn('[AdminNotificationBell] No route found for notification:', notification)
+      // Fallback: navigate to approval page for account/certification
+      if (notification.type === 'certification_pending') {
+        navigate(`${ROUTES.ADMIN_APPROVAL}?tab=certifications`)
+      } else if (notification.type === 'account_pending') {
+        navigate(ROUTES.ADMIN_APPROVAL)
+      }
     }
 
     setIsOpen(false)
@@ -375,7 +541,7 @@ export function AdminNotificationBell() {
                           )}
                         </div>
                         <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">
-                          {notification.message}
+                          {formattedMessages[notification.id] || notification.message}
                         </p>
                         <p className="mt-1.5 text-xs text-gray-400">
                           {formatRelativeTime(notification.createdAt)}

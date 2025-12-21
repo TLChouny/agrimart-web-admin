@@ -769,25 +769,25 @@ export default function AuctionsPage() {
   }, [statusCounts, statusFilter])
 
   return (
-    <div className="mx-auto max-w-[1800px] p-6">
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+    <div className="mx-auto max-w-[1800px] p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-5 md:mb-6 space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
             {/* <p className="text-xs uppercase tracking-[0.4em] text-emerald-600 mb-2">Đấu giá</p> */}
-            <h1 className="text-2xl font-bold text-gray-900">Quản lý phiên đấu giá</h1>
-            <p className="text-responsive-base text-gray-600">Theo dõi danh sách phiên, phê duyệt hoặc từ chối.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý phiên đấu giá</h1>
+            <p className="text-sm sm:text-base text-gray-600">Theo dõi danh sách phiên, phê duyệt hoặc từ chối.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <div className="relative w-full sm:w-56 md:w-64">
+              <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm theo mã phiên hoặc nông trại"
-                className="pl-9"
+                className="pl-7 sm:pl-9 text-xs sm:text-sm"
               />
             </div>
-            <Button variant="secondary" size="sm" onClick={() => fetchAuctions()} disabled={isLoading}>
+            <Button variant="secondary" size="sm" onClick={() => fetchAuctions()} disabled={isLoading} className="text-xs sm:text-sm">
               {isLoading ? 'Đang tải...' : 'Làm mới'}
             </Button>
           </div>
@@ -804,13 +804,13 @@ export default function AuctionsPage() {
                 key={tab.key}
                 type="button"
                 onClick={() => { setStatusFilter(tab.key); setPageNumber(1) }}
-                className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                className={`rounded-xl sm:rounded-2xl border px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition ${
                   statusFilter === tab.key
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
                 }`}
               >
-                {tab.label} <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">{count}</span>
+                {tab.label} <span className="ml-1 sm:ml-2 rounded-full bg-white px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs">{count}</span>
               </button>
             )
           })}

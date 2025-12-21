@@ -151,8 +151,8 @@ export default function UsersPage() {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'farmer': return <Badge variant="outline" className="text-green-600 border-green-600">Farmer</Badge>
-      case 'wholesaler': return <Badge variant="outline" className="text-blue-600 border-blue-600">Wholesaler</Badge>
+      case 'farmer': return <Badge variant="outline" className="text-green-600 border-green-600">Nông dân</Badge>
+      case 'wholesaler': return <Badge variant="outline" className="text-blue-600 border-blue-600">Thương lái</Badge>
       default: return <Badge variant="outline">Unknown</Badge>
     }
   }
@@ -275,33 +275,33 @@ export default function UsersPage() {
   const canNext = safePage < totalPages
 
   return (
-    <div className="mx-auto max-w-[1800px] p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Quản lý người dùng</h1>
-        <p className="text-base text-gray-600">Theo dõi trạng thái tài khoản và phân quyền.</p>
+    <div className="mx-auto max-w-[1800px] p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-5 md:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Quản lý người dùng</h1>
+        <p className="text-sm sm:text-base text-gray-600">Theo dõi trạng thái tài khoản và phân quyền.</p>
       </div>
 
-      <Card className="p-6">
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Danh sách người dùng</h2>
-            <p className="text-sm text-gray-600">
+      <Card className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-5 md:mb-6 space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">Danh sách người dùng</h2>
+            <p className="text-xs sm:text-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredUsers.length} / ${users.length} người dùng`}
               {error && <span className="text-red-600"> · {error}</span>}
             </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <div className="relative w-full sm:w-56 md:w-64">
+            <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo tên, email hoặc ID"
-              className="pl-9"
+              className="pl-7 sm:pl-9 text-xs sm:text-sm"
             />
           </div>
-            <Button variant="secondary" size="sm" onClick={() => fetchUsers()} disabled={isLoading}>
+            <Button variant="secondary" size="sm" onClick={() => fetchUsers()} disabled={isLoading} className="text-xs sm:text-sm">
             {isLoading ? 'Đang tải...' : 'Làm mới'}
           </Button>
           </div>
@@ -313,14 +313,14 @@ export default function UsersPage() {
           <button
             type="button"
             onClick={() => { setRoleFilter('all'); setPage(1) }}
-            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-xl sm:rounded-2xl border px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition ${
               roleFilter === 'all'
                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                 : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
             }`}
           >
             Tất cả vai trò
-            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+            <span className="ml-1 sm:ml-2 rounded-full bg-white px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs">
               {users.length}
             </span>
           </button>
@@ -328,14 +328,14 @@ export default function UsersPage() {
           <button
             type="button"
             onClick={() => { setRoleFilter('farmer'); setPage(1) }}
-            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-xl sm:rounded-2xl border px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition ${
               roleFilter === 'farmer'
                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                 : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
             }`}
           >
-            Farmer
-            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+            Nông dân
+            <span className="ml-1 sm:ml-2 rounded-full bg-white px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs">
               {users.filter(u => u.role === 'farmer').length}
             </span>
           </button>
@@ -343,21 +343,21 @@ export default function UsersPage() {
           <button
             type="button"
             onClick={() => { setRoleFilter('wholesaler'); setPage(1) }}
-            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-xl sm:rounded-2xl border px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition ${
               roleFilter === 'wholesaler'
                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                 : 'border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
             }`}
           >
-            Wholesaler
-            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs">
+            Thương lái
+            <span className="ml-1 sm:ml-2 rounded-full bg-white px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs">
               {users.filter(u => u.role === 'wholesaler').length}
             </span>
           </button>
 
           {/* Dropdown cho trạng thái */}
           <div className="relative">
-            <Filter className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+            <Filter className={`absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 pointer-events-none ${
               statusFilter !== 'all' ? 'text-emerald-600' : 'text-gray-400'
             }`} />
             <select
@@ -366,7 +366,7 @@ export default function UsersPage() {
                 setStatusFilter(e.target.value)
                 setPage(1)
               }}
-              className={`appearance-none rounded-2xl border px-10 py-2 pr-8 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 ${
+              className={`appearance-none rounded-xl sm:rounded-2xl border px-7 sm:px-9 md:px-10 py-1.5 sm:py-2 pr-6 sm:pr-8 text-xs sm:text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 ${
                 statusFilter !== 'all'
                   ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                   : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:text-emerald-700'
@@ -376,24 +376,25 @@ export default function UsersPage() {
               <option value="active">Hoạt động</option>
               <option value="inactive">Không hoạt động</option>
             </select>
-            <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${
+            <ChevronDown className={`absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 pointer-events-none ${
               statusFilter !== 'all' ? 'text-emerald-600' : 'text-gray-400'
             }`} />
           </div>
         </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="relative">
+          <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           {isLoading ? (
             <SimpleTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[30%]">Họ và tên</TableHead>
-                  <TableHead className="w-[20%]">Email</TableHead>
-                  <TableHead className="w-[12%]">Vai trò</TableHead>
-                  <TableHead className="w-[12%]">Trạng thái</TableHead>
-                  <TableHead className="w-[10%] text-right">Khóa</TableHead>
-                  <TableHead className="w-[16%] text-center">Thao tác</TableHead>
+                  <TableHead className="w-[30%] min-w-[150px]">Họ và tên</TableHead>
+                  <TableHead className="w-[20%] min-w-[180px]">Email</TableHead>
+                  <TableHead className="w-[12%] min-w-[100px]">Vai trò</TableHead>
+                  <TableHead className="w-[12%] min-w-[120px]">Trạng thái</TableHead>
+                  <TableHead className="w-[10%] min-w-[100px] text-right">Khóa</TableHead>
+                  <TableHead className="w-[16%] min-w-[120px] text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -410,16 +411,16 @@ export default function UsersPage() {
             </SimpleTable>
           ) : pagedUsers.length > 0 ? (
             <>
-              <div className="hidden md:block">
+              <div className="hidden lg:block">
                 <SimpleTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[30%] text-left">Họ và tên</TableHead>
-                      <TableHead className="w-[20%] text-left">Email</TableHead>
-                      <TableHead className="w-[12%] text-left">Vai trò</TableHead>
-                      <TableHead className="w-[12%] text-left">Trạng thái</TableHead>
-                      <TableHead className="w-[10%] text-right">Khóa</TableHead>
-                      <TableHead className="w-[16%] text-center">Thao tác</TableHead>
+                      <TableHead className="w-[30%] min-w-[150px] text-left">Họ và tên</TableHead>
+                      <TableHead className="w-[20%] min-w-[180px] text-left">Email</TableHead>
+                      <TableHead className="w-[12%] min-w-[100px] text-left">Vai trò</TableHead>
+                      <TableHead className="w-[12%] min-w-[120px] text-left">Trạng thái</TableHead>
+                      <TableHead className="w-[10%] min-w-[100px] text-right">Khóa</TableHead>
+                      <TableHead className="w-[16%] min-w-[120px] text-center">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -465,7 +466,7 @@ export default function UsersPage() {
                 </SimpleTable>
               </div>
 
-              <div className="md:hidden space-y-3">
+              <div className="lg:hidden space-y-3">
                 {pagedUsers.map((user) => (
                   <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
@@ -512,13 +513,13 @@ export default function UsersPage() {
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-end mt-4 text-sm">
-                  <span className="text-gray-600 mr-4">Trang {safePage}/{totalPages}</span>
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-2 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm">
+                  <span className="text-gray-600">Trang {safePage}/{totalPages}</span>
                   <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev} className="text-xs sm:text-sm">
                   Trước
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext} className="text-xs sm:text-sm">
                   Sau
                 </Button>
               </div>
@@ -540,6 +541,7 @@ export default function UsersPage() {
               }}>Xóa bộ lọc và tải lại</Button>
             </div>
           )}
+          </div>
         </div>
       </Card>
 

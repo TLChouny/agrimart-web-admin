@@ -126,6 +126,9 @@ export default function WalletPage() {
   const [withdrawRequestsLoading, setWithdrawRequestsLoading] = useState<boolean>(false)
   const [withdrawRequestsSearchValue, setWithdrawRequestsSearchValue] = useState<string>('')
   const [withdrawRequestsStatusFilter, setWithdrawRequestsStatusFilter] = useState<WithdrawRequestStatus | 'all'>('all')
+  const [ledgersPage, setLedgersPage] = useState<number>(1)
+  const [withdrawRequestsPage, setWithdrawRequestsPage] = useState<number>(1)
+  const PAGE_SIZE = 10
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false)
   const [showApproveModal, setShowApproveModal] = useState<boolean>(false)
   const [showCompleteModal, setShowCompleteModal] = useState<boolean>(false)
@@ -793,6 +796,30 @@ export default function WalletPage() {
     return filtered
   }, [withdrawRequests, withdrawRequestsSearchValue, withdrawRequestsStatusFilter])
 
+  // Paginated data
+  const paginatedLedgers = useMemo(() => {
+    const start = (ledgersPage - 1) * PAGE_SIZE
+    return filteredLedgers.slice(start, start + PAGE_SIZE)
+  }, [filteredLedgers, ledgersPage])
+
+  const paginatedWithdrawRequests = useMemo(() => {
+    const start = (withdrawRequestsPage - 1) * PAGE_SIZE
+    return filteredWithdrawRequests.slice(start, start + PAGE_SIZE)
+  }, [filteredWithdrawRequests, withdrawRequestsPage])
+
+  // Total pages
+  const ledgersTotalPages = Math.max(1, Math.ceil(filteredLedgers.length / PAGE_SIZE))
+  const withdrawRequestsTotalPages = Math.max(1, Math.ceil(filteredWithdrawRequests.length / PAGE_SIZE))
+
+  // Reset page when filters change
+  useEffect(() => {
+    setLedgersPage(1)
+  }, [searchValue, directionFilter, dateFrom, dateTo])
+
+  useEffect(() => {
+    setWithdrawRequestsPage(1)
+  }, [withdrawRequestsSearchValue, withdrawRequestsStatusFilter])
+
   const handleOpenRejectModal = (request: ApiWithdrawRequest) => {
     setSelectedWithdrawRequest(request)
     setRejectReason('')
@@ -860,7 +887,7 @@ export default function WalletPage() {
             <p className="text-sm text-gray-600">
               {ledgersLoading ? 'Đang tải...' : (
                 <>
-                  Hiển thị {filteredLedgers.length} / {ledgers.length} giao dịch
+                  Hiển thị {paginatedLedgers.length} / {filteredLedgers.length} giao dịch (Tổng {ledgers.length})
                 </>
               )}
             </p>
@@ -959,7 +986,7 @@ export default function WalletPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLedgers.map((ledger, index) => (
+                  {paginatedLedgers.map((ledger, index) => (
                     <TableRow key={ledger.id || `${ledger.transactionId}-${index}`} className="hover:bg-gray-50">
                       <TableCell>
                         <span
@@ -1029,6 +1056,35 @@ export default function WalletPage() {
               </SimpleTable>
             </div>
           )}
+
+          {/* Pagination for Ledgers */}
+          {!ledgersLoading && filteredLedgers.length > 0 && ledgersTotalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 sm:gap-4 mt-4 pt-4 border-t border-gray-200">
+              <span className="text-xs sm:text-sm text-gray-600">
+                Trang {ledgersPage} / {ledgersTotalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLedgersPage(p => Math.max(1, p - 1))}
+                  disabled={ledgersPage === 1}
+                  className="text-xs sm:text-sm"
+                >
+                  Trước
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLedgersPage(p => Math.min(ledgersTotalPages, p + 1))}
+                  disabled={ledgersPage === ledgersTotalPages}
+                  className="text-xs sm:text-sm"
+                >
+                  Sau
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
         </TabsContent>
@@ -1041,7 +1097,7 @@ export default function WalletPage() {
             <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Yêu cầu rút tiền</h3>
               <p className="text-sm text-gray-600">
-                    {withdrawRequestsLoading ? 'Đang tải...' : `Tổng ${filteredWithdrawRequests.length} yêu cầu`}
+                    {withdrawRequestsLoading ? 'Đang tải...' : `Hiển thị ${paginatedWithdrawRequests.length} / ${filteredWithdrawRequests.length} yêu cầu`}
               </p>
             </div>
           </div>
@@ -1097,7 +1153,7 @@ export default function WalletPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                      {filteredWithdrawRequests.map((request) => (
+                      {paginatedWithdrawRequests.map((request) => (
                         <TableRow key={request.id} className="hover:bg-gray-50">
                       <TableCell>
                         <span className="font-semibold text-gray-900">
@@ -1164,6 +1220,35 @@ export default function WalletPage() {
                   ))}
                 </TableBody>
               </SimpleTable>
+            </div>
+          )}
+
+          {/* Pagination for Withdraw Requests */}
+          {!withdrawRequestsLoading && filteredWithdrawRequests.length > 0 && withdrawRequestsTotalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 sm:gap-4 mt-4 pt-4 border-t border-gray-200">
+              <span className="text-xs sm:text-sm text-gray-600">
+                Trang {withdrawRequestsPage} / {withdrawRequestsTotalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawRequestsPage(p => Math.max(1, p - 1))}
+                  disabled={withdrawRequestsPage === 1}
+                  className="text-xs sm:text-sm"
+                >
+                  Trước
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawRequestsPage(p => Math.min(withdrawRequestsTotalPages, p + 1))}
+                  disabled={withdrawRequestsPage === withdrawRequestsTotalPages}
+                  className="text-xs sm:text-sm"
+                >
+                  Sau
+                </Button>
+              </div>
             </div>
           )}
         </div>

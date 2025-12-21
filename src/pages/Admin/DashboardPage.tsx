@@ -124,17 +124,31 @@ export default function AdminDashboardPage() {
 
     setIsLoadingBids(true)
     try {
-      const bidLogPromises = auctionIds.map(auctionId =>
-        auctionApi.getBidLogsByAuctionId(auctionId).catch(() => ({ data: [] }))
-      )
-      const bidLogResults = await Promise.all(bidLogPromises)
-
+      // Batch load để tránh quá tải API (mỗi batch 20 auctions)
+      const BATCH_SIZE = 20
       const newMap = new Map<string, ApiAuctionBidLog[]>()
-      auctionIds.forEach((auctionId, index) => {
-        const logs = bidLogResults[index]?.data ?? []
-        newMap.set(auctionId, logs)
+      
+      for (let i = 0; i < auctionIds.length; i += BATCH_SIZE) {
+        const batch = auctionIds.slice(i, i + BATCH_SIZE)
+        const bidLogPromises = batch.map(auctionId =>
+          auctionApi.getBidLogsByAuctionId(auctionId).catch(() => ({ data: [] }))
+        )
+        const bidLogResults = await Promise.all(bidLogPromises)
+        
+        batch.forEach((auctionId, index) => {
+          const logs = bidLogResults[index]?.data ?? []
+          newMap.set(auctionId, logs)
+        })
+      }
+      
+      // Merge với dữ liệu cũ để không mất dữ liệu
+      setBidLogsMap(prev => {
+        const merged = new Map(prev)
+        newMap.forEach((logs, auctionId) => {
+          merged.set(auctionId, logs)
+        })
+        return merged
       })
-      setBidLogsMap(newMap)
     } catch (error) {
       console.error("Error loading bid logs:", error)
     } finally {
@@ -146,14 +160,13 @@ export default function AdminDashboardPage() {
     loadDashboardData()
   }, [loadDashboardData])
 
-  // Load bid logs for top auctions
+  // Load bid logs for all ongoing and completed auctions
   useEffect(() => {
     if (auctions.length > 0) {
-      const topAuctionIds = auctions
+      const auctionIds = auctions
         .filter((a: ApiEnglishAuction) => a.status === "Completed" || a.status === "OnGoing")
-        .slice(0, 10)
         .map(a => a.id)
-      loadBidLogs(topAuctionIds)
+      loadBidLogs(auctionIds)
     }
   }, [auctions, loadBidLogs])
 
@@ -441,7 +454,7 @@ export default function AdminDashboardPage() {
 
   // Reputation Ranking - Top 5 farmers and wholesalers
   const reputationRanking = useMemo(() => {
-    // Calculate auction count for each user from bidLogs
+    // Calculate auction count for each user from bidLogs (for wholesalers - auctions they participated in)
     // Count unique auctions per user
     const userAuctionSet = new Map<string, Set<string>>()
     bidLogsMap.forEach((logs, auctionId) => {
@@ -453,50 +466,131 @@ export default function AdminDashboardPage() {
       })
     })
     
-    // Convert to count map
+    // Also add auctions where user is winner (to ensure winners are counted even if bidLogs not loaded)
+    auctions
+      .filter(a => a.winnerId)
+      .forEach(auction => {
+        const winnerId = auction.winnerId!
+        if (!userAuctionSet.has(winnerId)) {
+          userAuctionSet.set(winnerId, new Set())
+        }
+        userAuctionSet.get(winnerId)!.add(auction.id)
+      })
+    
+    // Convert to count map (for wholesalers)
     const userAuctionCounts = new Map<string, number>()
     userAuctionSet.forEach((auctionSet, userId) => {
       userAuctionCounts.set(userId, auctionSet.size)
     })
     
+    // Calculate auctions created by farmers (all auctions with farmerId = user.id)
+    const farmerCreatedAuctions = new Map<string, number>()
+    auctions
+      .filter(a => a.farmerId)
+      .forEach(auction => {
+        const count = farmerCreatedAuctions.get(auction.farmerId) || 0
+        farmerCreatedAuctions.set(auction.farmerId, count + 1)
+      })
+    
+    // Calculate successful auctions for farmers (auctions with status "Completed" and farmerId = user.id)
+    const farmerSuccessfulAuctions = new Map<string, number>()
+    auctions
+      .filter(a => a.status === "Completed" && a.farmerId)
+      .forEach(auction => {
+        const count = farmerSuccessfulAuctions.get(auction.farmerId) || 0
+        farmerSuccessfulAuctions.set(auction.farmerId, count + 1)
+      })
+    
+    // Calculate successful auctions for wholesalers (auctions with status "Completed" and winnerId = user.id)
+    const wholesalerSuccessfulAuctions = new Map<string, number>()
+    auctions
+      .filter(a => a.status === "Completed" && a.winnerId)
+      .forEach(auction => {
+        const winnerId = auction.winnerId!
+        const count = wholesalerSuccessfulAuctions.get(winnerId) || 0
+        wholesalerSuccessfulAuctions.set(winnerId, count + 1)
+      })
+    
     const farmers = users
       .filter(u => {
         const role = typeof u.role === 'string' ? u.role.toLowerCase() : 
                     (u.roleObject?.name?.toLowerCase() || '')
-        return role === 'farmer' && (u.reputationScore ?? 0) > 0
+        const createdCount = farmerCreatedAuctions.get(u.id) || 0
+        // Chỉ lấy farmer có ít nhất 1 đấu giá đã tạo và có điểm uy tín > 0
+        return role === 'farmer' && createdCount > 0 && (u.reputationScore ?? 0) > 0
       })
-      .map(u => ({
-        id: u.id,
-        name: `${u.firstName} ${u.lastName}`.trim() || u.email,
-        email: u.email,
-        reputationScore: u.reputationScore ?? 0,
-        auctionCount: userAuctionCounts.get(u.id) || 0,
-        role: 'farmer' as const,
-      }))
-      .sort((a, b) => b.reputationScore - a.reputationScore)
+      .map(u => {
+        const createdCount = farmerCreatedAuctions.get(u.id) || 0
+        const successfulCount = farmerSuccessfulAuctions.get(u.id) || 0
+        const successRate = createdCount > 0 ? successfulCount / createdCount : 0
+        
+        return {
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+          email: u.email,
+          reputationScore: u.reputationScore ?? 0,
+          auctionCount: createdCount, // Số đấu giá đã tạo cho farmer
+          successfulAuctions: successfulCount,
+          successRate, // Tỷ lệ thành công = số đấu giá thành công / số đấu giá đã tạo
+          role: 'farmer' as const,
+        }
+      })
+      .sort((a, b) => {
+        // Sắp xếp theo tỷ lệ thành công trước (giảm dần)
+        if (Math.abs(a.successRate - b.successRate) > 0.0001) {
+          return b.successRate - a.successRate
+        }
+        // Nếu tỷ lệ bằng nhau, sắp xếp theo số lượng đấu giá thành công (giảm dần)
+        if (a.successfulAuctions !== b.successfulAuctions) {
+          return b.successfulAuctions - a.successfulAuctions
+        }
+        // Nếu số lượng cũng bằng nhau, sắp xếp theo điểm uy tín (giảm dần)
+        return b.reputationScore - a.reputationScore
+      })
       .slice(0, 5)
     
     const wholesalers = users
       .filter(u => {
         const role = typeof u.role === 'string' ? u.role.toLowerCase() : 
                     (u.roleObject?.name?.toLowerCase() || '')
-        return role === 'wholesaler' && (u.reputationScore ?? 0) > 0
+        const participatedCount = userAuctionCounts.get(u.id) || 0
+        // Chỉ lấy wholesaler có ít nhất 1 phiên tham gia và có điểm uy tín > 0
+        return role === 'wholesaler' && participatedCount > 0 && (u.reputationScore ?? 0) > 0
       })
-      .map(u => ({
-        id: u.id,
-        name: `${u.firstName} ${u.lastName}`.trim() || u.email,
-        email: u.email,
-        reputationScore: u.reputationScore ?? 0,
-        auctionCount: userAuctionCounts.get(u.id) || 0,
-        role: 'wholesaler' as const,
-      }))
-      .sort((a, b) => b.reputationScore - a.reputationScore)
+      .map(u => {
+        const participatedCount = userAuctionCounts.get(u.id) || 0
+        const wonCount = wholesalerSuccessfulAuctions.get(u.id) || 0
+        const winRate = participatedCount > 0 ? wonCount / participatedCount : 0
+        
+        return {
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+          email: u.email,
+          reputationScore: u.reputationScore ?? 0,
+          auctionCount: participatedCount, // Số phiên tham gia cho wholesaler
+          successfulAuctions: wonCount,
+          successRate: winRate, // Tỷ lệ thắng = số đấu giá thắng / số phiên tham gia
+          role: 'wholesaler' as const,
+        }
+      })
+      .sort((a, b) => {
+        // Sắp xếp theo tỷ lệ thắng trước (giảm dần)
+        if (Math.abs(a.successRate - b.successRate) > 0.0001) {
+          return b.successRate - a.successRate
+        }
+        // Nếu tỷ lệ bằng nhau, sắp xếp theo số lượng đấu giá thắng (giảm dần)
+        if (a.successfulAuctions !== b.successfulAuctions) {
+          return b.successfulAuctions - a.successfulAuctions
+        }
+        // Nếu số lượng cũng bằng nhau, sắp xếp theo điểm uy tín (giảm dần)
+        return b.reputationScore - a.reputationScore
+      })
       .slice(0, 5)
     
     return { farmers, wholesalers }
-  }, [users, bidLogsMap])
+  }, [users, bidLogsMap, auctions])
 
-  // Hot Ongoing Auctions - Top 5 by bids
+  // Hot Ongoing Auctions - Top 5 mới nhất đang diễn ra
   const hotAuctions = useMemo(() => {
     const ongoing = auctions
       .filter(a => a.status === "OnGoing")
@@ -527,10 +621,17 @@ export default function AdminDashboardPage() {
           totalBids: bidLogs.length,
           remainingTime,
           sessionCode: auction.sessionCode,
+          createdAt: auction.createdAt,
+          publishDate: auction.publishDate,
         }
       })
-      .filter(a => a.totalBids > 0)
-      .sort((a, b) => b.totalBids - a.totalBids)
+      // Sắp xếp theo thời gian gần nhất (publishDate hoặc createdAt, mới nhất trước)
+      .sort((a, b) => {
+        // Ưu tiên publishDate, nếu không có thì dùng createdAt
+        const dateA = a.publishDate ? new Date(a.publishDate).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+        const dateB = b.publishDate ? new Date(b.publishDate).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0)
+        return dateB - dateA // Mới nhất trước (giảm dần)
+      })
       .slice(0, 5)
     
     return ongoing
@@ -540,26 +641,27 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
-        <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <BarChart3 className="w-6 h-6 text-white" />
+      <div className="mb-4 sm:mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
+        <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 flex-shrink-0">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
               </div>
-              Bảng điều khiển
+              <span className="truncate">Bảng điều khiển</span>
             </h1>
-            <p className="text-gray-600 ml-[52px]">Tổng quan hệ thống và phân tích dữ liệu</p>
+            <p className="text-sm sm:text-base text-gray-600 ml-0 sm:ml-[36px] md:ml-[52px]">Tổng quan hệ thống và phân tích dữ liệu</p>
             {errorMessage && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{errorMessage}</p>
+              <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs sm:text-sm text-red-600">{errorMessage}</p>
               </div>
             )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button 
               onClick={() => navigate("/admin/reports")}
-              className="shadow-sm hover:shadow-md transition-shadow"
+              className="shadow-sm hover:shadow-md transition-shadow text-xs sm:text-sm"
+              size="sm"
             >
               Quản lý báo cáo
             </Button>
@@ -567,9 +669,10 @@ export default function AdminDashboardPage() {
               variant="outline" 
               onClick={loadDashboardData} 
               disabled={isLoading}
-              className="shadow-sm hover:shadow-md transition-shadow"
+              className="shadow-sm hover:shadow-md transition-shadow text-xs sm:text-sm"
+              size="sm"
             >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
         </div>
@@ -577,24 +680,24 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 1.1 System Overview - Stats Cards */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full"></div>
-          <h2 className="text-xl font-semibold text-gray-900">Tổng quan hệ thống</h2>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full"></div>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Tổng quan hệ thống</h2>
         </div>
         <StatsCards stats={statsCards} isLoading={isLoading} />
       </section>
 
       {/* 1.2 System Revenue Analysis */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Phân tích doanh thu</h2>
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Phân tích doanh thu</h2>
                       </div>
                     </div>
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mb-3 sm:mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-wrap gap-2">
             {(['current-year', 'current-month', 'custom'] as const).map((option) => (
               <Button
@@ -602,6 +705,7 @@ export default function AdminDashboardPage() {
                 variant={profitRange === option ? "default" : "outline"}
                 size="sm"
                 onClick={() => setProfitRange(option)}
+                className="text-xs sm:text-sm"
               >
                 {option === 'current-year' && 'Năm nay'}
                 {option === 'current-month' && 'Tháng này'}
@@ -618,7 +722,7 @@ export default function AdminDashboardPage() {
                   value={profitCustom.start}
                   onChange={(e) => setProfitCustom((prev) => ({ ...prev, start: e.target.value }))}
                   max={profitCustom.end}
-                  className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="rounded-md border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div className="flex flex-col">
@@ -629,7 +733,7 @@ export default function AdminDashboardPage() {
                   onChange={(e) => setProfitCustom((prev) => ({ ...prev, end: e.target.value }))}
                   min={profitCustom.start}
                   max={new Date().toISOString().split('T')[0]}
-                  className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="rounded-md border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div className="flex flex-col">
@@ -637,7 +741,7 @@ export default function AdminDashboardPage() {
                 <select
                   value={profitCustom.timeRange}
                   onChange={(e) => setProfitCustom((prev) => ({ ...prev, timeRange: e.target.value as 'daily' | 'monthly' }))}
-                  className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="rounded-md border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-blue-500 focus:outline-none"
                 >
                   <option value="daily">Ngày</option>
                   <option value="monthly">Tháng</option>
@@ -650,48 +754,48 @@ export default function AdminDashboardPage() {
       </section>
 
       {/* Charts Grid - User Growth & Revenue Source */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-purple-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Tăng trưởng & Doanh thu</h2>
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Tăng trưởng & Doanh thu</h2>
                       </div>
                     </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <UserGrowthChart data={userGrowthData} isLoading={isLoading} />
           <RevenueSourceChart data={walletFluctuationData} isLoading={isLoading} />
                   </div>
       </section>
 
       {/* 1.4 Auction Lifecycle Overview */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full"></div>
-          <h2 className="text-xl font-semibold text-gray-900">Vòng đời đấu giá</h2>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full"></div>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Vòng đời đấu giá</h2>
               </div>
         <AuctionLifecycleChart data={auctionLifecycleData} isLoading={isLoading} />
       </section>
 
       {/* 1.5 Risk Monitoring */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-red-600 rounded-full"></div>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-red-500 to-red-600 rounded-full"></div>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Giám sát rủi ro</h2>
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Giám sát rủi ro</h2>
             </div>
               </div>
         <RiskMonitoringChart data={riskMonitoringData} isLoading={isLoading} />
       </section>
 
       {/* 1.7 Reputation Ranking */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full"></div>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full"></div>
           <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-yellow-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Bảng xếp hạng uy tín</h2>
+            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Bảng xếp hạng uy tín</h2>
                       </div>
                     </div>
         <ReputationRanking 
@@ -702,12 +806,12 @@ export default function AdminDashboardPage() {
       </section>
 
       {/* 1.8 Hot Ongoing Auctions */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-gradient-to-b from-pink-500 to-pink-600 rounded-full"></div>
+      <section className="mb-6 sm:mb-8 md:mb-10">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5 md:mb-6">
+          <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-pink-500 to-pink-600 rounded-full"></div>
           <div className="flex items-center gap-2">
-            <Flame className="w-5 h-5 text-pink-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Đấu giá đang hot</h2>
+            <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Đấu giá đang hot</h2>
                       </div>
           </div>
         <HotAuctions auctions={hotAuctions} isLoading={isLoading || isLoadingBids} />

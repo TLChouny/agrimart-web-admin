@@ -29,7 +29,12 @@ const menuItems: MenuItem[] = [
 
 ]
 
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+  isOpen?: boolean
+  onClose?: () => void
+}
+
+export function DashboardSidebar({ isOpen = false, onClose }: DashboardSidebarProps) {
   const navigate = useNavigate()
   const { signOut } = useAuth()
   const { toast } = useToastContext()
@@ -56,60 +61,84 @@ export function DashboardSidebar() {
     }
   }
 
+  const handleNavClick = () => {
+    if (window.innerWidth < 1024 && onClose) {
+      onClose()
+    }
+  }
+
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <img 
-            src="/assets/logo.png" 
-            alt="AgriMart Logo" 
-            className="w-8 h-8 object-contain"
-          />
-          <span className="font-semibold text-lg">AgriMart Admin</span>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={cn(
+        "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 h-screen flex flex-col transform transition-transform duration-300 ease-in-out",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <img 
+              src="/assets/logo.png" 
+              alt="AgriMart Logo" 
+              className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
+            />
+            <span className="font-semibold text-base sm:text-lg">AgriMart Admin</span>
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 p-4">
-        <div className="mb-6">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Bảng điều khiển</p>
-          <nav className="space-y-1">
-            {menuItems.map((item) => (
-              <NavLink
-                key={item.label}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    "flex w-full items-center gap-3 h-10 rounded-md px-3 text-sm",
-                    isActive ? "bg-emerald-600 text-white" : "text-gray-700 hover:bg-gray-100"
-                  )
-                }
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span className="ml-auto bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full">
-                    {item.badge}
-                  </span>
+        <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
+          <div className="mb-6">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 px-2">Bảng điều khiển</p>
+            <nav className="space-y-1">
+              {menuItems.map((item) => (
+                <NavLink
+                  key={item.label}
+                  to={item.path}
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex w-full items-center gap-2 sm:gap-3 h-9 sm:h-10 rounded-md px-2 sm:px-3 text-xs sm:text-sm",
+                      isActive ? "bg-emerald-600 text-white" : "text-gray-700 hover:bg-gray-100"
+                    )
+                  }
+                >
+                  <item.icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-emerald-100 text-emerald-800 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full flex-shrink-0">
+                      {item.badge}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+
+          <div>
+            <nav className="space-y-1">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className={cn(
+                  "flex w-full items-center gap-2 sm:gap-3 h-9 sm:h-10 rounded-md px-2 sm:px-3 text-xs sm:text-sm text-left",
+                  "text-gray-700 hover:bg-gray-100"
                 )}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-
-        <div>
-          <nav className="space-y-1">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className={cn("flex w-full items-center gap-3 h-10 rounded-md px-3 text-sm text-left", "text-gray-700 hover:bg-gray-100")}
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Đăng xuất</span>
-            </button>
-          </nav>
+              >
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <span>Đăng xuất</span>
+              </button>
+            </nav>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

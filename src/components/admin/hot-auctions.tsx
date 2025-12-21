@@ -36,7 +36,7 @@ export function HotAuctions({ auctions, isLoading }: HotAuctionsProps) {
           </div>
           Đấu giá đang hot
         </CardTitle>
-        <p className="text-sm text-gray-600 mt-1">Top 5 đấu giá đang diễn ra theo số lượt đấu giá</p>
+        <p className="text-sm text-gray-600 mt-1">Top 5 đấu giá đang diễn ra gần nhất</p>
       </CardHeader>
       <CardContent className="pt-6">
         {isLoading ? (
