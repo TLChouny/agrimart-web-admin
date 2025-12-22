@@ -43,7 +43,7 @@ const ApproveAccountModal: React.FC<ApproveAccountModalProps> = ({
               <p className="text-xs text-gray-600">
                 Email: {account.email}
               </p>
-              {account.farmName && (
+              {account.role === 'farmer' && account.farmName && (
                 <p className="text-xs text-gray-600">
                   Nông trại: {account.farmName}
                 </p>

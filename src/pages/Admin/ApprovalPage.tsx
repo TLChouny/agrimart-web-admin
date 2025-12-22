@@ -72,6 +72,7 @@ const ApprovalPage: React.FC = () => {
       fullName: `${user.firstName} ${user.lastName}`.trim(),
       phone: user.phoneNumber || 'Chưa có',
       address: `${user.address}, ${user.communes}, ${user.province}`,
+      role: (user.role as 'farmer' | 'wholesaler' | 'admin') ?? 'farmer',
       farmName,
       farmAddress,
       farmSize,

@@ -5,6 +5,7 @@ import { useAdminNotifications } from '../../hooks/useAdminNotifications'
 import type { AdminNotification, AdminNotificationType } from '../../types'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToastContext } from '../../contexts/ToastContext'
 import { notificationApi } from '../../services/api/notificationApi'
 import { userApi } from '../../services/api/userApi'
 import { walletApi } from '../../services/api/walletApi'
@@ -59,8 +60,31 @@ const formatRelativeTime = (dateString: string): string => {
 
 // Get navigation route based on notification type & related entity
 const getNotificationRoute = (notification: AdminNotification): string | null => {
-  const { type, relatedEntityId, relatedEntityType } = notification
+  const { type, relatedEntityId, relatedEntityType, data, title } = notification
   const entityType = (relatedEntityType || '').toLowerCase()
+  const lowerTitle = (title || '').toLowerCase()
+
+  // Ưu tiên xử lý Report trước (báo cáo phiên đấu giá)
+  if (entityType.includes('report') || lowerTitle.includes('báo cáo phiên đấu giá') || lowerTitle.includes('báo cáo')) {
+    // Cố gắng lấy auctionId từ data
+    let auctionId: string | undefined
+    if (data && typeof data === 'object') {
+      const anyData = data as Record<string, unknown>
+      auctionId =
+        (anyData.auctionId as string | undefined) ||
+        (anyData.auctionID as string | undefined) ||
+        (anyData.auctionSessionId as string | undefined) ||
+        (anyData.auctionSessionID as string | undefined)
+    }
+
+    // Nếu có auctionId → điều hướng tới trang báo cáo của auction đó
+    if (auctionId) {
+      return ROUTES.ADMIN_AUCTIONS_BY_ID_REPORTS.replace(':id', auctionId)
+    }
+
+    // Nếu không có auctionId → fallback tới trang tổng hợp báo cáo
+    return ROUTES.ADMIN_REPORTS
+  }
 
   // Ưu tiên check notification type trước cho account và certification
   if (type === 'certification_pending') {
@@ -125,6 +149,7 @@ export function AdminNotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { toast } = useToastContext()
 
   // UUID pattern để tìm userId trong message
   const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
@@ -163,6 +188,167 @@ export function AdminNotificationBell() {
   }, [fetchUserName])
 
 
+  // Map severity sang toast variant
+  const severityToVariant: Record<AdminNotification['severity'], 'default' | 'destructive' | 'success' | 'info'> = {
+    success: 'success',
+    info: 'info',
+    warning: 'default',
+    error: 'destructive',
+  }
+
+  // Track notifications đã hiển thị toast để tránh duplicate
+  const shownToastIdsRef = useRef<Set<string>>(new Set())
+
+  // Helper function để format message với user names thay vì userId
+  const formatMessageWithUserNames = useCallback(async (notification: AdminNotification): Promise<string> => {
+    let message = notification.message || 'Bạn có thông báo mới'
+    const userIds = message.match(UUID_PATTERN) || []
+    
+    if (userIds.length === 0) {
+      return message
+    }
+
+    // Tạo một map tạm để lưu user names đã fetch
+    const tempUserNamesMap: Record<string, string> = { ...userNamesMap }
+
+    // Fetch user names cho các userIds chưa có trong map
+    const userIdsToFetch = userIds.filter(userId => !tempUserNamesMap[userId])
+    
+    if (userIdsToFetch.length > 0) {
+      // Fetch user names
+      const fetchPromises = userIdsToFetch.map(async (userId) => {
+        try {
+          const userName = await fetchUserName(userId)
+          return { userId, userName }
+        } catch (error) {
+          console.error('[AdminNotificationBell] Error fetching user name:', error)
+          return { userId, userName: null }
+        }
+      })
+
+      const fetchResults = await Promise.all(fetchPromises)
+      
+      fetchResults.forEach(({ userId, userName }) => {
+        if (userName) {
+          tempUserNamesMap[userId] = userName
+        }
+      })
+
+      // Update userNamesMap state để dùng cho lần sau
+      const newUserNamesMap: Record<string, string> = {}
+      fetchResults.forEach(({ userId, userName }) => {
+        if (userName) {
+          newUserNamesMap[userId] = userName
+        }
+      })
+      
+      if (Object.keys(newUserNamesMap).length > 0) {
+        setUserNamesMap(prev => ({ ...prev, ...newUserNamesMap }))
+      }
+    }
+
+    // Format message với user names từ temp map (đã có cả user names mới fetch)
+    userIds.forEach(userId => {
+      const userName = tempUserNamesMap[userId]
+      if (userName) {
+        message = message.replace(userId, userName)
+      }
+    })
+
+    return message
+  }, [userNamesMap, fetchUserName])
+
+  // Helper function để hiển thị toast và browser notification
+  const showNotificationToast = useCallback(async (notification: AdminNotification) => {
+    // Validate notification data
+    if (!notification || !notification.id) {
+      console.warn('[AdminNotificationBell] Invalid notification for toast:', notification)
+      return
+    }
+
+    // Check if we've already shown this notification (prevent duplicates)
+    if (shownToastIdsRef.current.has(notification.id)) {
+      console.log('[AdminNotificationBell] Toast already shown, skipping:', notification.id)
+      return
+    }
+
+    // Mark as shown IMMEDIATELY to prevent duplicates
+    shownToastIdsRef.current.add(notification.id)
+
+    // Validate title
+    const title = notification.title || 'Thông báo mới'
+    
+    // Format message với user names thay vì userId
+    const message = await formatMessageWithUserNames(notification)
+    
+    console.log('[AdminNotificationBell] 🔔 Showing toast for notification:', {
+      id: notification.id,
+      title,
+      type: notification.type,
+      message,
+    })
+    
+    // Show toast notification (in-app notification) - QUAN TRỌNG: Phải hiển thị ngay
+    try {
+      toast({
+        title,
+        description: message,
+        variant: severityToVariant[notification.severity] || 'default',
+      })
+      console.log('[AdminNotificationBell] ✅ Toast displayed successfully')
+    } catch (error) {
+      console.error('[AdminNotificationBell] ❌ Error showing toast:', error)
+    }
+    
+    // Show browser notification nếu được phép (theo cách của agrimart-web)
+    if ('Notification' in window && window.Notification.permission === 'granted') {
+      try {
+        const browserNotification = new window.Notification(title, {
+          body: message,
+          icon: '/favicon.ico',
+          tag: notification.id, // Use tag to replace notifications with same ID
+          requireInteraction: false, // Don't require user interaction
+        })
+        
+        // Auto-close notification after 5 seconds
+        setTimeout(() => {
+          browserNotification.close()
+        }, 5000)
+        
+        console.log('[AdminNotificationBell] ✅ Browser notification shown:', notification.id)
+      } catch (error) {
+        console.error('[AdminNotificationBell] Error showing browser notification:', error)
+      }
+    } else if ('Notification' in window && window.Notification.permission === 'default') {
+      // Request permission if not yet requested
+      console.log('[AdminNotificationBell] Requesting browser notification permission...')
+      window.Notification.requestPermission().then((permission) => {
+        console.log('[AdminNotificationBell] Notification permission:', permission)
+        if (permission === 'granted') {
+          // Show notification after permission granted
+          try {
+            const browserNotification = new window.Notification(title, {
+              body: message,
+              icon: '/favicon.ico',
+              tag: notification.id,
+            })
+            setTimeout(() => {
+              browserNotification.close()
+            }, 5000)
+          } catch (error) {
+            console.error('[AdminNotificationBell] Error showing browser notification after permission:', error)
+          }
+        }
+      })
+    }
+  }, [toast, formatMessageWithUserNames])
+
+  // Handle new notification from SignalR - theo cách implement của agrimart-web
+  const handleNewNotification = useCallback((notification: AdminNotification) => {
+    console.log('[AdminNotificationBell] 🔔 Callback handleNewNotification called:', notification.id)
+    showNotificationToast(notification)
+  }, [showNotificationToast])
+
   // Hook để quản lý notifications qua SignalR
   const {
     isConnected,
@@ -170,27 +356,42 @@ export function AdminNotificationBell() {
     notifications,
     markAsRead,
     markAllAsRead,
-  } = useAdminNotifications((notification) => {
-    // Callback khi có notification mới - có thể show toast/browser notification
-    console.log('[AdminNotificationBell] New notification:', notification)
-    
-    // Show browser notification nếu được phép
-    if ('Notification' in window && window.Notification.permission === 'granted') {
-      try {
-        const browserNotification = new window.Notification(notification.title, {
-          body: notification.message,
-          icon: '/favicon.ico',
-          tag: notification.id,
-        })
-        
-        setTimeout(() => {
-          browserNotification.close()
-        }, 5000)
-      } catch (error) {
-        console.error('[AdminNotificationBell] Browser notification error:', error)
-      }
+  } = useAdminNotifications(handleNewNotification)
+
+  // Backup mechanism: Tự động hiển thị toast khi có notification mới trong list
+  // Đảm bảo toast luôn được hiển thị ngay cả khi callback không được gọi
+  const prevNotificationsLengthRef = useRef(0)
+  const isInitialMountRef = useRef(true)
+  
+  useEffect(() => {
+    // Bỏ qua lần mount đầu tiên (không hiển thị toast cho notifications đã có sẵn)
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      prevNotificationsLengthRef.current = notifications.length
+      // Đánh dấu tất cả notifications hiện tại là đã xử lý
+      notifications.forEach((n) => {
+        shownToastIdsRef.current.add(n.id)
+      })
+      return
     }
-  })
+
+    // Nếu số lượng notifications tăng lên, có notification mới
+    if (notifications.length > prevNotificationsLengthRef.current && notifications.length > 0) {
+      // Tìm notifications mới (những cái chưa có trong shownToastIdsRef)
+      const newNotifications = notifications.filter(
+        (n) => !shownToastIdsRef.current.has(n.id) && !n.isRead
+      )
+
+      // Hiển thị toast cho từng notification mới (backup mechanism)
+      newNotifications.forEach((notification) => {
+        console.log('[AdminNotificationBell] 🔔 Auto-showing toast for new notification (backup):', notification.id)
+        showNotificationToast(notification)
+      })
+    }
+
+    // Update ref để track số lượng notifications
+    prevNotificationsLengthRef.current = notifications.length
+  }, [notifications, showNotificationToast])
 
   // State để lưu formatted messages
   const [formattedMessages, setFormattedMessages] = useState<Record<string, string>>({})
@@ -339,12 +540,36 @@ export function AdminNotificationBell() {
     }
   }, [user?.id, fetchNotifications])
 
-  // Request browser notification permission
+  // Request browser notification permission on mount (theo cách của agrimart-web)
+  // Chỉ request khi user đã login và component đã mount
   useEffect(() => {
-    if ('Notification' in window && window.Notification.permission === 'default') {
-      window.Notification.requestPermission()
+    if (!user?.id) return
+    
+    // Kiểm tra browser có hỗ trợ notifications không
+    if (!('Notification' in window)) {
+      console.log('[AdminNotificationBell] Browser không hỗ trợ notifications')
+      return
     }
-  }, [])
+
+    // Nếu permission chưa được set (default), request permission
+    if (window.Notification.permission === 'default') {
+      console.log('[AdminNotificationBell] Requesting browser notification permission...')
+      window.Notification.requestPermission().then((permission) => {
+        console.log('[AdminNotificationBell] Notification permission result:', permission)
+        if (permission === 'granted') {
+          console.log('[AdminNotificationBell] ✅ Browser notifications đã được cho phép!')
+        } else if (permission === 'denied') {
+          console.warn('[AdminNotificationBell] ⚠️ Browser notifications bị từ chối. User cần cho phép trong browser settings.')
+        }
+      }).catch((error) => {
+        console.error('[AdminNotificationBell] Error requesting notification permission:', error)
+      })
+    } else if (window.Notification.permission === 'granted') {
+      console.log('[AdminNotificationBell] ✅ Browser notifications đã được cho phép từ trước')
+    } else if (window.Notification.permission === 'denied') {
+      console.warn('[AdminNotificationBell] ⚠️ Browser notifications bị từ chối. User cần cho phép trong browser settings.')
+    }
+  }, [user?.id])
 
   // Close dropdown when clicking outside
   useEffect(() => {

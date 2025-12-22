@@ -72,20 +72,22 @@ const AccountDetailModal: React.FC<AccountDetailModalProps> = ({ account, isOpen
               </div>
             </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3"><MapPin className="h-4 w-4 text-emerald-600" /></div>
-              Thông tin nông trại
-            </h3>
-            <div className="bg-gray-50 rounded-lg p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Tên nông trại</Label><p className="text-gray-900 font-medium">{account.farmName}</p></div>
-                <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Địa chỉ nông trại</Label><p className="text-gray-900 break-words">{account.farmAddress}</p></div>
-                <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Diện tích</Label><p className="text-gray-900">{account.farmSize}</p></div>
-                <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Loại hình</Label><p className="text-gray-900">{account.farmType}</p></div>
+          {account.role === 'farmer' && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3"><MapPin className="h-4 w-4 text-emerald-600" /></div>
+                Thông tin nông trại
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Tên nông trại</Label><p className="text-gray-900 font-medium">{account.farmName}</p></div>
+                  <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Địa chỉ nông trại</Label><p className="text-gray-900 break-words">{account.farmAddress}</p></div>
+                  <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Diện tích</Label><p className="text-gray-900">{account.farmSize}</p></div>
+                  <div><Label className="text-sm font-medium text-gray-700 mb-1 block">Loại hình</Label><p className="text-gray-900">{account.farmType}</p></div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3"><Eye className="h-4 w-4 text-emerald-600" /></div>

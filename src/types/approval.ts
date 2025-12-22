@@ -4,6 +4,8 @@ export interface PendingAccount {
   fullName: string
   phone: string
   address: string
+  // Role để phân biệt farmer / wholesaler / admin
+  role: 'farmer' | 'wholesaler' | 'admin'
   farmName: string
   farmAddress: string
   farmSize: string
