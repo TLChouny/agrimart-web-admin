@@ -495,6 +495,36 @@ export interface ApiTransaction {
   updatedAt: string | null
 }
 
+// Buy Request related types
+export interface ApiBuyRequestDetail {
+  id?: string
+  buyRequestId?: string
+  grade?: number
+  quantity?: number
+  price?: number
+  allowedDeviationPercent?: number
+  unit?: string
+  createdAt?: string
+  updatedAt?: string | null
+}
+
+export interface ApiBuyRequest {
+  id: string
+  requestCode?: string
+  requiredDate?: string
+  expectedPrice?: number
+  totalQuantity?: number
+  status?: string | number
+  isBuyingBulk?: boolean
+  message?: string
+  wholesalerId?: string
+  harvestId?: string
+  farmerId?: string
+  details?: ApiBuyRequestDetail[]
+  createdAt?: string
+  updatedAt?: string | null
+}
+
 // Withdraw Request related types
 export type WithdrawRequestStatus = 0 | 1 | 2 | 3 | 4 // 0: Pending, 1: Approved, 2: Rejected, 3: Completed, 4: Cancelled
 

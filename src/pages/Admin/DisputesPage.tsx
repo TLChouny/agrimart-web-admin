@@ -8,7 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { disputeApi } from '../../services/api/disputeApi'
-import type { ApiDispute, ApiDisputeResolve, DisputeStatus } from '../../types/api'
+import { walletApi } from '../../services/api/walletApi'
+import { auctionApi } from '../../services/api/auctionApi'
+import { buyRequestApi } from '../../services/api/buyRequestApi'
+import type { ApiBuyRequest, ApiDispute, ApiDisputeResolve, ApiEnglishAuction, DisputeStatus } from '../../types/api'
 import { useToastContext } from '../../contexts/ToastContext'
 import { TOAST_TITLES } from '../../services/constants/messages'
 import { Loader2, ShieldAlert, Search, ChevronLeft, ChevronRight, Eye, RefreshCw } from 'lucide-react'
@@ -30,11 +33,43 @@ const DISPUTE_STATUS_COLORS: Record<DisputeStatus, string> = {
   4: 'text-slate-700 border-slate-200 bg-slate-50',
 }
 
+const AUCTION_STATUS_LABELS: Record<string, string> = {
+  Draft: 'Bản nháp',
+  Pending: 'Chờ duyệt',
+  Rejected: 'Đã từ chối',
+  Approved: 'Đã duyệt',
+  OnGoing: 'Đang diễn ra',
+  Pause: 'Tạm dừng',
+  Completed: 'Đã hoàn thành',
+  NoWinner: 'Không có người thắng',
+  Cancelled: 'Đã hủy',
+}
+
+const BUY_REQUEST_STATUS_LABELS: Record<string, string> = {
+  Pending: 'Đang chờ xử lý',
+  Accepted: 'Đã chấp nhận',
+  Approved: 'Đã chấp nhận',
+  Rejected: 'Đã từ chối',
+  Cancelled: 'Đã hủy',
+  '0': 'Đang chờ xử lý',
+  '1': 'Đã chấp nhận',
+  '2': 'Đã từ chối',
+  '3': 'Đã hủy',
+}
+
 const getDisputeStatusBadge = (status: DisputeStatus) => (
   <Badge variant="outline" className={DISPUTE_STATUS_COLORS[status]}>
     {DISPUTE_STATUS_LABELS[status]}
   </Badge>
 )
+
+const getAuctionStatusLabel = (status: string) => AUCTION_STATUS_LABELS[status] ?? status
+
+const getBuyRequestStatusLabel = (status?: string | number) => {
+  if (status === undefined || status === null) return '—'
+  const key = String(status)
+  return BUY_REQUEST_STATUS_LABELS[key] ?? key
+}
 
 const formatDateTime = (iso: string | null) => {
   if (!iso) return '—'
@@ -66,6 +101,8 @@ export default function DisputesPage() {
   const [totalPages, setTotalPages] = useState<number>(1)
   const [totalCount, setTotalCount] = useState<number>(0)
   const [resolveInfoMap, setResolveInfoMap] = useState<Record<string, ApiDisputeResolve>>({})
+  const [relatedAuction, setRelatedAuction] = useState<ApiEnglishAuction | null>(null)
+  const [relatedBuyRequest, setRelatedBuyRequest] = useState<ApiBuyRequest | null>(null)
 
   const [selectedDispute, setSelectedDispute] = useState<ApiDispute | null>(null)
   const [resolveInfo, setResolveInfo] = useState<ApiDisputeResolve | null>(null)
@@ -78,6 +115,7 @@ export default function DisputesPage() {
   const [showUpdateStatusModal, setShowUpdateStatusModal] = useState<boolean>(false)
   const [disputeToUpdate, setDisputeToUpdate] = useState<ApiDispute | null>(null)
   const [updateStatusNote, setUpdateStatusNote] = useState<string>('')
+  const [escrowLoading, setEscrowLoading] = useState<boolean>(false)
 
   const loadDisputes = useCallback(
     async (page: number, status: DisputeStatus | 'all') => {
@@ -191,6 +229,52 @@ export default function DisputesPage() {
     return items
   }, [disputes, searchValue])
 
+  const loadEscrowAndRelated = useCallback(
+    async (escrowId: string) => {
+      if (!escrowId) return
+      setEscrowLoading(true)
+      setRelatedAuction(null)
+      setRelatedBuyRequest(null)
+
+      try {
+        const escrowRes = await walletApi.getEscrowById(escrowId)
+        if (escrowRes.isSuccess && escrowRes.data) {
+          const detail = escrowRes.data
+
+          const zeroGuid = '00000000-0000-0000-0000-000000000000'
+          if (detail.auctionId && detail.auctionId !== zeroGuid) {
+            const auctionRes = await auctionApi.getEnglishAuctionById(detail.auctionId)
+            if (auctionRes.isSuccess && auctionRes.data) {
+              setRelatedAuction(auctionRes.data)
+            }
+          } else if (detail.buyRequestId && detail.buyRequestId !== zeroGuid) {
+            const buyRequestRes = await buyRequestApi.getById(detail.buyRequestId)
+            if (buyRequestRes.isSuccess && buyRequestRes.data) {
+              setRelatedBuyRequest(buyRequestRes.data)
+            }
+          }
+        } else {
+          toast({
+            title: TOAST_TITLES.ERROR,
+            description: escrowRes.message || 'Không thể tải thông tin escrow',
+            variant: 'destructive',
+          })
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tải thông tin escrow'
+        toast({
+          title: TOAST_TITLES.ERROR,
+          description: message,
+          variant: 'destructive',
+        })
+      } finally {
+        setEscrowLoading(false)
+      }
+    },
+    [toast]
+  )
+
   const handleOpenDetail = async (dispute: ApiDispute) => {
     // Normalize status để đảm bảo so sánh đúng
     const normalizedDispute = {
@@ -202,10 +286,13 @@ export default function DisputesPage() {
     
     setSelectedDispute(normalizedDispute)
     setResolveInfo(null)
+    setRelatedAuction(null)
+    setRelatedBuyRequest(null)
     setAdminNote('')
     setRefundAmount('')
     setIsFinalDecision(true)
     setShowDetailModal(true)
+    loadEscrowAndRelated(normalizedDispute.escrowId)
 
     // Load resolveInfo cho tất cả status nếu có (không chỉ status = 4)
     try {
@@ -794,6 +881,8 @@ export default function DisputesPage() {
           if (!open) {
             setSelectedDispute(null)
             setResolveInfo(null)
+            setRelatedAuction(null)
+            setRelatedBuyRequest(null)
             setAdminNote('')
             setRefundAmount('')
             setIsFinalDecision(true)
@@ -805,12 +894,6 @@ export default function DisputesPage() {
             <>
               <DialogHeader>
                 <DialogTitle>Chi tiết tranh chấp</DialogTitle>
-                <p className="text-sm text-gray-600">
-                  Escrow ID:{' '}
-                  <span className="font-mono text-xs text-gray-800">
-                    {selectedDispute.escrowId}
-                  </span>
-                </p>
               </DialogHeader>
 
               <div className="space-y-6">
@@ -886,6 +969,98 @@ export default function DisputesPage() {
                           </p>
                         </a>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {(escrowLoading || relatedAuction || relatedBuyRequest) && (
+                  <div className="pt-2 border-t border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Thông tin phiên đấu giá / yêu cầu mua
+                      </Label>
+                      {escrowLoading && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Đang tải dữ liệu liên quan...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {relatedAuction && (
+                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 shadow-sm">
+                          <p className="text-sm font-semibold text-emerald-900 mb-2">Phiên đấu giá</p>
+                          <div className="space-y-1 text-sm text-emerald-900">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-emerald-800">Mã phiên:</span>
+                              <span className="font-mono text-xs">{relatedAuction.sessionCode}</span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-emerald-800">Giá khởi điểm:</span>
+                              <span className="font-semibold">{formatCurrencyVND(relatedAuction.startingPrice)}</span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-emerald-800">Giá hiện tại:</span>
+                              <span className="font-semibold">
+                                {relatedAuction.currentPrice ? formatCurrencyVND(relatedAuction.currentPrice) : '—'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-emerald-800">Giá thắng:</span>
+                              <span className="font-semibold">
+                                {relatedAuction.winningPrice ? formatCurrencyVND(relatedAuction.winningPrice) : '—'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-emerald-800">Trạng thái:</span>
+                              <span className="font-semibold">
+                                {getAuctionStatusLabel(relatedAuction.status)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {relatedBuyRequest && (
+                        <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 shadow-sm">
+                          <p className="text-sm font-semibold text-blue-900 mb-2">Yêu cầu mua hàng</p>
+                          <div className="space-y-1 text-sm text-blue-900">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-blue-800">Mã yêu cầu:</span>
+                              <span className="font-mono text-xs">{relatedBuyRequest.requestCode || relatedBuyRequest.id}</span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-blue-800">Giá kỳ vọng:</span>
+                              <span className="font-semibold">
+                                {relatedBuyRequest.expectedPrice
+                                  ? formatCurrencyVND(relatedBuyRequest.expectedPrice)
+                                  : '—'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-blue-800">Sản lượng mong muốn:</span>
+                              <span className="font-semibold">
+                                {relatedBuyRequest.totalQuantity
+                                  ? `${relatedBuyRequest.totalQuantity.toLocaleString('vi-VN')} kg`
+                                  : '—'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-blue-800">Trạng thái:</span>
+                              <span className="font-semibold">
+                                {getBuyRequestStatusLabel(relatedBuyRequest.status)}
+                              </span>
+                            </div>
+                            {relatedBuyRequest.message && (
+                              <div className="pt-1 text-xs text-blue-800">
+                                <span className="font-medium">Ghi chú:</span>{' '}
+                                <span className="text-blue-900">{relatedBuyRequest.message}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
