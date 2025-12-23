@@ -41,7 +41,7 @@ export default function FarmsPage() {
       // Batch requests với Promise.all nhưng giới hạn số lượng đồng thời
       const BATCH_SIZE = 5
       const results: Array<[string, number]> = []
-      
+
       for (let i = 0; i < farmsList.length; i += BATCH_SIZE) {
         const batch = farmsList.slice(i, i + BATCH_SIZE)
         const batchResults = await Promise.all(
@@ -56,7 +56,7 @@ export default function FarmsPage() {
           })
         )
         results.push(...batchResults.map(([id, count]) => [id, count] as [string, number]))
-        
+
         // Cập nhật UI từng batch để responsive hơn
         const countsMap = Object.fromEntries(results)
         setCropCounts(prev => ({ ...prev, ...countsMap }))
@@ -82,7 +82,7 @@ export default function FarmsPage() {
         // Fetch thông tin user với cache
         let usersMap: Record<string, ApiUser> = {}
         const now = Date.now()
-        
+
         // Kiểm tra cache
         if (usersCache && (now - usersCache.timestamp) < USERS_CACHE_TTL) {
           usersMap = usersCache.data
@@ -109,13 +109,13 @@ export default function FarmsPage() {
         // Map farms với thông tin user
         const convertedFarms: Farm[] = response.data.map(apiFarm => {
           const user = usersMap[apiFarm.userId]
-          const ownerName = user 
+          const ownerName = user
             ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
             : 'Chưa xác định'
-          const location = user?.address 
+          const location = user?.address
             ? `${user.address}${user.communes ? `, ${user.communes}` : ''}${user.province ? `, ${user.province}` : ''}`.trim()
             : 'Chưa cập nhật'
-          
+
           return {
             id: apiFarm.id,
             name: apiFarm.name,
@@ -273,13 +273,19 @@ export default function FarmsPage() {
                     {pageItems.map((farm) => (
                       <TableRow key={farm.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium min-h-[48px] w-[18%]">
-                          <button
+                          {/* <button
                             onClick={() => navigate(ROUTES.ADMIN_FARM_PROFILE.replace(':farmId', farm.id))}
                             className="text-left truncate max-w-[240px] text-blue-600 hover:text-blue-700 hover:underline"
                             title={farm.name}
                           >
                             {farm.name}
-                          </button>
+                          </button> */}
+                          <span
+                            className="truncate max-w-[240px] text-gray-800 cursor-not-allowed"
+                            title={farm.name}
+                          >
+                            {farm.name}
+                          </span>
                         </TableCell>
                         <TableCell className="min-h-[48px] w-[15%]"><div className="truncate max-w-[200px]" title={farm.owner}>{farm.owner}</div></TableCell>
                         <TableCell className="min-h-[48px] w-[22%]"><div className="truncate max-w-[280px]" title={farm.location}>{farm.location}</div></TableCell>
@@ -367,8 +373,8 @@ export default function FarmsPage() {
                 {searchTerm ? 'Không tìm thấy nông trại' : 'Chưa có nông trại nào'}
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                {searchTerm 
-                  ? 'Thử tìm kiếm với từ khóa khác' 
+                {searchTerm
+                  ? 'Thử tìm kiếm với từ khóa khác'
                   : 'Hiện tại chưa có nông trại nào trong hệ thống'}
               </p>
               {searchTerm && (

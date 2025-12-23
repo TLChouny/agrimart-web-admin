@@ -21,11 +21,14 @@ const BUY_REQUEST_STATUS_LABELS: Record<string, string> = {
   Accepted: 'Đã chấp nhận',
   Approved: 'Đã chấp nhận',
   Rejected: 'Đã từ chối',
-  Cancelled: 'Đã hủy',
+  Completed: 'Đã hoàn thành',
+  Canceled: 'Đã hủy',
+  Cancelled: 'Đã hủy', // Tương thích ngược
   '0': 'Đang chờ xử lý',
   '1': 'Đã chấp nhận',
   '2': 'Đã từ chối',
-  '3': 'Đã hủy',
+  '3': 'Đã hoàn thành',
+  '4': 'Đã hủy',
 }
 
 const BUY_REQUEST_STATUS_COLORS: Record<string, string> = {
@@ -33,11 +36,14 @@ const BUY_REQUEST_STATUS_COLORS: Record<string, string> = {
   Accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   Approved: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   Rejected: 'bg-red-100 text-red-700 border-red-200',
-  Cancelled: 'bg-slate-100 text-slate-800 border-slate-200',
+  Completed: 'bg-blue-100 text-blue-800 border-blue-200',
+  Canceled: 'bg-slate-100 text-slate-800 border-slate-200',
+  Cancelled: 'bg-slate-100 text-slate-800 border-slate-200', // Tương thích ngược
   '0': 'bg-amber-100 text-amber-800 border-amber-200',
   '1': 'bg-emerald-100 text-emerald-800 border-emerald-200',
   '2': 'bg-red-100 text-red-700 border-red-200',
-  '3': 'bg-slate-100 text-slate-800 border-slate-200',
+  '3': 'bg-blue-100 text-blue-800 border-blue-200',
+  '4': 'bg-slate-100 text-slate-800 border-slate-200',
 }
 
 const getBuyRequestStatusBadge = (status?: string | number) => {
@@ -51,11 +57,12 @@ const getBuyRequestStatusBadge = (status?: string | number) => {
     lower === 'accepted' ? 'Accepted' :
     lower === 'approved' ? 'Approved' :
     lower === 'rejected' ? 'Rejected' :
-    lower === 'cancelled' ? 'Cancelled' :
+    lower === 'completed' ? 'Completed' :
+    lower === 'canceled' || lower === 'cancelled' ? 'Canceled' :
     raw
 
-  const label = BUY_REQUEST_STATUS_LABELS[normalizedKey] ?? 'Không xác định'
-  const colorClass = BUY_REQUEST_STATUS_COLORS[normalizedKey] ?? 'text-gray-700 border-gray-200 bg-gray-100'
+  const label = BUY_REQUEST_STATUS_LABELS[normalizedKey] ?? BUY_REQUEST_STATUS_LABELS[raw] ?? 'Không xác định'
+  const colorClass = BUY_REQUEST_STATUS_COLORS[normalizedKey] ?? BUY_REQUEST_STATUS_COLORS[raw] ?? 'text-gray-700 border-gray-200 bg-gray-100'
   return (
     <Badge variant="outline" className={colorClass}>
       {label}
@@ -82,15 +89,15 @@ const formatQuantity = (value?: number | null, unit?: string | null) => {
   return unit ? `${formatted} ${unit}` : `${formatted} kg`
 }
 
-const getTotalQuantity = (buyRequest: ApiBuyRequest) => {
-  if (buyRequest.totalQuantity && !Number.isNaN(buyRequest.totalQuantity)) {
-    return buyRequest.totalQuantity
-  }
-  if (buyRequest.details && buyRequest.details.length > 0) {
-    return buyRequest.details.reduce((sum, d) => sum + (d.quantity || 0), 0)
-  }
-  return null
-}
+// const getTotalQuantity = (buyRequest: ApiBuyRequest) => {
+//   if (buyRequest.totalQuantity && !Number.isNaN(buyRequest.totalQuantity)) {
+//     return buyRequest.totalQuantity
+//   }
+//   if (buyRequest.details && buyRequest.details.length > 0) {
+//     return buyRequest.details.reduce((sum, d) => sum + (d.quantity || 0), 0)
+//   }
+//   return null
+// }
 
 export default function BuyRequestsPage() {
   const { toast } = useToastContext()
@@ -330,7 +337,6 @@ export default function BuyRequestsPage() {
                     <TableHead className="text-xs sm:text-sm">Mã yêu cầu</TableHead>
                     <TableHead className="text-xs sm:text-sm">Người mua</TableHead>
                     <TableHead className="text-xs sm:text-sm">Người bán</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Số lượng</TableHead>
                     <TableHead className="text-xs sm:text-sm">Giá mong muốn</TableHead>
                     <TableHead className="text-xs sm:text-sm">Ngày yêu cầu</TableHead>
                     <TableHead className="text-xs sm:text-sm">Trạng thái</TableHead>
@@ -352,9 +358,6 @@ export default function BuyRequestsPage() {
                         {buyRequest.farmerId
                           ? userMap[buyRequest.farmerId] || `ID: ${buyRequest.farmerId.slice(0, 8)}...`
                           : '—'}
-                      </TableCell>
-                      <TableCell className="text-xs sm:text-sm">
-                        {formatQuantity(getTotalQuantity(buyRequest))}
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm">
                         {buyRequest.expectedPrice
@@ -440,12 +443,6 @@ export default function BuyRequestsPage() {
                 <div>
                   <Label className="text-xs sm:text-sm font-medium text-gray-700">Trạng thái</Label>
                   <div className="mt-1">{getBuyRequestStatusBadge(selectedBuyRequest.status)}</div>
-                </div>
-                <div>
-                  <Label className="text-xs sm:text-sm font-medium text-gray-700">Tổng số lượng</Label>
-                  <p className="mt-1 text-sm sm:text-base text-gray-900">
-                    {formatQuantity(selectedBuyRequest.totalQuantity)}
-                  </p>
                 </div>
                 <div>
                   <Label className="text-xs sm:text-sm font-medium text-gray-700">Giá mong muốn</Label>
