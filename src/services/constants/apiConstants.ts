@@ -92,6 +92,7 @@ export const ENDPOINTS = {
     },
   },
   buyRequest: {
+    list: '/api/auction-service/buyrequest',
     detail: (id: string) => `/api/auction-service/buyrequest/${encodeURIComponent(id)}`,
   },
   report: {

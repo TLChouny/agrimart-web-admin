@@ -42,27 +42,77 @@ function formatDateTime(iso: string) {
 function getStatusBadge(status: AuctionStatus) {
   switch (status) {
     case 'Draft':
-      return <Badge variant="outline" className="text-gray-600 border-gray-600">Bản nháp</Badge>
+      return (
+        <Badge variant="outline" className="text-slate-600 border-slate-300 bg-slate-50">
+          Bản nháp
+        </Badge>
+      )
+
     case 'Pending':
-      return <Badge variant="outline" className="text-yellow-600 border-yellow-600">Đợi xét duyệt</Badge>
+      return (
+        <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">
+          Chờ duyệt
+        </Badge>
+      )
+
     case 'Rejected':
-      return <Badge variant="outline" className="text-red-600 border-red-600">Bị từ chối</Badge>
+      return (
+        <Badge variant="outline" className="text-rose-700 border-rose-300 bg-rose-50">
+          Từ chối
+        </Badge>
+      )
+
     case 'Approved':
-      return <Badge variant="outline" className="text-green-600 border-green-600">Chấp nhận</Badge>
+      return (
+        <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50">
+          Đã duyệt
+        </Badge>
+      )
+
     case 'OnGoing':
-      return <Badge variant="outline" className="text-blue-600 border-blue-600">Đang diễn ra</Badge>
+      return (
+        <Badge variant="outline" className="text-sky-700 border-sky-300 bg-sky-50">
+          Đang diễn ra
+        </Badge>
+      )
+
     case 'Pause':
-      return <Badge variant="outline" className="text-amber-600 border-amber-600">Đang tạm dừng</Badge>
+      return (
+        <Badge variant="outline" className="text-orange-700 border-orange-300 bg-orange-50">
+          Tạm dừng
+        </Badge>
+      )
+
     case 'Completed':
-      return <Badge variant="outline" className="text-gray-600 border-gray-600">Hoàn thành</Badge>
+      return (
+        <Badge variant="outline" className="text-indigo-700 border-indigo-300 bg-indigo-50">
+          Hoàn thành
+        </Badge>
+      )
+
     case 'NoWinner':
-      return <Badge variant="outline" className="text-orange-600 border-orange-600">Không người chiến thắng</Badge>
+      return (
+        <Badge variant="outline" className="text-fuchsia-700 border-fuchsia-300 bg-fuchsia-50">
+          Không có người thắng
+        </Badge>
+      )
+
     case 'Cancelled':
-      return <Badge variant="outline" className="text-rose-600 border-rose-600">Hủy</Badge>
+      return (
+        <Badge variant="outline" className="text-gray-700 border-gray-300 bg-gray-50">
+          Đã huỷ
+        </Badge>
+      )
+
     default:
-      return <Badge variant="outline" className="text-gray-600 border-gray-600">Không xác định</Badge>
+      return (
+        <Badge variant="outline" className="text-slate-600 border-slate-300 bg-slate-50">
+          Không xác định
+        </Badge>
+      )
   }
 }
+
 
 export default function AuctionsPage() {
   const navigate = useNavigate()
@@ -855,7 +905,7 @@ export default function AuctionsPage() {
       <Card className="card-responsive">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Danh sách phiên đấu giá</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Danh sách phiên đấu giáa</h2>
             <p className="text-responsive-sm text-gray-600">
               {isLoading ? 'Đang tải...' : `Hiển thị ${filteredAuctions.length} / ${visibleTotalCount || totalCount} phiên`}
             </p>

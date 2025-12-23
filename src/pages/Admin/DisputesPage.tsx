@@ -26,11 +26,11 @@ const DISPUTE_STATUS_LABELS: Record<DisputeStatus, string> = {
 }
 
 const DISPUTE_STATUS_COLORS: Record<DisputeStatus, string> = {
-  0: 'text-amber-600 border-amber-200 bg-amber-50',
-  1: 'text-emerald-700 border-emerald-200 bg-emerald-50',
-  2: 'text-red-600 border-red-200 bg-red-50',
-  3: 'text-blue-600 border-blue-200 bg-blue-50',
-  4: 'text-slate-700 border-slate-200 bg-slate-50',
+  0: 'bg-amber-100 text-amber-800 border-amber-200',
+  1: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  2: 'bg-red-100 text-red-700 border-red-200',
+  3: 'bg-blue-100 text-blue-800 border-blue-200',
+  4: 'bg-slate-100 text-slate-800 border-slate-200',
 }
 
 const AUCTION_STATUS_LABELS: Record<string, string> = {
@@ -103,6 +103,8 @@ export default function DisputesPage() {
   const [resolveInfoMap, setResolveInfoMap] = useState<Record<string, ApiDisputeResolve>>({})
   const [relatedAuction, setRelatedAuction] = useState<ApiEnglishAuction | null>(null)
   const [relatedBuyRequest, setRelatedBuyRequest] = useState<ApiBuyRequest | null>(null)
+  const [auctionMap, setAuctionMap] = useState<Record<string, ApiEnglishAuction>>({})
+  const [buyRequestMap, setBuyRequestMap] = useState<Record<string, ApiBuyRequest>>({})
 
   const [selectedDispute, setSelectedDispute] = useState<ApiDispute | null>(null)
   const [resolveInfo, setResolveInfo] = useState<ApiDisputeResolve | null>(null)
@@ -189,6 +191,57 @@ export default function DisputesPage() {
             }
           })
           setResolveInfoMap((prev) => ({ ...prev, ...newResolveInfoMap }))
+
+          // Load escrow và related auction/buy request cho mỗi dispute
+          const escrowPromises = normalizedDisputes.map(async (dispute: any) => {
+            try {
+              const escrowRes = await walletApi.getEscrowById(dispute.escrowId)
+              if (escrowRes.isSuccess && escrowRes.data) {
+                const escrow = escrowRes.data
+                const zeroGuid = '00000000-0000-0000-0000-000000000000'
+                
+                if (escrow.auctionId && escrow.auctionId !== zeroGuid) {
+                  try {
+                    const auctionRes = await auctionApi.getEnglishAuctionById(escrow.auctionId)
+                    if (auctionRes.isSuccess && auctionRes.data) {
+                      return { disputeId: dispute.id, type: 'auction' as const, data: auctionRes.data }
+                    }
+                  } catch (error) {
+                    console.error(`Failed to load auction for dispute ${dispute.id}:`, error)
+                  }
+                } else if (escrow.buyRequestId && escrow.buyRequestId !== zeroGuid) {
+                  try {
+                    const buyRequestRes = await buyRequestApi.getById(escrow.buyRequestId)
+                    if (buyRequestRes.isSuccess && buyRequestRes.data) {
+                      return { disputeId: dispute.id, type: 'buyRequest' as const, data: buyRequestRes.data }
+                    }
+                  } catch (error) {
+                    console.error(`Failed to load buy request for dispute ${dispute.id}:`, error)
+                  }
+                }
+              }
+            } catch (error) {
+              // Escrow có thể không tồn tại, không cần log
+            }
+            return null
+          })
+
+          const escrowResults = await Promise.all(escrowPromises)
+          const newAuctionMap: Record<string, ApiEnglishAuction> = {}
+          const newBuyRequestMap: Record<string, ApiBuyRequest> = {}
+          
+          escrowResults.forEach((result) => {
+            if (result) {
+              if (result.type === 'auction') {
+                newAuctionMap[result.disputeId] = result.data as ApiEnglishAuction
+              } else if (result.type === 'buyRequest') {
+                newBuyRequestMap[result.disputeId] = result.data as ApiBuyRequest
+              }
+            }
+          })
+          
+          setAuctionMap((prev) => ({ ...prev, ...newAuctionMap }))
+          setBuyRequestMap((prev) => ({ ...prev, ...newBuyRequestMap }))
         } else {
           toast({
             title: TOAST_TITLES.ERROR,
@@ -734,11 +787,10 @@ export default function DisputesPage() {
                 <SimpleTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[14%]">Escrow ID</TableHead>
-                      <TableHead className="w-[12%] text-right">Sản lượng (kg)</TableHead>
-                      <TableHead className="w-[14%] text-right">Số tiền tranh chấp mong muốn</TableHead>
-                      <TableHead className="w-[12%]">Trạng thái</TableHead>
-                      <TableHead className="w-[16%]">Thời gian tạo / cập nhật</TableHead>
+                      <TableHead className="w-[18%]">ID</TableHead>
+                      <TableHead className="w-[16%] text-right">Số tiền tranh chấp mong muốn</TableHead>
+                      <TableHead className="w-[14%]">Trạng thái</TableHead>
+                      <TableHead className="w-[18%]">Thời gian tạo / cập nhật</TableHead>
                       <TableHead className="w-[18%] text-center">Cập nhật trạng thái</TableHead>
                       <TableHead className="w-[16%] text-right">Thao tác</TableHead>
                     </TableRow>
@@ -764,25 +816,37 @@ export default function DisputesPage() {
                       
                       const isApproved = normalizedStatus === 1 // Approved = 1
                       const hasResolveInfo = !!resolveInfoMap[dispute.id]
+                      const relatedAuction = auctionMap[dispute.id]
+                      const relatedBuyRequest = buyRequestMap[dispute.id]
+                      
+                      // Format ID: AUC-... hoặc BR-...
+                      let displayId = ''
+                      if (relatedAuction) {
+                        const sessionCode = relatedAuction.sessionCode || relatedAuction.id
+                        displayId = sessionCode.startsWith('AUC-') ? sessionCode : `AUC-${sessionCode}`
+                      } else if (relatedBuyRequest) {
+                        const requestCode = relatedBuyRequest.requestCode || relatedBuyRequest.id
+                        const codeUpper = requestCode.toUpperCase()
+                        // Nếu code đã có tiền tố BR/BRQ thì giữ nguyên, không thêm BR-
+                        displayId = codeUpper.startsWith('BR') ? requestCode : `BR-${requestCode}`
+                      } else {
+                        // Đang tải, hiển thị escrow ID tạm thời
+                        displayId = dispute.escrowId.slice(0, 8) + '...'
+                      }
                       
                       return (
                       <TableRow key={dispute.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-mono text-xs text-gray-700 truncate max-w-[220px]">
-                              {dispute.escrowId}
+                              {displayId}
                             </span>
                             {dispute.disputeMessage && (
-                              <span className="text-xs text-gray-500 truncate max-w-[220px]">
+                              <span className="text-xs text-gray-500 truncate max-w-[220px] mt-1">
                                 {dispute.disputeMessage}
                               </span>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-semibold text-gray-900">
-                            {formatQuantity(dispute.actualAmount)}
-                          </span>
                         </TableCell>
                         <TableCell className="text-right">
                           <span className="font-semibold text-gray-900">

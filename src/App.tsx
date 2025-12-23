@@ -27,6 +27,7 @@ import AdminHelpPage from './pages/Admin/HelpPage';
 import ReportsPage from './pages/Admin/ReportsPage';
 import WalletPage from './pages/Admin/WalletPage';
 import DisputesPage from './pages/Admin/DisputesPage';
+import BuyRequestsPage from './pages/Admin/BuyRequestsPage';
 import PolicyPage from './pages/Admin/PolicyPage';
 
 import { ROUTES } from './constants';
@@ -180,6 +181,11 @@ function App() {
         <Route path={ROUTES.ADMIN_DISPUTES} element={
           <ProtectedRoute>
             <AdminLayout><DisputesPage /></AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path={ROUTES.ADMIN_BUY_REQUESTS} element={
+          <ProtectedRoute>
+            <AdminLayout><BuyRequestsPage /></AdminLayout>
           </ProtectedRoute>
         } />
         <Route path={ROUTES.ADMIN_POLICY} element={

@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom"
 import { farmApi } from "../../services/api/farmApi"
 import { auctionApi } from "../../services/api/auctionApi"
 import { reportApi } from "../../services/api/reportApi"
+import { disputeApi } from "../../services/api/disputeApi"
 import { userApi } from "../../services/api/userApi"
 import { walletApi } from "../../services/api/walletApi"
 import { certificationApi } from "../../services/api/certificationApi"
@@ -23,6 +24,7 @@ import type {
   ApiFarm,
   ApiEnglishAuction,
   ReportItem,
+  ApiDispute,
   ApiAuctionBidLog,
   User as ApiUser,
   ApiWallet,
@@ -46,6 +48,7 @@ export default function AdminDashboardPage() {
   const [farms, setFarms] = useState<ApiFarm[]>([])
   const [auctions, setAuctions] = useState<ApiEnglishAuction[]>([])
   const [reports, setReports] = useState<ReportItem[]>([])
+  const [disputes, setDisputes] = useState<ApiDispute[]>([])
   const [users, setUsers] = useState<ApiUser[]>([])
   const [systemWallet, setSystemWallet] = useState<ApiWallet | null>(null)
   const [systemLedgers, setSystemLedgers] = useState<ApiLedger[]>([])
@@ -68,10 +71,11 @@ export default function AdminDashboardPage() {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      const [farmRes, auctionRes, reportRes, userRes, systemWalletRes, certificationRes, systemProfitRes] = await Promise.all([
+      const [farmRes, auctionRes, reportRes, disputeRes, userRes, systemWalletRes, certificationRes, systemProfitRes] = await Promise.all([
         farmApi.getFarms(),
         auctionApi.getEnglishAuctions(undefined, 1, 500), // Lấy nhiều hơn để tính toán charts
         reportApi.getReports({ pageNumber: 1, pageSize: 100 }),
+        disputeApi.getDisputes({ pageNumber: 1, pageSize: 100 }),
         userApi.list(),
         walletApi.getSystemWallet(),
         certificationApi.getPending(),
@@ -81,6 +85,15 @@ export default function AdminDashboardPage() {
       setFarms(farmRes.data ?? [])
       setAuctions(auctionRes.data?.items ?? [])
       setReports(reportRes.data?.items ?? [])
+      // Handle disputes response - có thể là PaginatedDisputes hoặc array
+      const disputeData = disputeRes.data
+      if (disputeData && 'data' in disputeData && Array.isArray(disputeData.data)) {
+        setDisputes(disputeData.data)
+      } else if (Array.isArray(disputeData)) {
+        setDisputes(disputeData)
+      } else {
+        setDisputes([])
+      }
       setPendingCertifications(certificationRes.data ?? [])
       setSystemWallet(systemWalletRes.data ?? null)
       
@@ -213,7 +226,12 @@ export default function AdminDashboardPage() {
     const ongoingAuctions = auctions.filter(a => a.status === "OnGoing").length
     const totalRevenue = systemWallet?.balance ?? 0
     const pendingReports = reports.filter(r => r.reportStatus === "Pending").length
-    const pendingDisputes = reports.filter(r => r.reportStatus === "InReview").length
+    // Disputes là entity riêng, không phải từ reports
+    // DisputeStatus: 0: Pending, 1: Approved, 2: Rejected, 3: InAdminReview, 4: Resolved
+    const pendingDisputes = disputes.filter(d => {
+      const status = typeof d.disputeStatus === 'string' ? Number(d.disputeStatus) : d.disputeStatus
+      return status === 0 || status === 3 // Pending hoặc InAdminReview
+    }).length
 
     return [
       {
@@ -254,7 +272,7 @@ export default function AdminDashboardPage() {
         trend: pendingReports > 0 ? "up" : "neutral",
       },
     ]
-  }, [farms, users, pendingCertifications, auctions, systemWallet, reports])
+  }, [farms, users, pendingCertifications, auctions, systemWallet, reports, disputes])
 
 
   // System Revenue Analysis - Column Chart (profit over time)
@@ -392,26 +410,28 @@ export default function AdminDashboardPage() {
 
   // Risk Monitoring - Line Chart (reports & disputes)
   const riskMonitoringData = useMemo(() => {
-    if (!reports.length) return []
-    
     // Group reports by month
-    const monthMap = new Map<string, { reports: number; disputes: number }>()
+    const reportMonthMap = new Map<string, number>()
     
     reports.forEach(report => {
       const date = new Date(report.createdAt)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const currentCount = reportMonthMap.get(monthKey) || 0
+      reportMonthMap.set(monthKey, currentCount + 1)
+    })
+    
+    // Group disputes by month
+    const disputeMonthMap = new Map<string, number>()
+    
+    disputes.forEach(dispute => {
+      if (!dispute.createdAt) return
       
-      if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { reports: 0, disputes: 0 })
-      }
+      const date = new Date(dispute.createdAt)
+      if (isNaN(date.getTime())) return
       
-      const data = monthMap.get(monthKey)!
-      if (report.reportStatus === "Pending" || report.reportStatus === "InReview") {
-        data.reports++
-      }
-      if (report.reportStatus === "InReview") {
-        data.disputes++
-      }
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const currentCount = disputeMonthMap.get(monthKey) || 0
+      disputeMonthMap.set(monthKey, currentCount + 1)
     })
     
     // Get last 12 months
@@ -423,12 +443,15 @@ export default function AdminDashboardPage() {
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const monthLabel = `T${date.getMonth() + 1}/${date.getFullYear()}`
       
-      const data = monthMap.get(monthKey) || { reports: 0, disputes: 0 }
-      months.push({ time: monthLabel, ...data })
+      months.push({ 
+        time: monthLabel, 
+        reports: reportMonthMap.get(monthKey) || 0,
+        disputes: disputeMonthMap.get(monthKey) || 0
+      })
     }
     
     return months
-  }, [reports])
+  }, [reports, disputes])
 
   // Biến động ví hệ thống - Donut Chart
   const walletFluctuationData = useMemo(() => {

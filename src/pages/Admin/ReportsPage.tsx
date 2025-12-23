@@ -343,13 +343,13 @@ export default function ReportsPage() {
             <SimpleTable className="text-xs">
               <TableHeader>
                 <TableRow>
-                  <TableHead className={`${compactHeadClass} w-[12%] min-w-[110px]`}>Loại báo cáo</TableHead>
-                  <TableHead className={`${compactHeadClass} w-[20%] min-w-[180px]`}>Nội dung</TableHead>
-                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Mã phiên đấu giá</TableHead>
-                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Người báo cáo</TableHead>
-                  <TableHead className={`${compactHeadClass} w-[10%] min-w-[110px]`}>Trạng thái</TableHead>
-                  <TableHead className={`${compactHeadClass} w-[13%] min-w-[130px]`}>Ngày tạo</TableHead>
-                  <TableHead className={`${compactHeadClass} text-right w-[15%] min-w-[150px]`}>Thao tác</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[12%] min-w-[90px]`}>Loại báo cáo</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[2%] min-w-[150px]`}>Nội dung</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[120px]`}>Mã phiên đấu giá</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[10%] min-w-[120px]`}>Người báo cáo</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[10%] min-w-[100px]`}>Trạng thái</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[13%] min-w-[120px]`}>Ngày tạo</TableHead>
+                  <TableHead className={`${compactHeadClass} text-right w-[15%] min-w-[140px]`}>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -371,13 +371,13 @@ export default function ReportsPage() {
               <SimpleTable className="text-xs">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className={`${compactHeadClass} w-[12%] min-w-[110px]`}>Loại báo cáo</TableHead>
-                    <TableHead className={`${compactHeadClass} w-[20%] min-w-[180px]`}>Nội dung</TableHead>
-                    <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Mã phiên đấu giá</TableHead>
-                    <TableHead className={`${compactHeadClass} w-[15%] min-w-[140px]`}>Người báo cáo</TableHead>
-                    <TableHead className={`${compactHeadClass} w-[10%] min-w-[110px]`}>Trạng thái</TableHead>
-                    <TableHead className={`${compactHeadClass} w-[13%] min-w-[130px]`}>Ngày tạo</TableHead>
-                    <TableHead className={`${compactHeadClass} text-right w-[15%] min-w-[150px]`}>Thao tác</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[12%] min-w-[90px]`}>Loại báo cáo</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[20%] min-w-[150px]`}>Nội dung</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[120px]`}>Mã phiên đấu giá</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[15%] min-w-[120px]`}>Người báo cáo</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[10%] min-w-[100px]`}>Trạng thái</TableHead>
+                  <TableHead className={`${compactHeadClass} w-[13%] min-w-[120px]`}>Ngày tạo</TableHead>
+                  <TableHead className={`${compactHeadClass} text-right w-[15%] min-w-[140px]`}>Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

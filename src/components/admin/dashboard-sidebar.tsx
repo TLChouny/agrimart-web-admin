@@ -1,7 +1,7 @@
 function cn(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" ") }
 import type { LucideIcon } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, Truck, LogOut, Scissors, FileWarning, Wallet, ShieldAlert, FileText } from "lucide-react"
+import { LayoutDashboard, Users, CheckCircle, Wheat, Sprout, Tags, Truck, LogOut, Scissors, FileWarning, Wallet, ShieldAlert, FileText, ShoppingBag } from "lucide-react"
 import { adminAuthService } from "../../services/adminAuthService"
 import { useAuth } from "../../contexts/AuthContext"
 import { ROUTES } from "../../constants"
@@ -18,7 +18,7 @@ const menuItems: MenuItem[] = [
   { icon: Wheat, label: "Nông trại", path: "/admin/farms" },
   { icon: Sprout, label: "Lô trồng", path: "/admin/crops" },
   { icon: Scissors, label: "Vụ trồng", path: "/admin/harvests" },
-  // { icon: ShoppingBag, label: "Yêu cầu mua hàng", path: "/admin/buy-requests" },
+  { icon: ShoppingBag, label: "Yêu cầu mua", path: "/admin/buy-requests" },
   { icon: Truck, label: "Phiên đấu giá", path: "/admin/auctions" },
   { icon: FileWarning, label: "Báo cáo", path: "/admin/reports" },
   { icon: ShieldAlert, label: "Tranh chấp", path: "/admin/disputes" },
