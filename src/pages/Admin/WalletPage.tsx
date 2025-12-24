@@ -37,17 +37,17 @@ const PAYMENT_TYPE_LABELS: Record<number, string> = {
   1: 'Wallet',
 }
 
-const TRANSACTION_TYPE_LABELS: Record<number, string> = {
-  1: 'Thanh toán Escrow',
-  2: 'Giải phóng Escrow',
-  3: 'Hoàn tiền Escrow',
-  4: 'Nạp tiền',
-  5: 'Rút tiền',
-  6: 'Thanh toán phần còn lại Escrow',
-  7: 'Phí tham gia đấu giá',
-  8: 'Hoàn phí tham gia đấu giá',
-  9: 'Phí đấu giá',
-}
+// const TRANSACTION_TYPE_LABELS: Record<number, string> = {
+//   1: 'Thanh toán Escrow',
+//   2: 'Giải phóng Escrow',
+//   3: 'Hoàn tiền Escrow',
+//   4: 'Nạp tiền',
+//   5: 'Rút tiền',
+//   6: 'Thanh toán phần còn lại Escrow',
+//   7: 'Phí tham gia đấu giá',
+//   8: 'Hoàn phí tham gia đấu giá',
+//   9: 'Phí đấu giá',
+// }
 
 const getWalletStatusBadge = (status: WalletStatus) => {
   const colors: Record<WalletStatus, string> = {
@@ -159,6 +159,7 @@ export default function WalletPage() {
   const [partyInfoLoading, setPartyInfoLoading] = useState<boolean>(false)
   const [relatedAuction, setRelatedAuction] = useState<ApiEnglishAuction | null>(null)
   const [relatedEntityLoading, setRelatedEntityLoading] = useState<boolean>(false)
+  const SYSTEM_WALLET_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
   // Fetch system wallet
   const fetchSystemWallet = useCallback(async () => {
@@ -1657,12 +1658,7 @@ export default function WalletPage() {
                       <Label className="text-sm font-medium text-gray-700">Loại tiền</Label>
                       <p className="text-sm text-gray-900 mt-1">{transactionDetail.currency}</p>
                     </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Loại giao dịch</Label>
-                      <p className="text-sm text-gray-900 mt-1">
-                        {TRANSACTION_TYPE_LABELS[transactionDetail.transactionType] || `Type ${transactionDetail.transactionType}`}
-                      </p>
-                    </div>
+                   
                     <div>
                       <Label className="text-sm font-medium text-gray-700">Loại thanh toán</Label>
                       <p className="text-sm text-gray-900 mt-1">
@@ -1671,22 +1667,6 @@ export default function WalletPage() {
                           : `Type ${transactionDetail.paymentType}`}
                       </p>
                     </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Escrow ID</Label>
-                      <p className="text-xs font-mono text-gray-600 mt-1">
-                        {transactionDetail.escrowId !== '00000000-0000-0000-0000-000000000000' 
-                          ? transactionDetail.escrowId 
-                          : '—'}
-                      </p>
-                    </div>
-                    {transactionDetail.relatedEntityId && (
-                      <div className="col-span-2">
-                        <Label className="text-sm font-medium text-gray-700">Related Entity ID</Label>
-                        <p className="text-xs font-mono text-gray-700 mt-1 break-all">
-                          {transactionDetail.relatedEntityId}
-                        </p>
-                      </div>
-                    )}
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Thời gian giao dịch</Label>
@@ -1722,39 +1702,32 @@ export default function WalletPage() {
                       </div>
                     ) : (
                       <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Người gửi</p>
-                          <p className="font-medium text-gray-900">
-                            {fromUserDetail
-                              ? `${fromUserDetail.firstName} ${fromUserDetail.lastName}`
-                              : fromWalletDetail
-                              ? `Wallet ${fromWalletDetail.id}`
-                              : transactionDetail.fromWalletId || '—'}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Wallet ID:{' '}
-                            <span className="font-mono">
-                              {fromWalletDetail?.id || transactionDetail.fromWalletId || '—'}
-                            </span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Người nhận</p>
-                          <p className="font-medium text-gray-900">
-                            {toUserDetail
-                              ? `${toUserDetail.firstName} ${toUserDetail.lastName}`
-                              : toWalletDetail
-                              ? `Wallet ${toWalletDetail.id}`
-                              : transactionDetail.toWalletId || '—'}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Wallet ID:{' '}
-                            <span className="font-mono">
-                              {toWalletDetail?.id || transactionDetail.toWalletId || '—'}
-                            </span>
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Người gửi</p>
+                        <p className="font-medium text-gray-900">
+                          {transactionDetail.fromWalletId === SYSTEM_WALLET_ID
+                            ? 'Ví hệ thống'
+                            : fromUserDetail
+                            ? `${fromUserDetail.firstName} ${fromUserDetail.lastName}`
+                            : fromWalletDetail
+                            ? `Wallet ${fromWalletDetail.userId}`
+                            : transactionDetail.fromWalletId || '—'}
+                        </p>
                       </div>
+                    
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Người nhận</p>
+                        <p className="font-medium text-gray-900">
+                          {transactionDetail.toWalletId === SYSTEM_WALLET_ID
+                            ? 'Ví hệ thống'
+                            : toUserDetail
+                            ? `${toUserDetail.firstName} ${toUserDetail.lastName}`
+                            : toWalletDetail
+                            ? `Wallet ${toWalletDetail.id}`
+                            : transactionDetail.toWalletId || '—'}
+                        </p>
+                      </div>
+                    </div>
                     )}
                   </div>
 
@@ -1786,7 +1759,7 @@ export default function WalletPage() {
                                     : '—'))}
                               </span>
                             </p>
-                            {(transactionDetail.relatedEntityId && 
+                            {/* {(transactionDetail.relatedEntityId && 
                               transactionDetail.relatedEntityId !== '00000000-0000-0000-0000-000000000000') ? (
                               <p className="text-xs text-gray-500 mt-1">
                                 Related Entity ID:{' '}
@@ -1794,8 +1767,8 @@ export default function WalletPage() {
                                   {transactionDetail.relatedEntityId}
                                 </span>
                               </p>
-                            ) : null}
-                            {transactionDetail.escrowId && 
+                            ) : null} */}
+                            {/* {transactionDetail.escrowId && 
                              transactionDetail.escrowId !== '00000000-0000-0000-0000-000000000000' && (
                               <p className="text-xs text-gray-500 mt-1">
                                 Escrow ID:{' '}
@@ -1803,7 +1776,7 @@ export default function WalletPage() {
                                   {transactionDetail.escrowId}
                                 </span>
                               </p>
-                            )}
+                            )} */}
                           </div>
 
                           {/* Hiển thị thông tin chi tiết Auction nếu đã load được */}
